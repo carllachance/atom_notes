@@ -5,29 +5,57 @@ import { ExpandedNote } from './components/ExpandedNote';
 import { RecallBand } from './components/RecallBand';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
-import { NoteCardModel, SceneState } from './types';
+import { NoteCardModel, SceneState, WorkspaceView } from './types';
 
 const SCENE_KEY = 'atom-notes.scene.v1';
 const CTRL_DOUBLE_TAP_MS = 320;
 
 const now = () => Date.now();
 
+function makeStateCue(note: Pick<NoteCardModel, 'archived' | 'anchors'>): string {
+  if (note.archived) return 'Archived';
+  if (note.anchors.length > 0) return `Anchored · ${note.anchors.length}`;
+  return 'Unanchored';
+}
+
 function createNote(text: string, z: number): NoteCardModel {
   const t = now();
   const trimmed = text.trim();
   const title = trimmed.split('\n')[0] || 'Quick note';
-  return {
+  const base = {
     id: crypto.randomUUID(),
     title,
     body: trimmed,
     anchors: [],
+    trace: 'Captured from quick capture',
+    stateCue: 'Unanchored',
     x: 80 + (z % 8) * 32,
     y: 100 + (z % 6) * 28,
     z,
     createdAt: t,
     updatedAt: t,
     archived: false
+  } satisfies NoteCardModel;
+  return { ...base, stateCue: makeStateCue(base) };
+}
+
+function normalizeNote(note: Partial<NoteCardModel>, i: number): NoteCardModel {
+  const parsed: NoteCardModel = {
+    id: String(note.id ?? `legacy-${i}`),
+    title: String(note.title ?? 'Quick note'),
+    body: String(note.body ?? ''),
+    anchors: Array.isArray(note.anchors) ? note.anchors.map(String) : [],
+    trace: String(note.trace ?? 'Recovered from local scene'),
+    stateCue: String(note.stateCue ?? 'Unanchored'),
+    x: Number(note.x ?? 80),
+    y: Number(note.y ?? 100),
+    z: Number(note.z ?? i + 1),
+    createdAt: Number(note.createdAt ?? now()),
+    updatedAt: Number(note.updatedAt ?? now()),
+    archived: Boolean(note.archived)
   };
+
+  return { ...parsed, stateCue: makeStateCue(parsed) };
 }
 
 function loadScene(): SceneState {
@@ -35,19 +63,34 @@ function loadScene(): SceneState {
     notes: [createNote('Welcome to Atom Notes\nDrag this card around.', 1)],
     activeNoteId: null,
     quickCaptureOpen: true,
-    lastCtrlTapTs: 0
+    lastCtrlTapTs: 0,
+    currentView: 'canvas',
+    canvasScrollLeft: 0,
+    canvasScrollTop: 0
   };
 
   const raw = localStorage.getItem(SCENE_KEY);
   if (!raw) return fallback;
   try {
-    const parsed = JSON.parse(raw) as SceneState;
-    if (!Array.isArray(parsed.notes)) return fallback;
+    const parsed = JSON.parse(raw) as Partial<SceneState>;
+    const normalizedNotes = Array.isArray(parsed.notes)
+      ? parsed.notes.map((note, i) => normalizeNote(note as Partial<NoteCardModel>, i))
+      : fallback.notes;
+
+    const requestedView = parsed.currentView === 'archive' ? 'archive' : 'canvas';
+    const activeNoteId =
+      typeof parsed.activeNoteId === 'string' && normalizedNotes.some((note) => note.id === parsed.activeNoteId)
+        ? parsed.activeNoteId
+        : null;
+
     return {
-      notes: parsed.notes,
-      activeNoteId: parsed.activeNoteId ?? null,
+      notes: normalizedNotes,
+      activeNoteId,
       quickCaptureOpen: Boolean(parsed.quickCaptureOpen),
-      lastCtrlTapTs: Number(parsed.lastCtrlTapTs ?? 0)
+      lastCtrlTapTs: Number(parsed.lastCtrlTapTs ?? 0),
+      currentView: requestedView,
+      canvasScrollLeft: Number(parsed.canvasScrollLeft ?? 0),
+      canvasScrollTop: Number(parsed.canvasScrollTop ?? 0)
     };
   } catch {
     return fallback;
@@ -99,18 +142,19 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [scene.lastCtrlTapTs]);
 
-  const updateNote = (id: string, updates: Partial<NoteCardModel>) => {
+  const updateNote = (id: string, updates: Partial<NoteCardModel>, trace?: string) => {
     setScene((prev) => ({
       ...prev,
-      notes: prev.notes.map((note) =>
-        note.id === id
-          ? {
-              ...note,
-              ...updates,
-              updatedAt: now()
-            }
-          : note
-      )
+      notes: prev.notes.map((note) => {
+        if (note.id !== id) return note;
+        const next = {
+          ...note,
+          ...updates,
+          trace: trace ?? updates.trace ?? note.trace,
+          updatedAt: now()
+        };
+        return { ...next, stateCue: makeStateCue(next) };
+      })
     }));
   };
 
@@ -122,11 +166,16 @@ export function App() {
           ? {
               ...note,
               z: prev.notes.reduce((acc, n) => Math.max(acc, n.z), 0) + 1,
+              trace: 'Repositioned on workspace',
               updatedAt: now()
             }
           : note
       )
     }));
+  };
+
+  const setView = (view: WorkspaceView) => {
+    setScene((prev) => ({ ...prev, currentView: view }));
   };
 
   return (
@@ -135,17 +184,41 @@ export function App() {
         count={activeNotes.length}
         archivedCount={archivedNotes.length}
         quickCaptureOpen={scene.quickCaptureOpen}
+        currentView={scene.currentView}
+        onSetView={setView}
         onToggleQuickCapture={() =>
           setScene((prev) => ({ ...prev, quickCaptureOpen: !prev.quickCaptureOpen }))
         }
       />
 
-      <SpatialCanvas
-        notes={activeNotes}
-        onDrag={(id, x, y) => updateNote(id, { x, y })}
-        onOpen={(id) => setScene((prev) => ({ ...prev, activeNoteId: id }))}
-        onBringToFront={bringToFront}
-      />
+      {scene.currentView === 'canvas' ? (
+        <SpatialCanvas
+          notes={activeNotes}
+          initialScrollLeft={scene.canvasScrollLeft}
+          initialScrollTop={scene.canvasScrollTop}
+          onScroll={(left, top) =>
+            setScene((prev) =>
+              prev.canvasScrollLeft === left && prev.canvasScrollTop === top
+                ? prev
+                : { ...prev, canvasScrollLeft: left, canvasScrollTop: top }
+            )
+          }
+          onDrag={(id, x, y) => updateNote(id, { x, y }, 'Moved on workspace')}
+          onOpen={(id) => {
+            setScene((prev) => ({ ...prev, activeNoteId: id }));
+            updateNote(id, {}, 'Opened in focus view');
+          }}
+          onBringToFront={bringToFront}
+        />
+      ) : (
+        <ArchiveView
+          notes={archivedNotes}
+          onRestore={(id) => {
+            updateNote(id, { archived: false, z: highestZ + 1 }, 'Restored from archive');
+            setScene((prev) => ({ ...prev, currentView: 'canvas' }));
+          }}
+        />
+      )}
 
       <CaptureBox
         isOpen={scene.quickCaptureOpen}
@@ -160,16 +233,14 @@ export function App() {
       <ExpandedNote
         note={activeNote}
         onClose={() => setScene((prev) => ({ ...prev, activeNoteId: null }))}
-        onChange={(id, updates) => updateNote(id, updates)}
-        onArchive={(id) => {
-          updateNote(id, { archived: true });
-          setScene((prev) => ({ ...prev, activeNoteId: null }));
+        onChange={(id, updates) => {
+          const trace = updates.title ? 'Retitled note' : updates.body ? 'Edited note body' : 'Updated note';
+          updateNote(id, updates, trace);
         }}
-      />
-
-      <ArchiveView
-        notes={archivedNotes}
-        onRestore={(id) => updateNote(id, { archived: false, z: highestZ + 1 })}
+        onArchive={(id) => {
+          updateNote(id, { archived: true }, 'Sent to archive');
+          setScene((prev) => ({ ...prev, activeNoteId: null, currentView: 'archive' }));
+        }}
       />
     </ThinkingSurface>
   );

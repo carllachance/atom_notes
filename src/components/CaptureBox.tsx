@@ -12,7 +12,9 @@ export function CaptureBox({ isOpen, onCapture }: CaptureBoxProps) {
 
   return (
     <section className="capture-box">
+      <label htmlFor="quick-capture">Quick capture</label>
       <textarea
+        id="quick-capture"
         placeholder="Capture a thought..."
         value={text}
         onChange={(event) => setText(event.target.value)}
@@ -24,7 +26,7 @@ export function CaptureBox({ isOpen, onCapture }: CaptureBoxProps) {
           setText('');
         }}
       >
-        Save
+        Add to workspace
       </button>
     </section>
   );
