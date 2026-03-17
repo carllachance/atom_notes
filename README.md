@@ -1,35 +1,63 @@
-# Atom Notes (Tauri + React + TypeScript)
+Atom Notes
 
-A local-first spatial notes prototype with:
-- ThinkingSurface shell
-- RecallBand status header
-- SpatialCanvas with draggable NoteCard items
-- ExpandedNote editor
-- CaptureBox quick capture
-- ArchiveView restore flow
-- Keyboard shortcuts:
-  - Double-tap `Ctrl` to summon/dismiss capture box
-  - `Ctrl+Shift+N` for quick capture
-- Exact local scene persistence/restoration via `localStorage`
+A notes app that shows how your ideas connect — and how those connections change.
 
-## Run
+---
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Start web-only dev mode:
-   ```bash
-   npm run dev
-   ```
-3. Start Tauri desktop dev mode:
-   ```bash
-   npm run tauri dev
-   ```
+Start here (60 seconds)
 
-## Build
+1. Create 2–3 notes with overlapping ideas
+   (example: “Fedwire”, “liquidity”, “settlement timing”)
 
-```bash
-npm run build
-npm run tauri build
-```
+2. Open one note
+
+3. Look behind it:
+   
+   - dashed lines → inferred connections
+   - solid lines → confirmed connections
+   - purple → references
+   - blue → related concepts
+
+4. Edit a note so it no longer overlaps
+   → some connections become stale
+
+That’s the core idea.
+
+---
+
+What’s different
+
+- Notes don’t just sit there — they relate
+- The system suggests connections, but you decide what’s real
+- Connections can age and drift, not just appear/disappear
+
+---
+
+Run it
+
+npm install
+npm run dev
+
+Open: http://localhost:5173
+
+---
+
+What to pay attention to
+
+- Does the background graph help or distract?
+- Do suggested connections feel reasonable?
+- Does “stale” make sense, or feel confusing?
+
+---
+
+Status
+
+Early prototype.
+Local-only (no backend, no accounts).
+
+---
+
+Why this exists
+
+«Ideas aren’t static.
+The connections between them shouldn’t be either.»
