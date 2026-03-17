@@ -1,3 +1,4 @@
+import { getCompactDisplayTitle } from '../noteText';
 import { describeNoteTrace } from '../trace';
 import { NoteCardModel } from '../types';
 
@@ -20,7 +21,7 @@ export function ArchiveView({ notes, onRestore }: ArchiveViewProps) {
           {notes.map((note) => (
             <li key={note.id}>
               <div>
-                <strong>{note.title}</strong>
+                <strong>{getCompactDisplayTitle(note, 48)}</strong>
                 <p>{describeNoteTrace(note)}</p>
               </div>
               <button className="ghost-button" onClick={() => onRestore(note.id)}>

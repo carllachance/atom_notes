@@ -6,6 +6,7 @@ type SpatialCanvasProps = {
   notes: NoteCardModel[];
   initialScrollLeft: number;
   initialScrollTop: number;
+  recentlyClosedNoteId: string | null;
   onScroll: (left: number, top: number) => void;
   onDrag: (id: string, x: number, y: number) => void;
   onOpen: (id: string) => void;
@@ -27,6 +28,7 @@ export function SpatialCanvas({
   notes,
   initialScrollLeft,
   initialScrollTop,
+  recentlyClosedNoteId,
   onScroll,
   onDrag,
   onOpen,
@@ -77,6 +79,7 @@ export function SpatialCanvas({
           <NoteCard
             key={note.id}
             note={note}
+            recentlyClosed={recentlyClosedNoteId === note.id}
             onPointerDown={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
               dragState.current = {

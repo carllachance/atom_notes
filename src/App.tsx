@@ -12,6 +12,7 @@ import {
   refreshInferredRelationships,
   relationshipPairKey
 } from './relationshipLogic';
+import { getCompactDisplayTitle, normalizeOptionalTitle } from './noteText';
 import { NoteCardModel, Relationship, RelationshipType, SceneState, WorkspaceView } from './types';
 
 const SCENE_KEY = 'atom-notes.scene.v2';
@@ -28,7 +29,7 @@ function makeStateCue(note: Pick<NoteCardModel, 'archived' | 'anchors'>): string
 function createNote(text: string, z: number): NoteCardModel {
   const t = now();
   const trimmed = text.trim();
-  const title = trimmed.split('\n')[0] || 'Quick note';
+  const title = null;
   const base = {
     id: crypto.randomUUID(),
     title,
@@ -49,7 +50,7 @@ function createNote(text: string, z: number): NoteCardModel {
 function normalizeNote(note: Partial<NoteCardModel>, i: number): NoteCardModel {
   const parsed: NoteCardModel = {
     id: String(note.id ?? `legacy-${i}`),
-    title: String(note.title ?? 'Quick note'),
+    title: normalizeOptionalTitle(typeof note.title === 'string' ? note.title : null),
     body: String(note.body ?? ''),
     anchors: Array.isArray(note.anchors) ? note.anchors.map(String) : [],
     trace: String(note.trace ?? 'idle'),
@@ -131,6 +132,7 @@ function loadScene(): SceneState {
 export function App() {
   const [scene, setScene] = useState<SceneState>(loadScene);
   const [relationshipFilter, setRelationshipFilter] = useState<'all' | RelationshipType>('all');
+  const [recentlyClosedNoteId, setRecentlyClosedNoteId] = useState<string | null>(null);
   const [, setTraceClock] = useState(0);
 
   const activeNote = useMemo(
@@ -167,7 +169,7 @@ export function App() {
       return {
         id: relationship.id,
         targetId,
-        targetTitle: notesById.get(targetId)?.title ?? 'Untitled note',
+        targetTitle: notesById.get(targetId) ? getCompactDisplayTitle(notesById.get(targetId)!) : 'Untitled note',
         type: relationship.type,
         explicitness: relationship.explicitness,
         state: relationship.state,
@@ -191,6 +193,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!recentlyClosedNoteId) return;
+    const timer = window.setTimeout(() => setRecentlyClosedNoteId(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [recentlyClosedNoteId]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Control') {
         const t = now();
@@ -211,7 +219,7 @@ export function App() {
       }
 
       if (event.key === 'Escape') {
-        setScene((prev) => ({ ...prev, activeNoteId: null }));
+        closeActiveNote();
       }
     };
 
@@ -219,14 +227,27 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [scene.lastCtrlTapTs]);
 
+  function closeActiveNote() {
+    setRelationshipFilter('all');
+    setScene((prev) => {
+      if (prev.activeNoteId) setRecentlyClosedNoteId(prev.activeNoteId);
+      return { ...prev, activeNoteId: null };
+    });
+  }
+
   const updateNote = (id: string, updates: Partial<NoteCardModel>, trace?: string) => {
     setScene((prev) => {
+      const normalizedUpdates =
+        'title' in updates
+          ? { ...updates, title: normalizeOptionalTitle((updates.title as string | null | undefined) ?? null) }
+          : updates;
+
       const notes = prev.notes.map((note) => {
         if (note.id !== id) return note;
         const next = {
           ...note,
-          ...updates,
-          trace: trace ?? updates.trace ?? note.trace,
+          ...normalizedUpdates,
+          trace: trace ?? normalizedUpdates.trace ?? note.trace,
           updatedAt: now()
         };
         return { ...next, stateCue: makeStateCue(next) };
@@ -332,6 +353,7 @@ export function App() {
             notes={activeNotes}
             initialScrollLeft={scene.canvasScrollLeft}
             initialScrollTop={scene.canvasScrollTop}
+            recentlyClosedNoteId={recentlyClosedNoteId}
             onScroll={(left, top) =>
               setScene((prev) =>
                 prev.canvasScrollLeft === left && prev.canvasScrollTop === top
@@ -341,6 +363,7 @@ export function App() {
             }
             onDrag={(id, x, y) => updateNote(id, { x, y }, 'moved')}
             onOpen={(id) => {
+              setRecentlyClosedNoteId(null);
               setScene((prev) => ({ ...prev, activeNoteId: id }));
               updateNote(id, {}, 'focused');
             }}
@@ -391,18 +414,17 @@ export function App() {
         relationshipTotals={relationshipTotals}
         activeFilter={relationshipFilter}
         onSetFilter={setRelationshipFilter}
-        onClose={() => {
-          setRelationshipFilter('all');
-          setScene((prev) => ({ ...prev, activeNoteId: null }));
-        }}
+        onClose={closeActiveNote}
         onChange={(id, updates) => {
-          const trace = updates.title || updates.body ? 'refined' : 'idle';
+          const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
           updateNote(id, updates, trace);
         }}
         onArchive={(id) => {
+          setRecentlyClosedNoteId(id);
           updateNote(id, { archived: true }, 'archive');
           setScene((prev) => ({ ...prev, activeNoteId: null, currentView: 'archive' }));
         }}
+        onOpenRelated={traverseToRelated}
         onCreateExplicitLink={createExplicitRelationship}
         onConfirmRelationship={confirmRelationship}
       />

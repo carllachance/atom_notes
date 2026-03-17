@@ -6,7 +6,7 @@ export type RelationshipExplicitness = 'explicit' | 'inferred';
 
 export type NoteCardModel = {
   id: string;
-  title: string;
+  title: string | null;
   body: string;
   anchors: string[];
   trace: string;
