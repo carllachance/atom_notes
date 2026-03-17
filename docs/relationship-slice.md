@@ -10,9 +10,9 @@
   - edge cap = 10
   - node cap = 8 applied after target-note dedupe
 - Relationship strip totals are computed from all first-degree relationships for the active note (including archived targets).
-- Archived-target relationships are excluded from visible graph ranking so they do not consume graph slots, but still included in totals.
+- Archived-target relationships are excluded from visible graph ranking so they do not consume graph slots, but still included in modal relationship totals and stale-counted context.
 - Confirmed inferred relationships that lose heuristic support are retained, marked stale in UI, and receive a ranking penalty.
-- If stale confirmed inferred relationships exist for the active note and are graph-eligible, at least one stale edge is forced into the visible ranked set.
+- If at least one stale confirmed inferred relationship exists for the active note and is graph-eligible (non-archived target), at least one stale relationship must be included in the visible ranked graph set.
 - Relationship dedupe is enforced by unordered pair + type across inferred/explicit/confirmed-inferred merge paths.
 
 ## Inference and ontology priority

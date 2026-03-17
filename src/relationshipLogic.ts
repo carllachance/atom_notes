@@ -206,7 +206,10 @@ export function getRankedRelationshipsForNote(noteId: string, scene: SceneState)
 
   const ranked = connected
     .map((relationship) => ({ relationship, score: scoreRelationship(relationship, nowTs) }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.relationship.id.localeCompare(b.relationship.id);
+    });
 
   const topTen = ranked.slice(0, 10);
   const hasStaleInTopTen = topTen.some((item) => isStaleConfirmedInferred(item.relationship));
@@ -215,6 +218,7 @@ export function getRankedRelationshipsForNote(noteId: string, scene: SceneState)
 
   const staleCandidate = ranked.find((item) => isStaleConfirmedInferred(item.relationship));
   if (!staleCandidate) return topTen;
+  if (topTen.some((item) => item.relationship.id === staleCandidate.relationship.id)) return topTen;
   if (topTen.length === 0) return [staleCandidate];
   if (topTen.length < 10) return [...topTen, staleCandidate];
 
