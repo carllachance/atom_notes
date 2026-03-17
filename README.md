@@ -7,7 +7,6 @@ A notes app that shows how your ideas connect — and how those connections chan
 Start here (60 seconds)
 
 1. Create 2–3 notes with overlapping ideas
-   (example: “Fedwire”, “liquidity”, “settlement timing”)
 
 2. Open one note
 
