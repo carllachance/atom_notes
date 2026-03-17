@@ -1,25 +1,35 @@
-import { WorkspaceView } from '../types';
+import { Lens } from '../types';
 
 type RecallBandProps = {
   count: number;
   archivedCount: number;
   quickCaptureOpen: boolean;
-  currentView: WorkspaceView;
-  onSetView: (view: WorkspaceView) => void;
+  lens: Lens;
+  revealQuery: string;
+  revealMatchCount: number;
+  onSetLens: (lens: Lens) => void;
   onToggleQuickCapture: () => void;
-  showFocusedOnly: boolean;
-  onToggleFocusedOnly: () => void;
+  onWhereWasI: () => void;
+  onRevealQueryChange: (query: string) => void;
+  onReveal: () => void;
+  onRevealNext: () => void;
+  onRevealPrev: () => void;
 };
 
 export function RecallBand({
   count,
   archivedCount,
   quickCaptureOpen,
-  currentView,
-  onSetView,
+  lens,
+  revealQuery,
+  revealMatchCount,
+  onSetLens,
   onToggleQuickCapture,
-  showFocusedOnly,
-  onToggleFocusedOnly
+  onWhereWasI,
+  onRevealQueryChange,
+  onReveal,
+  onRevealNext,
+  onRevealPrev
 }: RecallBandProps) {
   return (
     <header className="recall-band">
@@ -27,16 +37,41 @@ export function RecallBand({
         <span>{count} notes</span>
         <span>{archivedCount} archived</span>
       </div>
-      <nav className="view-switch" aria-label="View selection">
-        <button className={currentView === 'canvas' ? 'active' : ''} onClick={() => onSetView('canvas')}>
+      <nav className="view-switch" aria-label="Lens selection">
+        <button className={lens === 'all' ? 'active' : ''} onClick={() => onSetLens('all')}>
           Canvas
         </button>
-        <button className={currentView === 'archive' ? 'active' : ''} onClick={() => onSetView('archive')}>
+        <button className={lens === 'focus' ? 'active' : ''} onClick={() => onSetLens('focus')}>
+          Focus
+        </button>
+        <button className={lens === 'archive' ? 'active' : ''} onClick={() => onSetLens('archive')}>
           Archive
         </button>
       </nav>
-      <button className="ghost-button recall-capture-toggle" onClick={onToggleFocusedOnly}>
-        {showFocusedOnly ? 'Show all' : 'Focused only'}
+
+      <div className="reveal-controls">
+        <input
+          aria-label="Reveal query"
+          placeholder="Reveal on canvas…"
+          value={revealQuery}
+          onChange={(event) => onRevealQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') onReveal();
+          }}
+        />
+        <button className="ghost-button" onClick={onReveal}>
+          Reveal
+        </button>
+        <button className="ghost-button" onClick={onRevealPrev} disabled={revealMatchCount < 2}>
+          ‹
+        </button>
+        <button className="ghost-button" onClick={onRevealNext} disabled={revealMatchCount < 2}>
+          ›
+        </button>
+      </div>
+
+      <button className="ghost-button recall-capture-toggle" onClick={onWhereWasI}>
+        Where was I?
       </button>
       <button className="ghost-button recall-capture-toggle" onClick={onToggleQuickCapture}>
         {quickCaptureOpen ? 'Close capture' : 'Open capture'}

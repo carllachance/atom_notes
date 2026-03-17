@@ -16,7 +16,7 @@ function baseScene(): SceneState {
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
-    currentView: 'canvas',
+    lens: 'all',
     canvasScrollLeft: 0,
     canvasScrollTop: 0
   };

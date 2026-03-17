@@ -69,6 +69,28 @@ textarea {
   color: #d8e2fb;
 }
 
+
+.reveal-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reveal-controls input {
+  width: 160px;
+  border-radius: 999px;
+  border: 1px solid rgba(66, 86, 124, 0.3);
+  background: rgba(10, 15, 26, 0.45);
+  color: #cfdaf4;
+  padding: 3px 10px;
+  font-size: 0.74rem;
+}
+
+.reveal-controls button {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+}
+
 .view-stack {
   position: relative;
   min-height: 560px;
@@ -82,22 +104,24 @@ textarea {
   transition: opacity 180ms ease;
 }
 
-.view-layer-canvas,
-.view-layer-archive {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.view-stack[data-view='canvas'] .view-layer-canvas,
-.view-stack[data-view='archive'] .view-layer-archive {
+.view-layer-canvas {
   opacity: 1;
   pointer-events: auto;
 }
 
-.view-stack[data-view='archive'] .view-layer-canvas {
-  opacity: 0.62;
-}
 
+.lens-empty-state {
+  position: absolute;
+  inset: 14px auto auto 14px;
+  max-width: 320px;
+  border-radius: 10px;
+  border: 1px solid rgba(91, 112, 151, 0.22);
+  background: rgba(12, 19, 33, 0.58);
+  color: #aebddd;
+  font-size: 0.78rem;
+  padding: 10px 12px;
+  pointer-events: none;
+}
 .spatial-canvas {
   position: relative;
   overflow: auto;
@@ -129,12 +153,56 @@ textarea {
 }
 
 
-.note-card[data-focus='true'] {
-  border-color: rgba(142, 168, 223, 0.36);
-  box-shadow: 0 12px 30px rgba(44, 66, 110, 0.22);
+.note-card[data-visual-state='hover'] {
+  border-color: rgba(131, 152, 197, 0.2);
 }
-.note-card[data-trace='focused'] {
-  border-color: rgba(126, 153, 208, 0.2);
+
+.note-card[data-visual-state='focus'] {
+  border-color: rgba(142, 168, 223, 0.28);
+  box-shadow: 0 12px 28px rgba(31, 48, 80, 0.18);
+}
+
+.note-card[data-visual-state='ambient-related'] {
+  border-color: rgba(137, 162, 210, 0.3);
+  box-shadow: 0 12px 26px rgba(20, 34, 56, 0.16);
+}
+
+.note-card[data-visual-state='recent'] {
+  border-color: rgba(150, 174, 222, 0.34);
+  box-shadow: 0 12px 30px rgba(33, 51, 83, 0.2);
+}
+
+.note-card[data-visual-state='reveal-match'] {
+  border-color: rgba(148, 170, 217, 0.32);
+  box-shadow: 0 12px 26px rgba(28, 43, 68, 0.16);
+}
+
+.note-card[data-visual-state='reveal-active'] {
+  border-color: rgba(170, 191, 232, 0.4);
+  box-shadow: 0 14px 32px rgba(43, 63, 102, 0.24);
+}
+
+.note-card[data-visual-state='pulse'] {
+  border-color: rgba(156, 178, 225, 0.34);
+  animation: ambient-note-pulse 720ms ease-out;
+}
+
+.note-card[data-visual-state='active'] {
+  border-color: rgba(167, 188, 234, 0.42);
+  box-shadow: 0 14px 34px rgba(44, 66, 110, 0.24);
+}
+
+.note-card[data-visual-state='archived'] {
+  opacity: 0.58;
+}
+
+@keyframes ambient-note-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(134, 158, 205, 0.12), 0 12px 28px rgba(2, 4, 9, 0.14);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(134, 158, 205, 0), 0 12px 28px rgba(2, 4, 9, 0.12);
+  }
 }
 
 .note-card h3 {
@@ -158,18 +226,6 @@ textarea {
   opacity: 0.88;
 }
 
-.note-card[data-recent='true'] {
-  animation: recently-closed-glow 2.2s ease-out;
-}
-
-@keyframes recently-closed-glow {
-  0% {
-    box-shadow: 0 0 0 1px rgba(156, 182, 236, 0.36), 0 12px 28px rgba(2, 4, 9, 0.22);
-  }
-  100% {
-    box-shadow: 0 12px 28px rgba(2, 4, 9, 0.12);
-  }
-}
 
 .note-card .trace {
   margin: 7px 0 6px;

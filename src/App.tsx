@@ -1,4 +1,3 @@
-import { ArchiveView } from './components/ArchiveView';
 import { CaptureBox } from './components/CaptureBox';
 import { ExpandedNote } from './components/ExpandedNote';
 import { RecallBand } from './components/RecallBand';
@@ -11,69 +10,95 @@ export function App() {
   const {
     scene,
     activeNote,
-    activeNotes,
+    visibleNotes,
     archivedNotes,
+    hoveredNoteId,
     relationshipFilter,
     recentlyClosedNoteId,
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    ambientRelatedNoteIds,
+    pulseNoteId,
+    recenterTarget,
+    revealState,
+    visibleRevealMatchIds,
+    revealActiveNoteId,
     setRelationshipFilter,
-    showFocusedOnly,
     closeActiveNote,
     updateNote,
     bringToFront,
-    setView,
+    setLens,
     createExplicitRelationship,
     confirmRelationship,
     traverseToRelated,
     toggleNoteFocus,
-    toggleFocusedOnly,
     toggleQuickCapture,
     onCanvasScroll,
+    onViewportCenterChange,
     onOpenNote,
-    onRestoreNote,
     onArchiveNote,
-    onCapture
+    onCapture,
+    onHoverStart,
+    onHoverEnd,
+    onWhereWasI,
+    onRevealQueryChange,
+    onReveal,
+    onRevealNext,
+    onRevealPrev
   } = useSceneController();
 
   return (
     <ThinkingSurface>
       <RecallBand
-        count={activeNotes.length}
+        count={visibleNotes.length}
         archivedCount={archivedNotes.length}
         quickCaptureOpen={scene.quickCaptureOpen}
-        currentView={scene.currentView}
-        onSetView={setView}
+        lens={scene.lens}
+        onSetLens={setLens}
         onToggleQuickCapture={toggleQuickCapture}
-        showFocusedOnly={showFocusedOnly}
-        onToggleFocusedOnly={toggleFocusedOnly}
+        onWhereWasI={onWhereWasI}
+        revealQuery={revealState.query}
+        revealMatchCount={visibleRevealMatchIds.length}
+        onRevealQueryChange={onRevealQueryChange}
+        onReveal={onReveal}
+        onRevealPrev={onRevealPrev}
+        onRevealNext={onRevealNext}
       />
 
-      <section className="view-stack" data-view={scene.currentView}>
+      <section className="view-stack" data-lens={scene.lens}>
         <div className="view-layer view-layer-canvas">
           <SpatialCanvas
-            notes={activeNotes}
+            notes={visibleNotes}
+            activeNoteId={activeNote?.id ?? null}
+            hoveredNoteId={hoveredNoteId}
+            revealMatchedNoteIds={visibleRevealMatchIds}
+            revealActiveNoteId={revealActiveNoteId}
             initialScrollLeft={scene.canvasScrollLeft}
             initialScrollTop={scene.canvasScrollTop}
             recentlyClosedNoteId={recentlyClosedNoteId}
+            relatedGlowNoteIds={ambientRelatedNoteIds}
+            pulseNoteId={pulseNoteId}
+            recenterTarget={recenterTarget}
             onScroll={onCanvasScroll}
+            onViewportCenterChange={onViewportCenterChange}
             onDrag={(id, x, y) => updateNote(id, { x, y }, 'moved')}
             onOpen={onOpenNote}
             onBringToFront={bringToFront}
+            onHoverStart={onHoverStart}
+            onHoverEnd={onHoverEnd}
           />
-        </div>
-
-        <div className="view-layer view-layer-archive">
-          <ArchiveView notes={archivedNotes} onRestore={onRestoreNote} />
+          {scene.lens === 'focus' && visibleNotes.length === 0 ? (
+            <div className="lens-empty-state">No focused notes yet. Mark a note as focused to surface it here.</div>
+          ) : null}
         </div>
       </section>
 
       {activeNote ? <div className="canvas-dim" /> : null}
-      {activeNote && scene.currentView === 'canvas' ? (
+      {activeNote ? (
         <RelationshipWeb
           activeNote={activeNote}
-          notes={activeNotes}
+          notes={visibleNotes}
           rankedRelationships={rankedRelationships}
           filter={relationshipFilter}
           onTraverse={traverseToRelated}

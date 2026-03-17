@@ -1,16 +1,32 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { NoteCardModel } from '../types';
 import { NoteCard } from './NoteCard';
 
+type RecenterTarget = {
+  x: number;
+  y: number;
+  requestId: number;
+};
+
 type SpatialCanvasProps = {
   notes: NoteCardModel[];
+  activeNoteId: string | null;
+  hoveredNoteId: string | null;
+  revealMatchedNoteIds: string[];
+  revealActiveNoteId: string | null;
   initialScrollLeft: number;
   initialScrollTop: number;
   recentlyClosedNoteId: string | null;
+  relatedGlowNoteIds: string[];
+  pulseNoteId: string | null;
+  recenterTarget: RecenterTarget | null;
   onScroll: (left: number, top: number) => void;
+  onViewportCenterChange: (x: number, y: number) => void;
   onDrag: (id: string, x: number, y: number) => void;
   onOpen: (id: string) => void;
   onBringToFront: (id: string) => void;
+  onHoverStart: (id: string) => void;
+  onHoverEnd: (id: string) => void;
 };
 
 type DragState = {
@@ -26,30 +42,64 @@ const OPEN_THRESHOLD_PX = 6;
 
 export function SpatialCanvas({
   notes,
+  activeNoteId,
+  hoveredNoteId,
+  revealMatchedNoteIds,
+  revealActiveNoteId,
   initialScrollLeft,
   initialScrollTop,
   recentlyClosedNoteId,
+  relatedGlowNoteIds,
+  pulseNoteId,
+  recenterTarget,
   onScroll,
+  onViewportCenterChange,
   onDrag,
   onOpen,
-  onBringToFront
+  onBringToFront,
+  onHoverStart,
+  onHoverEnd
 }: SpatialCanvasProps) {
   const dragState = useRef<DragState | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
+  const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
+  const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
+
+  const emitViewportCenter = () => {
+    const node = canvasRef.current;
+    if (!node) return;
+    onViewportCenterChange(node.scrollLeft + node.clientWidth / 2, node.scrollTop + node.clientHeight / 2);
+  };
 
   useLayoutEffect(() => {
     if (!canvasRef.current) return;
     canvasRef.current.scrollLeft = initialScrollLeft;
     canvasRef.current.scrollTop = initialScrollTop;
+    emitViewportCenter();
   }, [initialScrollLeft, initialScrollTop]);
 
   useEffect(() => {
     const node = canvasRef.current;
     if (!node) return;
-    const onScrollEvent = () => onScroll(node.scrollLeft, node.scrollTop);
+    const onScrollEvent = () => {
+      onScroll(node.scrollLeft, node.scrollTop);
+      emitViewportCenter();
+    };
     node.addEventListener('scroll', onScrollEvent);
+    emitViewportCenter();
     return () => node.removeEventListener('scroll', onScrollEvent);
   }, [onScroll]);
+
+  useEffect(() => {
+    const node = canvasRef.current;
+    if (!node || !recenterTarget) return;
+
+    node.scrollTo({
+      left: Math.max(0, recenterTarget.x - node.clientWidth / 2),
+      top: Math.max(0, recenterTarget.y - node.clientHeight / 2),
+      behavior: 'smooth'
+    });
+  }, [recenterTarget]);
 
   return (
     <section
@@ -80,7 +130,16 @@ export function SpatialCanvas({
             key={note.id}
             note={note}
             recentlyClosed={recentlyClosedNoteId === note.id}
+            ambientRelated={relatedGlowIdsSet.has(note.id)}
+            ambientPulse={pulseNoteId === note.id}
+            revealMatched={revealMatchedIdsSet.has(note.id)}
+            revealActive={revealActiveNoteId === note.id}
+            isActive={activeNoteId === note.id}
+            isHovered={hoveredNoteId === note.id}
+            onPointerEnter={() => onHoverStart(note.id)}
+            onPointerLeave={() => onHoverEnd(note.id)}
             onPointerDown={(event) => {
+              onHoverEnd(note.id);
               const rect = event.currentTarget.getBoundingClientRect();
               dragState.current = {
                 id: note.id,

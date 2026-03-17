@@ -47,7 +47,7 @@ describe('sceneStorage load/save normalization', () => {
     const loaded = loadScene();
     expect(loaded.notes[0]).toMatchObject({ id: '7', title: null, body: 'hello' });
     expect(loaded.relationships[0]).toMatchObject({ fromId: '7', toId: '7', type: 'references' });
-    expect(loaded.currentView).toBe('archive');
+    expect(loaded.lens).toBe('archive');
 
     const sceneToSave = loaded as SceneState;
     saveScene(sceneToSave);

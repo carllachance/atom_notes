@@ -1,4 +1,4 @@
-export type WorkspaceView = 'canvas' | 'archive';
+export type Lens = 'all' | 'focus' | 'archive';
 
 export type RelationshipType = 'related_concept' | 'references';
 export type RelationshipState = 'proposed' | 'confirmed';
@@ -39,7 +39,7 @@ export type SceneState = {
   activeNoteId: string | null;
   quickCaptureOpen: boolean;
   lastCtrlTapTs: number;
-  currentView: WorkspaceView;
+  lens: Lens;
   canvasScrollLeft: number;
   canvasScrollTop: number;
 };
