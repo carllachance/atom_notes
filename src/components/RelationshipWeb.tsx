@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { getCompactDisplayTitle } from '../noteText';
 import { NoteCardModel, Relationship, RelationshipType } from '../types';
 import { getRelationshipExplanation, getRelationshipTargetNoteId } from '../relationshipLogic';
 
@@ -73,7 +74,7 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
             if (relationship) onTraverse(note.id, relationship.relationship.id);
           }}
         >
-          {note.title}
+          {getCompactDisplayTitle(note, 36)}
         </button>
       ))}
     </div>
