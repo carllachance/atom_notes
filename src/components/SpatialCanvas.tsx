@@ -12,6 +12,17 @@ type SpatialCanvasProps = {
   onBringToFront: (id: string) => void;
 };
 
+type DragState = {
+  id: string;
+  dx: number;
+  dy: number;
+  startX: number;
+  startY: number;
+  moved: boolean;
+};
+
+const OPEN_THRESHOLD_PX = 6;
+
 export function SpatialCanvas({
   notes,
   initialScrollLeft,
@@ -21,7 +32,7 @@ export function SpatialCanvas({
   onOpen,
   onBringToFront
 }: SpatialCanvasProps) {
-  const dragState = useRef<{ id: string; dx: number; dy: number } | null>(null);
+  const dragState = useRef<DragState | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
@@ -44,7 +55,18 @@ export function SpatialCanvas({
       className="spatial-canvas"
       onPointerMove={(event) => {
         if (!dragState.current) return;
-        onDrag(dragState.current.id, event.clientX - dragState.current.dx + canvasRef.current!.scrollLeft, event.clientY - dragState.current.dy + canvasRef.current!.scrollTop);
+
+        const deltaX = Math.abs(event.clientX - dragState.current.startX);
+        const deltaY = Math.abs(event.clientY - dragState.current.startY);
+        if (!dragState.current.moved && (deltaX > OPEN_THRESHOLD_PX || deltaY > OPEN_THRESHOLD_PX)) {
+          dragState.current.moved = true;
+        }
+
+        onDrag(
+          dragState.current.id,
+          event.clientX - dragState.current.dx + canvasRef.current!.scrollLeft,
+          event.clientY - dragState.current.dy + canvasRef.current!.scrollTop
+        );
       }}
       onPointerUp={() => {
         dragState.current = null;
@@ -55,16 +77,22 @@ export function SpatialCanvas({
           <NoteCard
             key={note.id}
             note={note}
-            onOpen={() => onOpen(note.id)}
             onPointerDown={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
               dragState.current = {
                 id: note.id,
                 dx: event.clientX - rect.left,
-                dy: event.clientY - rect.top
+                dy: event.clientY - rect.top,
+                startX: event.clientX,
+                startY: event.clientY,
+                moved: false
               };
               onBringToFront(note.id);
               event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerUp={() => {
+              if (!dragState.current || dragState.current.id !== note.id) return;
+              if (!dragState.current.moved) onOpen(note.id);
             }}
           />
         ))}

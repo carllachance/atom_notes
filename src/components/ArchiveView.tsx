@@ -10,11 +10,11 @@ export function ArchiveView({ notes, onRestore }: ArchiveViewProps) {
   return (
     <section className="archive-view">
       <div className="archive-head">
-        <h2>Drift</h2>
-        <p>Resting fragments stay close to the field.</p>
+        <h2>Archive</h2>
+        <p>Archived notes keep their exact position when restored.</p>
       </div>
       {notes.length === 0 ? (
-        <p className="archive-empty">Nothing resting right now.</p>
+        <p className="archive-empty">No archived notes.</p>
       ) : (
         <ul>
           {notes.map((note) => (
@@ -24,7 +24,7 @@ export function ArchiveView({ notes, onRestore }: ArchiveViewProps) {
                 <p>{describeNoteTrace(note)}</p>
               </div>
               <button className="ghost-button" onClick={() => onRestore(note.id)}>
-                Return
+                Restore
               </button>
             </li>
           ))}
