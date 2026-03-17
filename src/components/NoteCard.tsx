@@ -22,6 +22,7 @@ export function NoteCard({ note, recentlyClosed, onPointerDown, onPointerUp }: N
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       data-trace={note.trace}
+      data-focus={note.inFocus ? 'true' : 'false'}
       style={{
         transform: `translate(${note.x}px, ${note.y - bias.lift}px) scale(${bias.scale})`,
         zIndex: note.z,
