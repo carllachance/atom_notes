@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Clarify the Complex",
+  "version": "0.1.0",
+  "identifier": "com.example.clarify",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{ "title": "Clarify the Complex", "width": 1200, "height": 800 }]
+  }
+}
