@@ -4,7 +4,7 @@ import { NoteCardModel } from '../types';
 
 type NoteCardProps = {
   note: NoteCardModel;
-  onPointerDown: (event: PointerEvent<HTMLArticleElement>) => void;
+  onPointerDown: (event: PointerEvent<HTMLElement>) => void;
   onOpen: () => void;
 };
 
@@ -18,10 +18,11 @@ export function NoteCard({ note, onPointerDown, onOpen }: NoteCardProps) {
       onPointerDown={onPointerDown}
       data-trace={note.trace}
       style={{
-        transform: `translate(${note.x}px, ${note.y}px) scale(${bias.scale})`,
+        transform: `translate(${note.x}px, ${note.y - bias.lift}px) scale(${bias.scale})`,
         zIndex: note.z,
         opacity: bias.opacity,
-        boxShadow: `0 8px 20px rgba(2, 4, 9, ${0.12 + bias.emphasis * 0.22})`
+        filter: `blur(${bias.blur}px)`,
+        boxShadow: `0 14px 34px rgba(2, 4, 9, ${0.08 + bias.emphasis * 0.28})`
       }}
     >
       <h3>{note.title}</h3>

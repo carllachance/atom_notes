@@ -10,8 +10,8 @@ export function ArchiveView({ notes, onRestore }: ArchiveViewProps) {
   return (
     <section className="archive-view">
       <div className="archive-head">
-        <h2>Drift layer</h2>
-        <p>Thoughts settle here until you pull them back in.</p>
+        <h2>Drift</h2>
+        <p>Resting fragments stay close to the field.</p>
       </div>
       {notes.length === 0 ? (
         <p className="archive-empty">Nothing resting right now.</p>
