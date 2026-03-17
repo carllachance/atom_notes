@@ -83,11 +83,13 @@ textarea {
 .view-stack {
   position: relative;
   min-height: 560px;
+  isolation: isolate;
 }
 
 .view-layer {
   position: absolute;
   inset: 0;
+  z-index: 0;
   transition: opacity 220ms ease, transform 280ms ease;
 }
 
@@ -172,6 +174,8 @@ textarea {
 .capture-box {
   display: grid;
   gap: 6px;
+  position: relative;
+  z-index: 1;
 }
 
 .capture-box label {
