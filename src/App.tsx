@@ -12,6 +12,34 @@ const CTRL_DOUBLE_TAP_MS = 320;
 
 const now = () => Date.now();
 
+const CANVAS_CENTER_X = 900;
+const CANVAS_CENTER_Y = 550;
+
+function nudgeTowardCenter(note: NoteCardModel, strength: number): NoteCardModel {
+  return {
+    ...note,
+    x: note.x + (CANVAS_CENTER_X - note.x) * strength,
+    y: note.y + (CANVAS_CENTER_Y - note.y) * strength
+  };
+}
+
+function applyRestoreSpatialBias(notes: NoteCardModel[]): NoteCardModel[] {
+  const current = now();
+  return notes.map((note) => {
+    if (note.archived) return note;
+
+    const ageMs = current - note.updatedAt;
+    if (ageMs > 15 * 60_000) return note;
+
+    const baseStrength = note.trace === 'focused' ? 0.12 : note.trace === 'restored' || note.trace === 'captured' ? 0.1 : 0.07;
+    const agePenalty = Math.min(0.05, ageMs / (15 * 60_000) * 0.05);
+    const strength = Math.max(0.03, baseStrength - agePenalty);
+
+    return nudgeTowardCenter(note, strength);
+  });
+}
+
+
 function makeStateCue(note: Pick<NoteCardModel, 'archived' | 'anchors'>): string {
   if (note.archived) return 'Resting';
   if (note.anchors.length > 0) return `Anchored · ${note.anchors.length}`;
@@ -74,7 +102,7 @@ function loadScene(): SceneState {
   try {
     const parsed = JSON.parse(raw) as Partial<SceneState>;
     const normalizedNotes = Array.isArray(parsed.notes)
-      ? parsed.notes.map((note, i) => normalizeNote(note as Partial<NoteCardModel>, i))
+      ? applyRestoreSpatialBias(parsed.notes.map((note, i) => normalizeNote(note as Partial<NoteCardModel>, i)))
       : fallback.notes;
 
     const requestedView = parsed.currentView === 'archive' ? 'archive' : 'canvas';
@@ -223,7 +251,10 @@ export function App() {
           <ArchiveView
             notes={archivedNotes}
             onRestore={(id) => {
-              updateNote(id, { archived: false, z: highestZ + 1 }, 'restored');
+              const note = scene.notes.find((entry) => entry.id === id);
+              if (!note) return;
+              const nudged = nudgeTowardCenter({ ...note, archived: false, z: highestZ + 1 }, 0.08);
+              updateNote(id, { archived: false, z: highestZ + 1, x: nudged.x, y: nudged.y }, 'restored');
               setScene((prev) => ({ ...prev, currentView: 'canvas' }));
             }}
           />

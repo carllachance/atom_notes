@@ -132,6 +132,13 @@ textarea {
   user-select: none;
   box-shadow: 0 8px 20px rgba(2, 4, 9, 0.16);
   backdrop-filter: blur(3px);
+  transition: opacity 220ms ease, box-shadow 240ms ease, border-color 240ms ease, transform 240ms ease;
+}
+
+.note-card[data-trace='focused'],
+.note-card[data-trace='captured'],
+.note-card[data-trace='restored'] {
+  border-color: rgba(102, 130, 186, 0.44);
 }
 
 .note-card h3 {
