@@ -90,14 +90,14 @@ textarea {
   position: absolute;
   inset: 0;
   z-index: 0;
-  transition: opacity 220ms ease, transform 280ms ease;
+  transition: opacity 180ms ease-out, transform 220ms ease-out;
 }
 
 .view-layer-canvas,
 .view-layer-archive {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(8px) scale(0.995);
+  transform: translateY(4px) scale(0.998);
 }
 
 .view-stack[data-view='canvas'] .view-layer-canvas,
@@ -127,20 +127,20 @@ textarea {
   width: 270px;
   border-radius: 14px;
   border: 1px solid rgba(70, 85, 119, 0.28);
-  background: rgba(20, 28, 44, 0.56);
+  background: rgba(20, 28, 44, 0.5);
   color: #dce5fa;
   padding: 11px;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 8px 20px rgba(2, 4, 9, 0.16);
+  box-shadow: 0 6px 16px rgba(2, 4, 9, 0.14);
   backdrop-filter: blur(3px);
-  transition: opacity 220ms ease, box-shadow 240ms ease, border-color 240ms ease, transform 240ms ease;
+  transition: opacity 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out, transform 180ms ease-out;
 }
 
 .note-card[data-trace='focused'],
 .note-card[data-trace='captured'],
 .note-card[data-trace='restored'] {
-  border-color: rgba(102, 130, 186, 0.44);
+  border-color: rgba(102, 130, 186, 0.32);
 }
 
 .note-card h3 {
@@ -200,17 +200,17 @@ textarea {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(6, 10, 18, 0.38);
-  backdrop-filter: blur(2px);
+  background: rgba(6, 10, 18, 0.3);
+  backdrop-filter: blur(1.5px);
 }
 
 .expanded-note {
   width: min(540px, calc(100vw - 36px));
   border-radius: 16px;
   border: 1px solid rgba(70, 87, 121, 0.34);
-  background: rgba(18, 26, 40, 0.72);
+  background: rgba(18, 26, 40, 0.66);
   padding: 14px;
-  box-shadow: 0 18px 30px rgba(2, 4, 9, 0.2);
+  box-shadow: 0 14px 24px rgba(2, 4, 9, 0.18);
 }
 
 .expanded-note textarea {

@@ -37,25 +37,25 @@ export function getTraceVisualBias(note: Pick<NoteCardModel, 'trace' | 'updatedA
 
   if (note.archived) {
     return {
-      scale: 0.972,
-      opacity: 0.62 - ageFade * 0.1,
-      emphasis: 0.22
+      scale: 0.986,
+      opacity: clamp(0.63 - ageFade * 0.06, 0.55, 0.63),
+      emphasis: 0.18
     };
   }
 
   const activeBoost =
     note.trace === 'focused'
-      ? 0.08
+      ? 0.036
       : note.trace === 'captured' || note.trace === 'restored'
-        ? 0.06
+        ? 0.028
         : note.trace === 'refined' || note.trace === 'moved'
-          ? 0.04
+          ? 0.018
           : 0;
 
   return {
-    scale: 0.986 + activeBoost * 0.24 - ageFade * 0.02,
-    opacity: 0.76 + activeBoost * 1.4 - ageFade * 0.16,
-    emphasis: 0.32 + activeBoost * 1.7 - ageFade * 0.12
+    scale: clamp(0.992 + activeBoost - ageFade * 0.01, 0.982, 1.03),
+    opacity: clamp(0.79 + activeBoost * 1.2 - ageFade * 0.1, 0.67, 0.87),
+    emphasis: clamp(0.24 + activeBoost * 1.3 - ageFade * 0.08, 0.16, 0.34)
   };
 }
 

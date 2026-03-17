@@ -9,6 +9,7 @@ import { NoteCardModel, SceneState, WorkspaceView } from './types';
 
 const SCENE_KEY = 'atom-notes.scene.v1';
 const CTRL_DOUBLE_TAP_MS = 320;
+const ENABLE_RESTORE_CENTER_NUDGE = false;
 
 const now = () => Date.now();
 
@@ -22,23 +23,6 @@ function nudgeTowardCenter(note: NoteCardModel, strength: number): NoteCardModel
     y: note.y + (CANVAS_CENTER_Y - note.y) * strength
   };
 }
-
-function applyRestoreSpatialBias(notes: NoteCardModel[]): NoteCardModel[] {
-  const current = now();
-  return notes.map((note) => {
-    if (note.archived) return note;
-
-    const ageMs = current - note.updatedAt;
-    if (ageMs > 15 * 60_000) return note;
-
-    const baseStrength = note.trace === 'focused' ? 0.12 : note.trace === 'restored' || note.trace === 'captured' ? 0.1 : 0.07;
-    const agePenalty = Math.min(0.05, ageMs / (15 * 60_000) * 0.05);
-    const strength = Math.max(0.03, baseStrength - agePenalty);
-
-    return nudgeTowardCenter(note, strength);
-  });
-}
-
 
 function makeStateCue(note: Pick<NoteCardModel, 'archived' | 'anchors'>): string {
   if (note.archived) return 'Resting';
@@ -102,7 +86,7 @@ function loadScene(): SceneState {
   try {
     const parsed = JSON.parse(raw) as Partial<SceneState>;
     const normalizedNotes = Array.isArray(parsed.notes)
-      ? applyRestoreSpatialBias(parsed.notes.map((note, i) => normalizeNote(note as Partial<NoteCardModel>, i)))
+      ? parsed.notes.map((note, i) => normalizeNote(note as Partial<NoteCardModel>, i))
       : fallback.notes;
 
     const requestedView = parsed.currentView === 'archive' ? 'archive' : 'canvas';
@@ -199,9 +183,7 @@ export function App() {
         note.id === id
           ? {
               ...note,
-              z: prev.notes.reduce((acc, n) => Math.max(acc, n.z), 0) + 1,
-              trace: 'moved',
-              updatedAt: now()
+              z: prev.notes.reduce((acc, n) => Math.max(acc, n.z), 0) + 1
             }
           : note
       )
@@ -253,7 +235,8 @@ export function App() {
             onRestore={(id) => {
               const note = scene.notes.find((entry) => entry.id === id);
               if (!note) return;
-              const nudged = nudgeTowardCenter({ ...note, archived: false, z: highestZ + 1 }, 0.08);
+              const restored = { ...note, archived: false, z: highestZ + 1 };
+              const nudged = ENABLE_RESTORE_CENTER_NUDGE ? nudgeTowardCenter(restored, 0.08) : restored;
               updateNote(id, { archived: false, z: highestZ + 1, x: nudged.x, y: nudged.y }, 'restored');
               setScene((prev) => ({ ...prev, currentView: 'canvas' }));
             }}
