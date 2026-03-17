@@ -10,13 +10,13 @@ export type NoteCardModel = {
   body: string;
   anchors: string[];
   trace: string;
-  stateCue: string;
   x: number;
   y: number;
   z: number;
   createdAt: number;
   updatedAt: number;
   archived: boolean;
+  inFocus?: boolean;
 };
 
 export type Relationship = {

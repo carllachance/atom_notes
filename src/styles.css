@@ -128,6 +128,11 @@ textarea {
   transition: opacity 160ms ease, box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease, filter 180ms ease;
 }
 
+
+.note-card[data-focus='true'] {
+  border-color: rgba(142, 168, 223, 0.36);
+  box-shadow: 0 12px 30px rgba(44, 66, 110, 0.22);
+}
 .note-card[data-trace='focused'] {
   border-color: rgba(126, 153, 208, 0.2);
 }

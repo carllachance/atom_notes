@@ -7,6 +7,8 @@ type RecallBandProps = {
   currentView: WorkspaceView;
   onSetView: (view: WorkspaceView) => void;
   onToggleQuickCapture: () => void;
+  showFocusedOnly: boolean;
+  onToggleFocusedOnly: () => void;
 };
 
 export function RecallBand({
@@ -15,7 +17,9 @@ export function RecallBand({
   quickCaptureOpen,
   currentView,
   onSetView,
-  onToggleQuickCapture
+  onToggleQuickCapture,
+  showFocusedOnly,
+  onToggleFocusedOnly
 }: RecallBandProps) {
   return (
     <header className="recall-band">
@@ -31,6 +35,9 @@ export function RecallBand({
           Archive
         </button>
       </nav>
+      <button className="ghost-button recall-capture-toggle" onClick={onToggleFocusedOnly}>
+        {showFocusedOnly ? 'Show all' : 'Focused only'}
+      </button>
       <button className="ghost-button recall-capture-toggle" onClick={onToggleQuickCapture}>
         {quickCaptureOpen ? 'Close capture' : 'Open capture'}
       </button>

@@ -27,6 +27,7 @@ type ExpandedNoteProps = {
   onOpenRelated: (targetNoteId: string, relationshipId: string) => void;
   onCreateExplicitLink: (fromId: string, toId: string, type: RelationshipType) => void;
   onConfirmRelationship: (relationshipId: string) => void;
+  onToggleFocus: (id: string) => void;
 };
 
 type DragState = {
@@ -52,7 +53,8 @@ export function ExpandedNote({
   onChange,
   onOpenRelated,
   onCreateExplicitLink,
-  onConfirmRelationship
+  onConfirmRelationship,
+  onToggleFocus
 }: ExpandedNoteProps) {
   const [linkTargetId, setLinkTargetId] = useState('');
   const [linkType, setLinkType] = useState<RelationshipType>('related_concept');
@@ -269,6 +271,9 @@ export function ExpandedNote({
         </div>
 
         <div className="expanded-actions">
+          <button className="ghost-button" onClick={() => onToggleFocus(note.id)}>
+            {note.inFocus ? 'Remove focus' : 'Mark focused'}
+          </button>
           <button className="ghost-button" onClick={() => onArchive(note.id)}>
             Archive
           </button>
