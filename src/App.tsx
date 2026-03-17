@@ -13,9 +13,9 @@ const CTRL_DOUBLE_TAP_MS = 320;
 const now = () => Date.now();
 
 function makeStateCue(note: Pick<NoteCardModel, 'archived' | 'anchors'>): string {
-  if (note.archived) return 'Archived';
+  if (note.archived) return 'Resting';
   if (note.anchors.length > 0) return `Anchored · ${note.anchors.length}`;
-  return 'Unanchored';
+  return 'Open loop';
 }
 
 function createNote(text: string, z: number): NoteCardModel {
@@ -27,8 +27,8 @@ function createNote(text: string, z: number): NoteCardModel {
     title,
     body: trimmed,
     anchors: [],
-    trace: 'Captured from quick capture',
-    stateCue: 'Unanchored',
+    trace: 'captured',
+    stateCue: 'Open loop',
     x: 80 + (z % 8) * 32,
     y: 100 + (z % 6) * 28,
     z,
@@ -45,8 +45,8 @@ function normalizeNote(note: Partial<NoteCardModel>, i: number): NoteCardModel {
     title: String(note.title ?? 'Quick note'),
     body: String(note.body ?? ''),
     anchors: Array.isArray(note.anchors) ? note.anchors.map(String) : [],
-    trace: String(note.trace ?? 'Recovered from local scene'),
-    stateCue: String(note.stateCue ?? 'Unanchored'),
+    trace: String(note.trace ?? 'idle'),
+    stateCue: String(note.stateCue ?? 'Open loop'),
     x: Number(note.x ?? 80),
     y: Number(note.y ?? 100),
     z: Number(note.z ?? i + 1),
@@ -99,6 +99,7 @@ function loadScene(): SceneState {
 
 export function App() {
   const [scene, setScene] = useState<SceneState>(loadScene);
+  const [, setTraceClock] = useState(0);
 
   const activeNote = useMemo(
     () => scene.notes.find((note) => note.id === scene.activeNoteId) ?? null,
@@ -112,6 +113,11 @@ export function App() {
   useEffect(() => {
     localStorage.setItem(SCENE_KEY, JSON.stringify(scene));
   }, [scene]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setTraceClock((tick) => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -166,7 +172,7 @@ export function App() {
           ? {
               ...note,
               z: prev.notes.reduce((acc, n) => Math.max(acc, n.z), 0) + 1,
-              trace: 'Repositioned on workspace',
+              trace: 'moved',
               updatedAt: now()
             }
           : note
@@ -191,34 +197,38 @@ export function App() {
         }
       />
 
-      {scene.currentView === 'canvas' ? (
-        <SpatialCanvas
-          notes={activeNotes}
-          initialScrollLeft={scene.canvasScrollLeft}
-          initialScrollTop={scene.canvasScrollTop}
-          onScroll={(left, top) =>
-            setScene((prev) =>
-              prev.canvasScrollLeft === left && prev.canvasScrollTop === top
-                ? prev
-                : { ...prev, canvasScrollLeft: left, canvasScrollTop: top }
-            )
-          }
-          onDrag={(id, x, y) => updateNote(id, { x, y }, 'Moved on workspace')}
-          onOpen={(id) => {
-            setScene((prev) => ({ ...prev, activeNoteId: id }));
-            updateNote(id, {}, 'Opened in focus view');
-          }}
-          onBringToFront={bringToFront}
-        />
-      ) : (
-        <ArchiveView
-          notes={archivedNotes}
-          onRestore={(id) => {
-            updateNote(id, { archived: false, z: highestZ + 1 }, 'Restored from archive');
-            setScene((prev) => ({ ...prev, currentView: 'canvas' }));
-          }}
-        />
-      )}
+      <section className="view-stack" data-view={scene.currentView}>
+        <div className="view-layer view-layer-canvas">
+          <SpatialCanvas
+            notes={activeNotes}
+            initialScrollLeft={scene.canvasScrollLeft}
+            initialScrollTop={scene.canvasScrollTop}
+            onScroll={(left, top) =>
+              setScene((prev) =>
+                prev.canvasScrollLeft === left && prev.canvasScrollTop === top
+                  ? prev
+                  : { ...prev, canvasScrollLeft: left, canvasScrollTop: top }
+              )
+            }
+            onDrag={(id, x, y) => updateNote(id, { x, y }, 'moved')}
+            onOpen={(id) => {
+              setScene((prev) => ({ ...prev, activeNoteId: id }));
+              updateNote(id, {}, 'focused');
+            }}
+            onBringToFront={bringToFront}
+          />
+        </div>
+
+        <div className="view-layer view-layer-archive">
+          <ArchiveView
+            notes={archivedNotes}
+            onRestore={(id) => {
+              updateNote(id, { archived: false, z: highestZ + 1 }, 'restored');
+              setScene((prev) => ({ ...prev, currentView: 'canvas' }));
+            }}
+          />
+        </div>
+      </section>
 
       <CaptureBox
         isOpen={scene.quickCaptureOpen}
@@ -234,11 +244,11 @@ export function App() {
         note={activeNote}
         onClose={() => setScene((prev) => ({ ...prev, activeNoteId: null }))}
         onChange={(id, updates) => {
-          const trace = updates.title ? 'Retitled note' : updates.body ? 'Edited note body' : 'Updated note';
+          const trace = updates.title || updates.body ? 'refined' : 'idle';
           updateNote(id, updates, trace);
         }}
         onArchive={(id) => {
-          updateNote(id, { archived: true }, 'Sent to archive');
+          updateNote(id, { archived: true }, 'archive');
           setScene((prev) => ({ ...prev, activeNoteId: null, currentView: 'archive' }));
         }}
       />

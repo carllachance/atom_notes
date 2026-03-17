@@ -1,4 +1,5 @@
 import { PointerEvent } from 'react';
+import { describeNoteTrace } from '../trace';
 import { NoteCardModel } from '../types';
 
 type NoteCardProps = {
@@ -16,7 +17,7 @@ export function NoteCard({ note, onPointerDown, onOpen }: NoteCardProps) {
       style={{ transform: `translate(${note.x}px, ${note.y}px)`, zIndex: note.z }}
     >
       <h3>{note.title}</h3>
-      <p className="trace">{note.trace}</p>
+      <p className="trace">{describeNoteTrace(note)}</p>
       <p className="state-cue">{note.stateCue}</p>
     </article>
   );

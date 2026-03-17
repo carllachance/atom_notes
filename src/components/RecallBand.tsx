@@ -21,22 +21,22 @@ export function RecallBand({
     <header className="recall-band">
       <div>
         <h1>Atom Notes</h1>
-        <p>Ambient thinking surface</p>
+        <p>Thinking surface</p>
       </div>
       <div className="recall-meta">
-        <span>{count} active</span>
-        <span>{archivedCount} archived</span>
+        <span>{count} live</span>
+        <span>{archivedCount} resting</span>
       </div>
       <nav className="view-switch" aria-label="View selection">
         <button className={currentView === 'canvas' ? 'active' : ''} onClick={() => onSetView('canvas')}>
-          Workspace
+          Field
         </button>
         <button className={currentView === 'archive' ? 'active' : ''} onClick={() => onSetView('archive')}>
-          Archive
+          Drift
         </button>
       </nav>
       <button className="ghost-button" onClick={onToggleQuickCapture}>
-        {quickCaptureOpen ? 'Hide capture tray' : 'Open capture tray'}
+        {quickCaptureOpen ? 'Capture tucked' : 'Capture open'}
       </button>
     </header>
   );
