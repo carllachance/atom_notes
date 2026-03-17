@@ -1,0 +1,20 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #111827; }
+body { margin: 0; background: #f3f4f6; }
+.thinking-surface { min-height: 100vh; }
+.recall-band { display: flex; gap: 16px; align-items: center; background: #111827; color: white; padding: 12px 16px; }
+.recall-band h1 { margin: 0; font-size: 18px; }
+.recall-stats { display: flex; gap: 10px; margin-left: auto; }
+.anchor-row { padding: 12px 16px; display: flex; gap: 8px; border-bottom: 1px solid #d1d5db; }
+.anchor-row .active { background: #111827; color: white; }
+.spatial-canvas { position: relative; min-height: calc(100vh - 110px); overflow: hidden; }
+.note-card { position: absolute; width: 260px; background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 8px 20px rgba(17,24,39,.12); cursor: grab; }
+.note-card.selected { outline: 2px solid #2563eb; }
+.expanded-note { position: fixed; right: 20px; top: 110px; width: 320px; display: flex; flex-direction: column; gap: 8px; background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 8px 20px rgba(17,24,39,.2); }
+.expanded-note textarea { min-height: 180px; }
+.archive-view { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 12px; }
+.archive-view article { background: #fff; padding: 12px; border-radius: 8px; }
+.capture-overlay { position: fixed; inset: 0; background: rgba(17,24,39,.45); display: grid; place-items: center; }
+.capture-box { background: #fff; padding: 16px; border-radius: 10px; width: min(560px,90vw); display: flex; flex-direction: column; gap: 10px; }
+.capture-box textarea { min-height: 130px; }
+.capture-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.hotkey-hint { padding: 32px; color: #4b5563; }
