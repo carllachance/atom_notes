@@ -1,11 +1,23 @@
 :root {
-  font-family: Inter, system-ui, sans-serif;
-  color: #f3f6ff;
-  background: #0e1322;
+  font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+  color: #dde4f6;
+  background: #090d16;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 20% 5%, #1a243b 0%, #090d16 55%, #070a12 100%);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
 
 .thinking-surface {
   min-height: 100vh;
@@ -18,50 +30,120 @@ body { margin: 0; }
 .recall-band {
   display: flex;
   align-items: center;
-  gap: 14px;
-  background: #1a2339;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
+  border: 1px solid #2a3349;
+  background: rgba(12, 17, 29, 0.86);
+  backdrop-filter: blur(8px);
 }
-.recall-band h1 { font-size: 1rem; margin: 0; }
-.recall-meta { display: flex; gap: 8px; color: #8da0d3; }
+
+.recall-band h1 {
+  margin: 0;
+  font-size: 0.98rem;
+  letter-spacing: 0.02em;
+}
+
+.recall-band p {
+  margin: 2px 0 0;
+  color: #8290b5;
+  font-size: 0.78rem;
+}
+
+.recall-meta {
+  display: flex;
+  gap: 8px;
+  color: #93a1c4;
+  font-size: 0.82rem;
+}
+
+.view-switch {
+  display: inline-flex;
+  border: 1px solid #2b3550;
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.view-switch button {
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: #8d9fc7;
+  padding: 4px 10px;
+}
+
+.view-switch button.active {
+  background: #202c47;
+  color: #d8e2fb;
+}
 
 .spatial-canvas {
   position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  background: radial-gradient(circle at top, #253358 0%, #131a2f 70%);
-  min-height: 520px;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid #212b42;
+  background: radial-gradient(circle at top, #182136 0%, #0d1220 75%);
+  min-height: 560px;
+}
+
+.canvas-plane {
+  position: relative;
+  width: 1800px;
+  height: 1100px;
 }
 
 .note-card {
   position: absolute;
-  width: 260px;
-  border-radius: 12px;
-  border: 1px solid #4d5f8f;
-  background: #eef4ff;
-  color: #111c33;
+  width: 270px;
+  border-radius: 14px;
+  border: 1px solid #2a3348;
+  background: rgba(19, 26, 42, 0.92);
+  color: #dce5fa;
   padding: 12px;
   cursor: grab;
   user-select: none;
+  box-shadow: 0 12px 28px rgba(2, 4, 9, 0.28);
 }
-.note-card h3 { margin: 0 0 8px; }
-.note-card p { margin: 0 0 12px; }
 
-.anchor-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.anchor-row span {
-  background: #d5e4ff;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  padding: 2px 8px;
+.note-card h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.note-card .trace {
+  margin: 8px 0 10px;
+  color: #9daacc;
+  font-size: 0.83rem;
+}
+
+.note-card .state-cue {
+  margin: 0;
+  font-size: 0.73rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #6f7f9f;
 }
 
 .capture-box,
 .expanded-note,
 .archive-view {
-  background: #1a2339;
-  border-radius: 10px;
+  background: rgba(12, 17, 29, 0.86);
+  border: 1px solid #26314a;
+  border-radius: 12px;
   padding: 12px;
+}
+
+.capture-box {
+  display: grid;
+  gap: 8px;
+}
+
+.capture-box label {
+  color: #8d9ec7;
+  font-size: 0.8rem;
 }
 
 .capture-box textarea,
@@ -70,26 +152,70 @@ body { margin: 0; }
   width: 100%;
   margin-bottom: 8px;
   border-radius: 8px;
-  border: 1px solid #31426e;
-  background: #0f1527;
-  color: #f3f6ff;
+  border: 1px solid #2e3b58;
+  background: #0c1220;
+  color: #dfe7fb;
   padding: 8px;
 }
 
 .expanded-note {
   position: fixed;
   right: 16px;
-  top: 72px;
+  top: 80px;
   width: 360px;
 }
 
-.archive-view ul { list-style: none; margin: 0; padding: 0; }
-.archive-view li { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.expanded-note h2 {
+  margin: 0 0 10px;
+  font-size: 0.94rem;
+  color: #9caad0;
+}
+
+.expanded-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.archive-head h2 {
+  margin: 0;
+}
+
+.archive-head p,
+.archive-empty,
+.archive-view li p {
+  margin: 4px 0 0;
+  color: #92a0c3;
+  font-size: 0.82rem;
+}
+
+.archive-view ul {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.archive-view li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #232d42;
+  border-radius: 10px;
+  background: #111929;
+}
 
 button {
   border-radius: 8px;
-  border: 0;
-  background: #4c74ff;
-  color: #fff;
+  border: 1px solid #31405f;
+  background: #1c2943;
+  color: #dce6ff;
   padding: 6px 10px;
+}
+
+.ghost-button {
+  background: transparent;
+  color: #9eb0d8;
 }

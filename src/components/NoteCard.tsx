@@ -1,5 +1,4 @@
 import { PointerEvent } from 'react';
-import { AnchorRow } from './AnchorRow';
 import { NoteCardModel } from '../types';
 
 type NoteCardProps = {
@@ -17,8 +16,8 @@ export function NoteCard({ note, onPointerDown, onOpen }: NoteCardProps) {
       style={{ transform: `translate(${note.x}px, ${note.y}px)`, zIndex: note.z }}
     >
       <h3>{note.title}</h3>
-      <p>{note.body.slice(0, 140) || 'Empty note'}</p>
-      <AnchorRow anchors={note.anchors} />
+      <p className="trace">{note.trace}</p>
+      <p className="state-cue">{note.stateCue}</p>
     </article>
   );
 }
