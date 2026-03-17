@@ -1,7 +1,7 @@
 import { now } from '../notes/noteModel';
 import { normalizeOptionalTitle } from '../noteText';
 import { refreshInferredRelationships } from '../relationshipLogic';
-import { NoteCardModel, SceneState, WorkspaceView } from '../types';
+import { Lens, NoteCardModel, SceneState } from '../types';
 
 export function updateNoteInScene(
   scene: SceneState,
@@ -45,8 +45,8 @@ export function bringNoteToFrontInScene(scene: SceneState, id: string): SceneSta
   };
 }
 
-export function setViewInScene(scene: SceneState, view: WorkspaceView): SceneState {
-  return { ...scene, currentView: view };
+export function setLensInScene(scene: SceneState, lens: Lens): SceneState {
+  return { ...scene, lens };
 }
 
 export function setCanvasScrollInScene(scene: SceneState, left: number, top: number): SceneState {
@@ -65,12 +65,12 @@ export function closeActiveNoteInScene(scene: SceneState): SceneState {
 
 export function archiveNoteInScene(scene: SceneState, id: string): SceneState {
   const archived = updateNoteInScene(scene, id, { archived: true }, 'archive');
-  return { ...archived, activeNoteId: null, currentView: 'archive' };
+  return { ...archived, activeNoteId: null, lens: 'archive' };
 }
 
 export function restoreNoteInScene(scene: SceneState, id: string, highestZ: number): SceneState {
   const restored = updateNoteInScene(scene, id, { archived: false, z: highestZ + 1 }, 'restored');
-  return { ...restored, currentView: 'canvas' };
+  return { ...restored, lens: 'all' };
 }
 
 

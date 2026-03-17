@@ -1,39 +1,30 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createNote, now } from '../notes/noteModel';
+import { useEffect, useMemo, useState } from 'react';
+import { now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
-import { getRankedRelationshipsForNote, getRelationshipTargetNoteId, refreshInferredRelationships } from '../relationshipLogic';
-import {
-  confirmRelationshipInScene,
-  createExplicitRelationshipInScene,
-  traverseToRelatedInScene
-} from '../relationships/relationshipActions';
-import {
-  archiveNoteInScene,
-  bringNoteToFrontInScene,
-  closeActiveNoteInScene,
-  openNoteInScene,
-  restoreNoteInScene,
-  setCanvasScrollInScene,
-  setViewInScene,
-  toggleNoteFocusInScene,
-  updateNoteInScene
-} from './sceneActions';
+import { getRankedRelationshipsForNote, getRelationshipTargetNoteId } from '../relationshipLogic';
 import { loadScene, saveScene } from './sceneStorage';
-import { RelationshipType, SceneState, WorkspaceView } from '../types';
+import { applyLens } from './lens';
+import { RelationshipType, SceneState } from '../types';
+import { useAmbientGuidance } from './useAmbientGuidance';
+import { useRevealController } from './useRevealController';
+import { useSceneMutations } from './useSceneMutations';
 
 const CTRL_DOUBLE_TAP_MS = 320;
 
 export function useSceneController() {
   const [scene, setScene] = useState<SceneState>(loadScene);
   const [relationshipFilter, setRelationshipFilter] = useState<'all' | RelationshipType>('all');
-  const [recentlyClosedNoteId, setRecentlyClosedNoteId] = useState<string | null>(null);
-  const [showFocusedOnly, setShowFocusedOnly] = useState(false);
   const [, setTraceClock] = useState(0);
 
   const activeNote = useMemo(
     () => scene.notes.find((note) => note.id === scene.activeNoteId) ?? null,
     [scene.activeNoteId, scene.notes]
   );
+
+  const visibleNotes = useMemo(() => applyLens(scene.notes, scene.lens), [scene.notes, scene.lens]);
+  const archivedNotes = scene.notes.filter((note) => note.archived);
+  const highestZ = scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0);
+  const visibleNoteIds = useMemo(() => new Set(visibleNotes.map((note) => note.id)), [visibleNotes]);
 
   const activeRelationships = useMemo(() => {
     if (!activeNote) return [];
@@ -76,9 +67,29 @@ export function useSceneController() {
     });
   }, [activeNote, activeRelationships, scene.notes]);
 
-  const activeNotes = scene.notes.filter((note) => !note.archived && (!showFocusedOnly || note.inFocus));
-  const archivedNotes = scene.notes.filter((note) => note.archived);
-  const highestZ = scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0);
+  const ambient = useAmbientGuidance({
+    visibleNotes,
+    visibleNoteIds,
+    relationships: scene.relationships,
+    allNotes: scene.notes
+  });
+
+  const reveal = useRevealController({
+    visibleNotes,
+    visibleNoteIds,
+    panToCenterIfFar: ambient.panToCenterIfFar
+  });
+
+  const mutations = useSceneMutations({
+    setScene,
+    highestZ,
+    cancelHoverIntent: ambient.cancelHoverIntent,
+    onActiveNoteClosed: ambient.onActiveNoteClosed,
+    onNoteOpened: ambient.onNoteOpened,
+    onNoteArchived: ambient.onNoteArchived,
+    onNoteTraversed: ambient.onNoteTraversed,
+    setRelationshipFilter
+  });
 
   useEffect(() => {
     saveScene(scene);
@@ -87,20 +98,6 @@ export function useSceneController() {
   useEffect(() => {
     const timer = window.setInterval(() => setTraceClock((tick) => tick + 1), 60_000);
     return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!recentlyClosedNoteId) return;
-    const timer = window.setTimeout(() => setRecentlyClosedNoteId(null), 2200);
-    return () => window.clearTimeout(timer);
-  }, [recentlyClosedNoteId]);
-
-  const closeActiveNote = useCallback(() => {
-    setRelationshipFilter('all');
-    setScene((prev) => {
-      if (prev.activeNoteId) setRecentlyClosedNoteId(prev.activeNoteId);
-      return closeActiveNoteInScene(prev);
-    });
   }, []);
 
   useEffect(() => {
@@ -124,116 +121,53 @@ export function useSceneController() {
       }
 
       if (event.key === 'Escape') {
-        closeActiveNote();
+        mutations.closeActiveNote();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [closeActiveNote, scene.lastCtrlTapTs]);
-
-  const updateNote = useCallback((id: string, updates: Parameters<typeof updateNoteInScene>[2], trace?: string) => {
-    setScene((prev) => updateNoteInScene(prev, id, updates, trace));
-  }, []);
-
-  const bringToFront = useCallback((id: string) => {
-    setScene((prev) => bringNoteToFrontInScene(prev, id));
-  }, []);
-
-  const setView = useCallback((view: WorkspaceView) => {
-    setScene((prev) => setViewInScene(prev, view));
-  }, []);
-
-  const createExplicitRelationship = useCallback((fromId: string, toId: string, type: RelationshipType) => {
-    setScene((prev) => createExplicitRelationshipInScene(prev, fromId, toId, type));
-  }, []);
-
-  const confirmRelationship = useCallback((relationshipId: string) => {
-    setScene((prev) => confirmRelationshipInScene(prev, relationshipId));
-  }, []);
-
-  const traverseToRelated = useCallback((targetNoteId: string, relationshipId: string) => {
-    setScene((prev) => traverseToRelatedInScene(prev, targetNoteId, relationshipId));
-  }, []);
-
-  const toggleQuickCapture = useCallback(() => {
-    setScene((prev) => ({ ...prev, quickCaptureOpen: !prev.quickCaptureOpen }));
-  }, []);
-
-  const onCanvasScroll = useCallback((left: number, top: number) => {
-    setScene((prev) => setCanvasScrollInScene(prev, left, top));
-  }, []);
-
-  const onOpenNote = useCallback(
-    (id: string) => {
-      setRecentlyClosedNoteId(null);
-      setScene((prev) => openNoteInScene(prev, id));
-      updateNote(id, {}, 'focused');
-    },
-    [updateNote]
-  );
-
-  const onRestoreNote = useCallback(
-    (id: string) => {
-      setScene((prev) => restoreNoteInScene(prev, id, highestZ));
-    },
-    [highestZ]
-  );
-
-  const onArchiveNote = useCallback((id: string) => {
-    setRecentlyClosedNoteId(id);
-    setScene((prev) => archiveNoteInScene(prev, id));
-  }, []);
-
-
-  const toggleNoteFocus = useCallback((id: string) => {
-    setScene((prev) => toggleNoteFocusInScene(prev, id));
-  }, []);
-
-  const toggleFocusedOnly = useCallback(() => {
-    setShowFocusedOnly((prev) => !prev);
-  }, []);
-
-  const onCapture = useCallback(
-    (text: string) => {
-      setScene((prev) => {
-        const notes = [...prev.notes, createNote(text, highestZ + 1)];
-        return {
-          ...prev,
-          notes,
-          relationships: refreshInferredRelationships(notes, prev.relationships, now())
-        };
-      });
-    },
-    [highestZ]
-  );
+  }, [mutations.closeActiveNote, scene.lastCtrlTapTs]);
 
   return {
     scene,
     activeNote,
-    activeNotes,
+    visibleNotes,
     archivedNotes,
+    hoveredNoteId: ambient.hoveredNoteId,
     relationshipFilter,
-    recentlyClosedNoteId,
-    showFocusedOnly,
+    recentlyClosedNoteId: ambient.recentlyClosedNoteId,
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    ambientRelatedNoteIds: ambient.ambientRelatedNoteIds,
+    ambientGlowLevel: ambient.ambientGlowLevel,
+    pulseNoteId: ambient.pulseNoteId,
+    recenterTarget: ambient.recenterTarget,
+    revealState: reveal.revealState,
+    visibleRevealMatchIds: reveal.visibleRevealMatchIds,
+    revealActiveNoteId: reveal.revealActiveNoteId,
     setRelationshipFilter,
-    closeActiveNote,
-    updateNote,
-    bringToFront,
-    setView,
-    createExplicitRelationship,
-    confirmRelationship,
-    traverseToRelated,
-    toggleNoteFocus,
-    toggleFocusedOnly,
-    toggleQuickCapture,
-    onCanvasScroll,
-    onOpenNote,
-    onRestoreNote,
-    onArchiveNote,
-    onCapture
+    closeActiveNote: mutations.closeActiveNote,
+    updateNote: mutations.updateNote,
+    bringToFront: mutations.bringToFront,
+    setLens: mutations.setLens,
+    createExplicitRelationship: mutations.createExplicitRelationship,
+    confirmRelationship: mutations.confirmRelationship,
+    traverseToRelated: mutations.traverseToRelated,
+    toggleNoteFocus: mutations.toggleNoteFocus,
+    toggleQuickCapture: mutations.toggleQuickCapture,
+    onCanvasScroll: mutations.onCanvasScroll,
+    onViewportCenterChange: ambient.onViewportCenterChange,
+    onOpenNote: mutations.onOpenNote,
+    onArchiveNote: mutations.onArchiveNote,
+    onCapture: mutations.onCapture,
+    onHoverStart: ambient.onHoverStart,
+    onHoverEnd: ambient.onHoverEnd,
+    onWhereWasI: ambient.onWhereWasI,
+    onRevealQueryChange: reveal.onRevealQueryChange,
+    onReveal: reveal.onReveal,
+    onRevealNext: reveal.onRevealNext,
+    onRevealPrev: reveal.onRevealPrev
   };
 }
