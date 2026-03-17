@@ -20,19 +20,19 @@ export function RecallBand({
   return (
     <header className="recall-band">
       <div className="recall-meta">
-        <span>{count} live</span>
-        <span>{archivedCount} drift</span>
+        <span>{count} notes</span>
+        <span>{archivedCount} archived</span>
       </div>
       <nav className="view-switch" aria-label="View selection">
         <button className={currentView === 'canvas' ? 'active' : ''} onClick={() => onSetView('canvas')}>
-          Field
+          Canvas
         </button>
         <button className={currentView === 'archive' ? 'active' : ''} onClick={() => onSetView('archive')}>
-          Drift
+          Archive
         </button>
       </nav>
       <button className="ghost-button recall-capture-toggle" onClick={onToggleQuickCapture}>
-        {quickCaptureOpen ? 'Hide capture' : 'Show capture'}
+        {quickCaptureOpen ? 'Close capture' : 'Open capture'}
       </button>
     </header>
   );

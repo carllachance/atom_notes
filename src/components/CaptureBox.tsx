@@ -25,7 +25,8 @@ export function CaptureBox({ isOpen, onCapture }: CaptureBoxProps) {
     <form className="capture-box" onSubmit={onSubmit}>
       <textarea
         id="quick-capture"
-        placeholder="Drop a thought and press Enter..."
+        autoFocus
+        placeholder="Type a thought. Press Enter to capture."
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -35,9 +36,6 @@ export function CaptureBox({ isOpen, onCapture }: CaptureBoxProps) {
           }
         }}
       />
-      <button type="submit" className="capture-action">
-        Drop into field
-      </button>
     </form>
   );
 }

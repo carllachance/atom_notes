@@ -9,20 +9,8 @@ import { NoteCardModel, SceneState, WorkspaceView } from './types';
 
 const SCENE_KEY = 'atom-notes.scene.v1';
 const CTRL_DOUBLE_TAP_MS = 320;
-const ENABLE_RESTORE_CENTER_NUDGE = false;
 
 const now = () => Date.now();
-
-const CANVAS_CENTER_X = 900;
-const CANVAS_CENTER_Y = 550;
-
-function nudgeTowardCenter(note: NoteCardModel, strength: number): NoteCardModel {
-  return {
-    ...note,
-    x: note.x + (CANVAS_CENTER_X - note.x) * strength,
-    y: note.y + (CANVAS_CENTER_Y - note.y) * strength
-  };
-}
 
 function makeStateCue(note: Pick<NoteCardModel, 'archived' | 'anchors'>): string {
   if (note.archived) return 'Resting';
@@ -233,11 +221,7 @@ export function App() {
           <ArchiveView
             notes={archivedNotes}
             onRestore={(id) => {
-              const note = scene.notes.find((entry) => entry.id === id);
-              if (!note) return;
-              const restored = { ...note, archived: false, z: highestZ + 1 };
-              const nudged = ENABLE_RESTORE_CENTER_NUDGE ? nudgeTowardCenter(restored, 0.08) : restored;
-              updateNote(id, { archived: false, z: highestZ + 1, x: nudged.x, y: nudged.y }, 'restored');
+              updateNote(id, { archived: false, z: highestZ + 1 }, 'restored');
               setScene((prev) => ({ ...prev, currentView: 'canvas' }));
             }}
           />
