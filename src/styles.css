@@ -190,12 +190,13 @@ textarea {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(6, 10, 18, 0.12);
-  backdrop-filter: blur(1px);
+  pointer-events: none;
+  z-index: 8;
 }
 
 .expanded-note {
-  width: min(540px, calc(100vw - 36px));
+  pointer-events: auto;
+  width: min(560px, calc(100vw - 36px));
   border-radius: 16px;
   border: 1px solid rgba(70, 87, 121, 0.34);
   background: rgba(18, 26, 40, 0.66);
@@ -264,4 +265,101 @@ button {
 .recall-capture-toggle {
   font-size: 0.72rem;
   padding: 2px 8px;
+}
+
+
+.canvas-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 9, 16, 0.46);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.relationship-web-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.relationship-web {
+  width: 100%;
+  height: 100%;
+}
+
+.related-node {
+  position: absolute;
+  pointer-events: auto;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 138, 188, 0.24);
+  background: rgba(17, 25, 39, 0.5);
+  color: rgba(201, 214, 243, 0.9);
+  font-size: 0.68rem;
+  padding: 4px 8px;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.relationship-strip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.relationship-strip button {
+  font-size: 0.72rem;
+  opacity: 0.78;
+}
+
+.relationship-strip button.active {
+  background: rgba(69, 92, 138, 0.44);
+  opacity: 1;
+}
+
+.link-row {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr auto;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.link-row select {
+  border-radius: 8px;
+  border: 1px solid rgba(61, 78, 110, 0.55);
+  background: rgba(10, 15, 26, 0.74);
+  color: #dfe7fb;
+  padding: 7px;
+}
+
+.inferred-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  max-height: 130px;
+  overflow: auto;
+}
+
+.inferred-item {
+  border: 1px solid rgba(98, 117, 154, 0.18);
+  border-radius: 10px;
+  padding: 6px;
+  background: rgba(10, 15, 27, 0.35);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.inferred-item p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #9db0d8;
+}
+
+.inferred-item span {
+  font-size: 0.68rem;
+  color: #9eb5e0;
 }

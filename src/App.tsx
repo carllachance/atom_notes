@@ -3,11 +3,18 @@ import { ArchiveView } from './components/ArchiveView';
 import { CaptureBox } from './components/CaptureBox';
 import { ExpandedNote } from './components/ExpandedNote';
 import { RecallBand } from './components/RecallBand';
+import { RelationshipWeb } from './components/RelationshipWeb';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
-import { NoteCardModel, SceneState, WorkspaceView } from './types';
+import {
+  getRankedRelationshipsForNote,
+  getRelationshipTargetNoteId,
+  refreshInferredRelationships,
+  relationshipPairKey
+} from './relationshipLogic';
+import { NoteCardModel, Relationship, RelationshipType, SceneState, WorkspaceView } from './types';
 
-const SCENE_KEY = 'atom-notes.scene.v1';
+const SCENE_KEY = 'atom-notes.scene.v2';
 const CTRL_DOUBLE_TAP_MS = 320;
 
 const now = () => Date.now();
@@ -58,9 +65,28 @@ function normalizeNote(note: Partial<NoteCardModel>, i: number): NoteCardModel {
   return { ...parsed, stateCue: makeStateCue(parsed) };
 }
 
+function normalizeRelationship(raw: Partial<Relationship>): Relationship | null {
+  if (!raw.fromId || !raw.toId) return null;
+
+  return {
+    id: String(raw.id ?? crypto.randomUUID()),
+    fromId: String(raw.fromId),
+    toId: String(raw.toId),
+    type: raw.type === 'references' ? 'references' : 'related_concept',
+    state: raw.state === 'confirmed' ? 'confirmed' : 'proposed',
+    explicitness: raw.explicitness === 'explicit' ? 'explicit' : 'inferred',
+    confidence: Number(raw.confidence ?? 0.5),
+    explanation: String(raw.explanation ?? ''),
+    heuristicSupported: raw.heuristicSupported !== false,
+    createdAt: Number(raw.createdAt ?? now()),
+    lastActiveAt: Number(raw.lastActiveAt ?? now())
+  };
+}
+
 function loadScene(): SceneState {
   const fallback: SceneState = {
     notes: [createNote('Welcome to Atom Notes\nDrag this card around.', 1)],
+    relationships: [],
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
@@ -69,13 +95,17 @@ function loadScene(): SceneState {
     canvasScrollTop: 0
   };
 
-  const raw = localStorage.getItem(SCENE_KEY);
+  const raw = localStorage.getItem(SCENE_KEY) ?? localStorage.getItem('atom-notes.scene.v1');
   if (!raw) return fallback;
   try {
     const parsed = JSON.parse(raw) as Partial<SceneState>;
     const normalizedNotes = Array.isArray(parsed.notes)
       ? parsed.notes.map((note, i) => normalizeNote(note as Partial<NoteCardModel>, i))
       : fallback.notes;
+
+    const normalizedRelationships = Array.isArray(parsed.relationships)
+      ? parsed.relationships.map((item) => normalizeRelationship(item as Partial<Relationship>)).filter(Boolean)
+      : [];
 
     const requestedView = parsed.currentView === 'archive' ? 'archive' : 'canvas';
     const activeNoteId =
@@ -85,6 +115,7 @@ function loadScene(): SceneState {
 
     return {
       notes: normalizedNotes,
+      relationships: refreshInferredRelationships(normalizedNotes, normalizedRelationships as Relationship[], now()),
       activeNoteId,
       quickCaptureOpen: Boolean(parsed.quickCaptureOpen),
       lastCtrlTapTs: Number(parsed.lastCtrlTapTs ?? 0),
@@ -99,12 +130,52 @@ function loadScene(): SceneState {
 
 export function App() {
   const [scene, setScene] = useState<SceneState>(loadScene);
+  const [relationshipFilter, setRelationshipFilter] = useState<'all' | RelationshipType>('all');
   const [, setTraceClock] = useState(0);
 
   const activeNote = useMemo(
     () => scene.notes.find((note) => note.id === scene.activeNoteId) ?? null,
     [scene.activeNoteId, scene.notes]
   );
+
+  const activeRelationships = useMemo(() => {
+    if (!activeNote) return [];
+    return scene.relationships.filter(
+      (relationship) => relationship.fromId === activeNote.id || relationship.toId === activeNote.id
+    );
+  }, [activeNote, scene.relationships]);
+
+  const relationshipTotals = useMemo(
+    () => ({
+      related: activeRelationships.filter((relationship) => relationship.type === 'related_concept').length,
+      references: activeRelationships.filter((relationship) => relationship.type === 'references').length
+    }),
+    [activeRelationships]
+  );
+
+  const rankedRelationships = useMemo(() => {
+    if (!activeNote) return [];
+    return getRankedRelationshipsForNote(activeNote.id, scene);
+  }, [activeNote, scene]);
+
+  const relationshipPanelItems = useMemo(() => {
+    if (!activeNote) return [];
+    const notesById = new Map(scene.notes.map((note) => [note.id, note]));
+
+    return activeRelationships.map((relationship) => {
+      const targetId = getRelationshipTargetNoteId(relationship, activeNote.id);
+      return {
+        id: relationship.id,
+        targetId,
+        targetTitle: notesById.get(targetId)?.title ?? 'Untitled note',
+        type: relationship.type,
+        explicitness: relationship.explicitness,
+        state: relationship.state,
+        explanation: relationship.explanation,
+        heuristicSupported: relationship.heuristicSupported
+      };
+    });
+  }, [activeNote, activeRelationships, scene.notes]);
 
   const activeNotes = scene.notes.filter((note) => !note.archived);
   const archivedNotes = scene.notes.filter((note) => note.archived);
@@ -149,9 +220,8 @@ export function App() {
   }, [scene.lastCtrlTapTs]);
 
   const updateNote = (id: string, updates: Partial<NoteCardModel>, trace?: string) => {
-    setScene((prev) => ({
-      ...prev,
-      notes: prev.notes.map((note) => {
+    setScene((prev) => {
+      const notes = prev.notes.map((note) => {
         if (note.id !== id) return note;
         const next = {
           ...note,
@@ -160,8 +230,14 @@ export function App() {
           updatedAt: now()
         };
         return { ...next, stateCue: makeStateCue(next) };
-      })
-    }));
+      });
+
+      return {
+        ...prev,
+        notes,
+        relationships: refreshInferredRelationships(notes, prev.relationships, now())
+      };
+    });
   };
 
   const bringToFront = (id: string) => {
@@ -180,6 +256,61 @@ export function App() {
 
   const setView = (view: WorkspaceView) => {
     setScene((prev) => ({ ...prev, currentView: view }));
+  };
+
+  const createExplicitRelationship = (fromId: string, toId: string, type: RelationshipType) => {
+    setScene((prev) => {
+      const key = relationshipPairKey(fromId, toId, type);
+      const existing = prev.relationships.find(
+        (relationship) => relationshipPairKey(relationship.fromId, relationship.toId, relationship.type) === key
+      );
+
+      if (existing && existing.explicitness === 'explicit') return prev;
+
+      const explicitRelationship: Relationship = {
+        id: existing?.id ?? crypto.randomUUID(),
+        fromId,
+        toId,
+        type,
+        state: 'confirmed',
+        explicitness: 'explicit',
+        confidence: 1,
+        explanation: 'Created by you in the modal.',
+        heuristicSupported: true,
+        createdAt: existing?.createdAt ?? now(),
+        lastActiveAt: now()
+      };
+
+      const relationships = prev.relationships
+        .filter((relationship) => relationshipPairKey(relationship.fromId, relationship.toId, relationship.type) !== key)
+        .concat(explicitRelationship);
+
+      return {
+        ...prev,
+        relationships: refreshInferredRelationships(prev.notes, relationships, now())
+      };
+    });
+  };
+
+  const confirmRelationship = (relationshipId: string) => {
+    setScene((prev) => ({
+      ...prev,
+      relationships: prev.relationships.map((relationship) =>
+        relationship.id === relationshipId
+          ? { ...relationship, state: 'confirmed', lastActiveAt: now(), heuristicSupported: true }
+          : relationship
+      )
+    }));
+  };
+
+  const traverseToRelated = (targetNoteId: string, relationshipId: string) => {
+    setScene((prev) => ({
+      ...prev,
+      activeNoteId: targetNoteId,
+      relationships: prev.relationships.map((relationship) =>
+        relationship.id === relationshipId ? { ...relationship, lastActiveAt: now() } : relationship
+      )
+    }));
   };
 
   return (
@@ -228,19 +359,42 @@ export function App() {
         </div>
       </section>
 
+      {activeNote ? <div className="canvas-dim" /> : null}
+      {activeNote && scene.currentView === 'canvas' ? (
+        <RelationshipWeb
+          activeNote={activeNote}
+          notes={activeNotes}
+          rankedRelationships={rankedRelationships}
+          filter={relationshipFilter}
+          onTraverse={traverseToRelated}
+        />
+      ) : null}
+
       <CaptureBox
         isOpen={scene.quickCaptureOpen}
         onCapture={(text) => {
-          setScene((prev) => ({
-            ...prev,
-            notes: [...prev.notes, createNote(text, highestZ + 1)]
-          }));
+          setScene((prev) => {
+            const notes = [...prev.notes, createNote(text, highestZ + 1)];
+            return {
+              ...prev,
+              notes,
+              relationships: refreshInferredRelationships(notes, prev.relationships, now())
+            };
+          });
         }}
       />
 
       <ExpandedNote
         note={activeNote}
-        onClose={() => setScene((prev) => ({ ...prev, activeNoteId: null }))}
+        notes={scene.notes}
+        relationships={relationshipPanelItems}
+        relationshipTotals={relationshipTotals}
+        activeFilter={relationshipFilter}
+        onSetFilter={setRelationshipFilter}
+        onClose={() => {
+          setRelationshipFilter('all');
+          setScene((prev) => ({ ...prev, activeNoteId: null }));
+        }}
         onChange={(id, updates) => {
           const trace = updates.title || updates.body ? 'refined' : 'idle';
           updateNote(id, updates, trace);
@@ -249,6 +403,8 @@ export function App() {
           updateNote(id, { archived: true }, 'archive');
           setScene((prev) => ({ ...prev, activeNoteId: null, currentView: 'archive' }));
         }}
+        onCreateExplicitLink={createExplicitRelationship}
+        onConfirmRelationship={confirmRelationship}
       />
     </ThinkingSurface>
   );
