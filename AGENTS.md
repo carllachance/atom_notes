@@ -2872,3 +2872,1728 @@ Avoid invasive tone such as "we know you" or deterministic phrasing.
 - The system may learn patterns, but it must never assume they define the user.
 - Repetition is not truth; only successful outcomes deserve reinforcement.
 - Learning should make the system quieter and more accurate, not louder and more confident.
+
+## Uncertainty Awareness
+
+### Principle
+
+The system MUST track uncertainty separately from confidence.
+
+Uncertainty reflects:
+
+- conflicting evidence
+- missing information
+- instability
+- weak or ambiguous signals
+
+The system MUST use uncertainty to regulate:
+
+- visibility
+- ranking
+- suggestion strength
+- review requirements
+
+Confidence tells us what we think; uncertainty tells us how careful we should be.
+
+### Rules
+
+- High uncertainty MUST reduce visual prominence.
+- High uncertainty MUST increase likelihood of review.
+- High uncertainty MUST reduce suggestion aggressiveness.
+- Low uncertainty MAY allow stronger surfacing.
+- Uncertainty MUST NOT silently suppress critical information (for example, unresolved conflicts).
+
+### Explainability rule
+
+If uncertainty is high, the system SHOULD expose why in one sentence.
+
+Examples:
+
+- "These notes are linked, but there are conflicting signals."
+- "This relationship is inferred with limited supporting evidence."
+- "Multiple possible sources detected; provenance is unclear."
+
+### Uncertainty model
+
+Define:
+
+```text
+uncertainty_score =
+    conflict_factor
+    + sparsity_factor
+    + instability_factor
+    + context_mismatch
+    + explanation_weakness
+```
+
+Normalize `uncertainty_score` between `0` and `1`.
+
+Component guidance:
+
+- `conflict_factor`: number/severity of conflicting relationships.
+- `sparsity_factor`: inverse of reinforcement (low interaction implies high uncertainty).
+- `instability_factor`: recent lifecycle volatility or state flips.
+- `context_mismatch`: mismatch between learned pattern and current workspace/intent.
+- `explanation_weakness`: vague or low-quality explanation signal.
+
+### Integration rules
+
+Ranking:
+
+```text
+surface_score =
+    relationship_strength
+    × intent_match
+    × context_relevance
+    × (1 - uncertainty_score)
+```
+
+Suggestions:
+
+```text
+suggestion_score =
+    base_score
+    × (1 - uncertainty_score)
+    × reversibility_modifier
+```
+
+High uncertainty combined with low reversibility should suppress suggestions.
+
+Review:
+
+- High uncertainty → suggest or require review.
+- Medium uncertainty → allow with explanation.
+- Low uncertainty → proceed quietly.
+
+### UX expression
+
+Express uncertainty quietly, without alarmist UI:
+
+- slight desaturation
+- softer edges
+- reduced opacity
+- less crisp rendering
+- hover microcopy describing uncertainty source
+
+No large warning banners unless safety-critical behavior requires interruption.
+
+### Scenario expectations
+
+- **High confidence + low uncertainty**: clear visibility, strong ranking influence.
+- **Medium confidence + low uncertainty**: visible and explainable; suitable for gentle confirmation suggestions.
+- **High confidence + high uncertainty**: remain visible (especially if critical), but trigger review bias and reduced ranking force.
+- **Low confidence + high uncertainty**: faint or hidden by default, not aggressively suggested.
+
+### Anti-patterns
+
+Agents must NOT:
+
+- treat uncertainty as just low confidence
+- hide uncertain but important information
+- surface uncertain suggestions aggressively
+- ignore uncertainty in ranking
+- present uncertain relationships as settled fact
+
+### Doctrine lines
+
+- The system must speak more quietly when it is less sure.
+- Ambiguity should reduce confidence of presentation, not disappear from reality.
+- Prediction may guide attention, but uncertainty must govern caution.
+
+## Uncertainty-Driven Interaction
+
+### Principle
+
+Uncertainty MUST influence not only ranking and visibility, but also interaction design and next-step guidance.
+
+When uncertainty is high, the system SHOULD:
+
+- reduce assertiveness
+- increase clarity of ambiguity
+- guide the user toward resolution actions
+- prefer reversible actions
+- introduce lightweight review surfaces
+
+When uncertainty is low, the system SHOULD:
+
+- reduce friction
+- allow smooth progression
+- avoid unnecessary prompts
+
+### Interaction modes by uncertainty
+
+Define three practical tiers:
+
+#### Low uncertainty
+
+Signals:
+
+- relationships are stable
+- lineage is clear
+- intent is aligned
+
+System behavior:
+
+- minimal UI friction
+- few or no suggestions
+- no review prompts
+- smooth traversal
+
+The system gets out of the way.
+
+#### Medium uncertainty
+
+Signals:
+
+- partial ambiguity
+- moderate inference
+- some missing context
+
+System behavior:
+
+- subtle suggestions
+- optional confirmations
+- lightweight explanations on hover
+- no blocking actions
+
+The system nudges, not interrupts.
+
+#### High uncertainty
+
+Signals:
+
+- conflicting relationships
+- missing provenance
+- unstable structure
+- ambiguous next steps
+
+System behavior:
+
+- surface ambiguity clearly
+- prioritize review actions
+- reduce aggressive suggestions
+- offer safe next steps
+
+The system becomes cautious and collaborative.
+
+### Uncertainty-to-action mapping
+
+When uncertainty is high, the system SHOULD prioritize actions that reduce uncertainty over actions that advance workflow blindly.
+
+Examples:
+
+- Missing provenance → `link_missing_source`
+- Conflicting relationships → `resolve_conflict`
+- Duplicate candidates → `review_duplicate`
+- Supersession ambiguity → `review_supersession`
+- Weak inferred relationship → `confirm_relationship`
+
+### Safe action bias
+
+Not all actions are equally reversible.
+
+Reversibility gradient:
+
+- **Highly reversible**: open reference, view lineage, inspect relationship
+- **Moderately reversible**: confirm relationship, group notes
+- **Low reversibility**: promote to artifact, supersede, merge duplicates
+
+Rules:
+
+- As uncertainty increases, prefer highly reversible actions.
+- Suppress low-reversibility suggestions under high uncertainty.
+- Route risky actions through review.
+
+### Interaction adaptation rules
+
+When uncertainty is high:
+
+- reduce number of suggestions
+- increase explanation clarity
+- increase visibility of conflicting elements
+- introduce review surfaces
+- avoid auto-promotion
+- avoid aggressive highlighting
+
+When uncertainty is low:
+
+- reduce UI noise
+- allow direct progression
+- suppress unnecessary explanation
+- avoid interrupting flow
+
+### Suggestion gating
+
+Reference logic:
+
+```python
+def should_surface_suggestion(suggestion, uncertainty):
+    if uncertainty > HIGH_THRESHOLD:
+        return suggestion.is_reversible and suggestion.is_explanatory
+
+    if uncertainty > MEDIUM_THRESHOLD:
+        return suggestion.confidence > MIN_CONFIDENCE
+
+    return suggestion.confidence > LOW_CONFIDENCE
+```
+
+### Explanation amplification
+
+As uncertainty increases:
+
+- explanations become more visible
+- reasoning becomes clearer
+- ambiguity is explicitly stated
+
+Examples:
+
+- Low uncertainty: no explanation shown by default.
+- Medium uncertainty: "This may be related based on shared entity."
+- High uncertainty: "These notes may be related, but signals are weak and inconsistent."
+
+### UI behavior examples
+
+- **Clean task flow (low uncertainty)**: show task dependencies, no prompts, smooth execution.
+- **Missing source (medium uncertainty)**: suggest linking source without interrupting workflow.
+- **Conflicting notes (high uncertainty)**: keep both sides visible, reduce unrelated suggestions, elevate review action.
+- **Ambiguous artifact promotion (high uncertainty)**: suppress promote action, suggest review, highlight missing lineage.
+
+### Balance rule
+
+The system must avoid both extremes:
+
+- overly cautious (blocking progress)
+- overly confident (hiding ambiguity)
+
+Target: progress with awareness.
+
+### Interaction hierarchy
+
+When deciding what to do next, prioritize:
+
+1. preserve truth (show conflicts and lineage)
+2. reduce uncertainty (suggest resolution)
+3. enable progress (tasks and artifacts)
+4. optimize efficiency (prediction and patterns)
+
+Never invert this order.
+
+### Anti-patterns
+
+Agents must NOT:
+
+- push forward actions when uncertainty is high
+- hide ambiguity to simplify UI
+- over-explain when uncertainty is low
+- treat all uncertainty as equal
+- introduce blocking flows unnecessarily
+- create repeated "are you sure?" fatigue
+
+### Doctrine lines
+
+- When the system is unsure, it must ask better questions, not give louder answers.
+- Uncertainty should guide action toward clarity, not stall progress.
+- The safest next step is the one that reduces doubt without losing momentum.
+
+### Services
+
+Create:
+
+- `UncertaintyEngine`
+- `InteractionPolicyEngine`
+- `ResolutionStrategySelector`
+
+Responsibilities:
+
+- `UncertaintyEngine`: computes uncertainty score and contributing factors.
+- `InteractionPolicyEngine`: determines low/medium/high interaction mode.
+- `ResolutionStrategySelector`: maps uncertainty state to safest next actions.
+
+### Optional personalization
+
+A user-controlled uncertainty tolerance mode MAY be supported:
+
+- **Strict**: more review, less assumption.
+- **Fast**: less friction, more suggestions.
+
+This setting must tune interaction policy only and must not alter relationship truth, lifecycle history, or provenance integrity.
+
+## User-Controlled Uncertainty Tolerance
+
+### Principle
+
+The user MAY adjust how the system responds to uncertainty.
+
+This setting controls:
+
+- how much friction is introduced
+- how aggressively suggestions are surfaced
+- how strongly uncertainty affects interaction
+
+This setting MUST NOT:
+
+- alter underlying truth
+- suppress critical conflicts
+- bypass review for high-risk structural changes
+- degrade provenance
+
+The system adapts behavior, not reality.
+
+### Tolerance modes
+
+Use three modes:
+
+1. **Precise** (`be strict`)
+2. **Balanced** (default)
+3. **Fast** (`be quick`)
+
+#### Precise mode
+
+Goal: maximize correctness and clarity.
+
+Behavior:
+
+- high sensitivity to uncertainty
+- more review prompts
+- fewer suggestions
+- stronger suppression of weak/inferred relationships
+- higher requirement for lineage completeness
+
+Recommended when:
+
+- auditing
+- compliance
+- workflow debugging
+- conflict resolution
+
+#### Balanced mode
+
+Goal: practical usefulness.
+
+Behavior:
+
+- moderate uncertainty sensitivity
+- selective review
+- moderate suggestions
+- stable ranking behavior
+
+Recommended when:
+
+- general work
+- mixed exploration and execution
+
+#### Fast mode
+
+Goal: reduce friction and move quickly.
+
+Behavior:
+
+- lower sensitivity to uncertainty
+- fewer review prompts
+- more suggestions
+- allows weaker signals to surface
+- prioritizes flow over strict validation
+
+Recommended when:
+
+- brainstorming
+- rapid execution
+- early-stage thinking
+
+### Policy knobs
+
+The tolerance setting influences behavior through explicit policy knobs.
+
+#### 1) Uncertainty thresholds
+
+```text
+Precise:
+  HIGH = 0.40
+  MEDIUM = 0.25
+
+Balanced:
+  HIGH = 0.60
+  MEDIUM = 0.40
+
+Fast:
+  HIGH = 0.80
+  MEDIUM = 0.60
+```
+
+Higher thresholds mean the system tolerates more uncertainty before escalating.
+
+#### 2) Suggestion gating
+
+- **Precise**: fewer suggestions, higher confidence requirements, reversible actions favored.
+- **Balanced**: default thresholds.
+- **Fast**: more suggestions, lower confidence threshold, may include moderately risky suggestions (never irreversible).
+
+#### 3) Review triggering
+
+- **Precise**: trigger review earlier; require review for more transitions.
+- **Balanced**: standard review behavior.
+- **Fast**: delay or batch non-critical review prompts.
+
+Fast mode may delay review, but MUST NOT remove review for critical operations.
+
+#### 4) Attention allocation
+
+- **Precise**: tighter budget, fewer visible elements, stronger clarity bias.
+- **Balanced**: default budget.
+- **Fast**: slightly relaxed budget and candidate count, still hard-bounded.
+
+#### 5) Explanation visibility
+
+- **Precise**: explanations more visible; uncertainty explicit.
+- **Balanced**: explanations on demand.
+- **Fast**: explanations minimized except for critical cases.
+
+### Integration rules
+
+- **Lifecycle**: unchanged.
+- **Intent**: tolerance influences how strongly intent reshapes ranking.
+- **Suggestions**: thresholds change; core logic does not.
+- **Review**: timing changes; safety requirement does not.
+- **Attention**: distribution changes; limits remain enforced.
+
+### Hard safety constraints
+
+Even in Fast mode, the system MUST:
+
+- surface critical conflicts
+- preserve provenance
+- prevent silent supersession
+- require review for irreversible actions
+- maintain explainability when uncertainty is high
+
+Fast mode is reduced friction with guardrails, never reckless behavior.
+
+### Behavior examples
+
+#### Weak inferred relationship
+
+- **Precise**: barely visible, confirmation suggested, explanation visible.
+- **Balanced**: visible but faint, optional confirmation.
+- **Fast**: more visible, may appear in suggestions, explanation hidden unless requested.
+
+#### Artifact promotion
+
+- **Precise**: requires review and shows lineage completeness.
+- **Balanced**: suggests review.
+- **Fast**: may suggest promotion, but finalization still routes through review.
+
+#### Conflict handling
+
+Conflict visibility is mandatory in all modes.
+
+- **Precise**: review surfaced immediately.
+- **Balanced**: visible with suggested review.
+- **Fast**: visible with slightly deferred (not hidden) review prompt.
+
+### Implementation model
+
+Add:
+
+```text
+UserPreference
+- uncertainty_tolerance: precise | balanced | fast
+- last_updated
+```
+
+Policy selection:
+
+```python
+def get_uncertainty_policy(user_pref):
+    if user_pref == "precise":
+        return PrecisePolicy()
+    elif user_pref == "fast":
+        return FastPolicy()
+    return BalancedPolicy()
+```
+
+Example policy:
+
+```python
+class PrecisePolicy:
+    suggestion_threshold = 0.8
+    review_threshold = 0.4
+    attention_budget = 10.0
+    explanation_visibility = "high"
+```
+
+### UX design
+
+This control should feel intentional, lightweight, and reversible.
+
+Placement guidance:
+
+- small mode toggle in header or settings
+- optional quick-switch in modal
+
+Labeling guidance:
+
+Prefer neutral labels:
+
+- Precise
+- Balanced
+- Fast
+
+Avoid moralizing labels such as "strict" versus "relaxed."
+
+### Doctrine lines
+
+- The user may choose how cautious the system behaves, but not what is true.
+- Speed adjusts friction, not correctness.
+- The system must remain trustworthy at every setting.
+
+### Design doctrine
+
+Maintain a strict separation between:
+
+- epistemology (truth, uncertainty, provenance)
+- interaction policy (friction, timing, surfacing)
+
+This separation is required to avoid both rigid bureaucracy and reckless suggestion spam.
+
+## Multi-User Cognition and Shared Truth
+
+### Principle
+
+The system MUST support multiple users contributing to a shared graph while preserving:
+
+- individual perspectives
+- provenance of contributions
+- disagreement and ambiguity
+- traceability of decisions
+
+The system MUST NOT collapse multiple viewpoints into a single flattened truth without preserving origin and reasoning.
+
+### Identity-aware graph
+
+Every relationship, action, and decision must be attributable.
+
+Extend relationship model:
+
+```text
+Relationship
+- id
+- type
+- from_note
+- to_note
+- state
+- created_by_user_id
+- confirmed_by: set[user_id]
+- rejected_by: set[user_id]
+- confidence
+- uncertainty
+```
+
+Extend note model:
+
+```text
+Note
+- id
+- content
+- roles
+- created_by
+- contributors: set[user_id]
+```
+
+### Shared vs personal layers
+
+The system MUST maintain two simultaneous cognition layers.
+
+1. **Personal cognition layer**
+   - what the current user believes
+   - user-confirmed relationships
+   - user workflow patterns
+   - user uncertainty tolerance
+
+2. **Shared cognition layer**
+   - team-visible collective state
+   - aggregated confirmations/rejections
+   - shared artifacts and lineage
+   - negotiated, traceable team truth
+
+Rules:
+
+- divergence between personal and shared views MUST be allowed
+- switching between layers MUST be seamless
+- differences MUST be explainable and inspectable
+
+### Team truth states
+
+In collaborative contexts, relationship state must include team-level semantics:
+
+- personally_confirmed
+- personally_rejected
+- team_confirmed
+- team_disputed
+- team_ambiguous
+
+Example:
+
+If User A confirms `A → B` and User B rejects `A → B`, the relationship is **disputed**, not automatically wrong.
+
+### Aggregation model
+
+Use aggregation without flattening disagreement.
+
+Reference score:
+
+```text
+team_confidence =
+    weighted_sum(user_confirmations)
+    - weighted_sum(user_rejections)
+```
+
+State derivation guidance:
+
+- strong agreement → `team_confirmed`
+- strong disagreement → `team_disputed`
+- weak or sparse evidence → `team_ambiguous`
+
+Weighting policy (if used):
+
+- MAY consider role-based expertise
+- MAY consider historical accuracy
+- MAY consider proximity to source material
+
+Hard constraints:
+
+- no opaque authority hierarchy
+- any weighting must be explainable
+- weighting must be visible to users
+- weighting must be overridable by governance policy
+
+### Explainability requirements for shared relationships
+
+Shared relationships SHOULD answer, on inspection:
+
+- who supports the relationship
+- who disagrees
+- what evidence supports each side
+- how strong agreement/disagreement is
+
+Example:
+
+> "3 contributors confirmed this relationship, 1 rejected it. Most confirmations cite source document X."
+
+### Conflict handling in teams
+
+Conflict is first-class and must remain visible.
+
+Conflict types:
+
+- factual conflict (source disagreement)
+- interpretation conflict
+- workflow conflict
+- temporal conflict (outdated vs current)
+
+System behavior:
+
+- DO NOT hide conflict
+- DO NOT auto-resolve conflict
+- DO surface conflict clearly
+- DO suggest resolution pathways
+
+Resolution pathways:
+
+- collaborative review discussion
+- source comparison
+- explicit supersession decision
+- coexistence (rare, but valid)
+
+### Collaborative review model
+
+Review must support multiple participants and attributable decisions.
+
+Add:
+
+```text
+ReviewItem
+- id
+- type
+- related_entities
+- created_by
+- participants: set[user_id]
+- decisions: list
+```
+
+Rules:
+
+- multiple users may participate
+- decisions MUST be stored with attribution
+- disagreement MUST be preserved
+- final resolution must be explicit
+
+### Shared workflow suggestions
+
+Suggestions may be derived from:
+
+- personal patterns
+- team patterns
+- hybrid context
+
+Rules:
+
+- personal patterns take priority in personal view
+- shared patterns influence shared view
+- suggestion source SHOULD be labeled
+
+Example:
+
+> "Common team step: open compliance reference before completing this task."
+
+### Attention policy in multi-user contexts
+
+To preserve calmness:
+
+- do not surface all contributor signals simultaneously
+- aggregate by default
+- allow drill-down by contributor when needed
+- highlight disagreement when relevant to current task/decision
+
+### Team scenarios
+
+#### Shared task note
+
+Scenario:
+
+- 5 contributors involved
+- 3 confirm a dependency
+- 1 flags conflict
+- 2 have no signal yet
+
+System behavior:
+
+- show dependency as likely valid
+- surface active conflict signal
+- allow inspection of contributor evidence
+- avoid overwhelming per-user noise by default
+
+#### Shared artifact lineage
+
+Scenario:
+
+- multiple contributors
+- lineage spans several notes
+
+System behavior:
+
+- show aggregated lineage at top level
+- preserve drill-down to individual contribution provenance
+- keep full traceability intact
+
+### Learning behavior in teams
+
+Support two pattern tiers:
+
+- personal patterns (how I work)
+- team patterns (how we work)
+
+Rules:
+
+- team patterns MUST NOT silently override personal behavior
+- team behavior must not be assumed correct by default
+- user-level divergence must remain possible
+
+### Perspective lenses (optional advanced capability)
+
+The system MAY support epistemic slices such as:
+
+- "show legal perspective"
+- "show confirmed operational truth"
+- "show disputed areas"
+
+Lens rules:
+
+- lenses filter perspective, not underlying truth
+- provenance visibility must remain available
+- disputed/critical signals must not be silently hidden
+
+### Anti-patterns
+
+Agents must NOT:
+
+- collapse disagreement into one answer
+- hide minority viewpoints by default
+- create invisible authority weighting
+- overwhelm users with raw contributor noise
+- treat consensus as truth without provenance
+
+Consensus is a signal, not truth.
+
+### Doctrine lines
+
+- Shared truth is constructed, not assumed.
+- Disagreement is a feature of understanding, not a failure of the system.
+- Every belief must remain traceable to its source.
+
+## Perspective Lenses
+
+### Principle
+
+The system MUST support multiple interpretive lenses over the same underlying graph.
+
+A lens modifies:
+
+- ranking
+- visibility
+- uncertainty tolerance
+- relationship emphasis
+
+A lens MUST NOT:
+
+- alter underlying data
+- hide critical truth (including conflicts and lineage)
+- create separate or divergent graph states
+
+The graph is singular. Perspective is plural.
+
+### Lens types
+
+Use a small, high-signal set of default lenses.
+
+#### 1) Operational lens
+
+Focus:
+
+- tasks
+- dependencies
+- execution flow
+
+Behavior:
+
+- emphasize `task_dependency`, `action_source`
+- suppress conceptual links by default
+- minimize history unless operationally blocking
+- prioritize "what needs to happen next"
+
+#### 2) Reference lens
+
+Focus:
+
+- source material
+- documentation
+- provenance
+
+Behavior:
+
+- emphasize `references`, `derived_from`
+- surface lineage clearly
+- suppress task noise when not required
+- prioritize "what is this based on"
+
+#### 3) Conceptual lens
+
+Focus:
+
+- ideas
+- semantic relationships
+- exploration
+
+Behavior:
+
+- emphasize `related_concept`, `same_entity`
+- allow more inferred links (with explainability)
+- reduce task urgency emphasis
+- prioritize "how does this connect"
+
+#### 4) Conflict lens
+
+Focus:
+
+- disagreement
+- ambiguity
+- inconsistency
+
+Behavior:
+
+- highlight `conflicts_with`, `duplicate_of`, `supersedes`
+- suppress obvious/settled paths
+- prioritize "what is unclear or contested"
+
+#### 5) Historical lens
+
+Focus:
+
+- evolution over time
+- lineage
+- supersession
+
+Behavior:
+
+- emphasize `derived_from`, `supersedes`
+- surface older lifecycle states more clearly
+- reduce present-task urgency
+- prioritize "how did this evolve"
+
+#### 6) Personal lens
+
+Focus:
+
+- user confirmations
+- user patterns
+- user workflow
+
+Behavior:
+
+- prioritize personal signals
+- lightly incorporate team signals
+- reflect current user working style
+
+#### 7) Team lens
+
+Focus:
+
+- shared understanding
+- consensus and disagreement
+
+Behavior:
+
+- aggregate confirmations/rejections
+- surface disputes and confidence distribution
+- show contribution patterns at a glance with drill-down
+
+### Lens mechanics
+
+Each lens must modulate three systems only through policy reinterpretation:
+
+1. **Ranking weights**
+2. **Attention allocation**
+3. **Uncertainty interpretation**
+
+Examples:
+
+- Operational: task weights increase, conceptual weights decrease.
+- Conceptual: conceptual weights increase, task urgency decreases.
+- Conflict: conflicting edges receive priority attention over stable edges.
+
+### Lens and uncertainty interaction
+
+Uncertainty is interpreted through the active lens.
+
+Example for a weak inferred conceptual relationship:
+
+- Operational lens → suppress or strongly down-rank.
+- Conceptual lens → surface as exploratory context.
+- Conflict lens → ignore unless contested or contradictory.
+
+Rule: the uncertainty signal remains constant; interpretation policy changes by lens.
+
+### Lens switching rules
+
+- Switching lenses MUST be instant at interaction level.
+- Switching MUST NOT recompute or mutate underlying graph truth.
+- Switching should reinterpret/rerank existing graph state.
+
+Users should experience: "same graph, different perspective," not "data changed."
+
+### UX guidance
+
+Lens UX must remain calm and minimal.
+
+Placement:
+
+- top-level subtle selector or mode toggle
+- optional intent-aligned lens suggestion
+
+Behavior:
+
+- smooth transitions
+- reweighting over visual churn
+- no sudden explosion of rendered detail
+
+### Optional soft lens blending
+
+Soft blending MAY be supported with strict limits.
+
+Examples:
+
+- Operational + Reference
+- Conceptual + Historical
+
+Constraints:
+
+- blending must remain interpretable
+- cap simultaneous blend count to avoid confusion
+- preserve hard safety/visibility constraints in all blends
+
+### Example scenarios
+
+Same note under different lenses:
+
+- Operational: tasks/dependencies foregrounded; conceptual clutter reduced.
+- Conceptual: idea network foregrounded; task urgency softened.
+- Conflict: disputed edges foregrounded; settled paths de-emphasized.
+- Historical: evolution chain foregrounded; present urgency reduced.
+
+Same relationship (inferred conceptual link):
+
+- Operational → barely visible.
+- Conceptual → highlighted context.
+- Conflict → mostly irrelevant unless disputed.
+- Historical → contextual if part of lineage shift.
+
+### Lens suggestion logic
+
+The system MAY suggest a lens from inferred intent.
+
+```python
+def suggest_lens(intent):
+    if intent == "task_execution":
+        return "operational"
+    if intent == "reference_lookup":
+        return "reference"
+    if intent == "concept_exploration":
+        return "conceptual"
+    if intent == "conflict_resolution":
+        return "conflict"
+    if intent == "history_trace":
+        return "historical"
+```
+
+Lens choice must remain user-controlled.
+
+### Multi-user interaction
+
+Lenses must interoperate with shared cognition:
+
+- Personal lens: prioritize user confirmations and user uncertainty policy.
+- Team lens: emphasize aggregated team signals and disputes.
+
+The system should make cross-perspective insight legible, e.g.:
+
+- "Personally confirmed"
+- "Team disputed"
+
+### Anti-patterns
+
+Agents must NOT:
+
+- create separate graph states per lens
+- hide critical truth in any lens
+- allow lens policy to override provenance
+- cause disorienting visual shifts during lens switch
+- permit unbounded multi-lens blending
+
+### Doctrine lines
+
+- A lens changes what is visible, not what is true.
+- Different perspectives reveal different structure, not different reality.
+- Users must be able to move between lenses without losing orientation.
+
+## Dynamic Lens Composition
+
+### Principle
+
+The system MAY learn and suggest combinations of perspective lenses based on:
+
+- user behavior patterns
+- task context
+- intent signals
+- workflow history
+
+Lens composition MUST:
+
+- remain user-controlled
+- be explainable
+- be reversible instantly
+- preserve orientation
+
+The system suggests perspectives. The user chooses them.
+
+### Composition model
+
+Lens composition represents weighted combinations of existing lenses.
+
+```text
+LensComposition
+- lenses: list[(lens_type, weight)]
+- source: user | system_suggested | learned_pattern
+- confidence
+- last_used_at
+```
+
+Rules:
+
+- weights must sum to `1.0`
+- composition reinterprets one graph; it does not create a new graph state
+
+Example:
+
+```text
+operational: 0.7
+reference: 0.3
+```
+
+### System effects
+
+Composition affects policy in three places:
+
+1. **Ranking**
+
+```text
+final_weight =
+    sum(lens_weight × relationship_weight_in_lens)
+```
+
+2. **Attention**
+
+- dominant lens drives primary visibility
+- secondary lens introduces subtle supporting context
+- tertiary layers are disallowed (see constraints)
+
+3. **Uncertainty interpretation**
+
+- operational contribution penalizes uncertainty
+- conceptual contribution tolerates exploratory uncertainty
+- conflict contribution elevates contested uncertainty
+
+The final behavior is a bounded blend of lens effects.
+
+### Composition constraints
+
+Hard constraints:
+
+- maximum 2 active lenses
+- one primary lens with weight `>= 0.6`
+- one secondary lens with weight `<= 0.4`
+- no equal-weight split (avoid ambiguous visual intent)
+
+Rationale: enforce clarity and avoid cognitive soup.
+
+### Learning model
+
+Composition suggestions may be learned from stable behavior patterns.
+
+Observed signals:
+
+- repeated lens switches
+- repeated workflow sequences
+- repeated context-specific pairings
+
+Pattern model:
+
+```text
+LensPattern
+- context (intent, workspace, note_type)
+- composition
+- success_score
+- frequency
+- confidence
+```
+
+Suggestion eligibility:
+
+- pattern stability is high
+- current context matches learned context
+- confidence is above threshold
+
+### Suggestion behavior
+
+Composition suggestions MUST be:
+
+- subtle in UI tone
+- accompanied by one-sentence explanation
+- dismissible without penalty
+- never auto-applied
+
+Example suggestion copy:
+
+> "You often combine execution and source review in this workspace."
+
+### UX guidance
+
+Keep composition UI calm and lightweight.
+
+Visual model:
+
+- primary lens defines main emphasis
+- secondary lens appears as faint supportive overlay
+
+Do not use:
+
+- split-screen lens layouts
+- competing visual channels
+- abrupt scene changes
+
+Interaction patterns:
+
+- compact lens-blend indicator
+- quick weight adjustment controls
+- one-tap revert to single lens
+
+Transition behavior:
+
+- smooth reweighting only
+- no abrupt re-layout
+- preserve spatial memory
+
+### Scenario examples
+
+#### Execution with compliance
+
+Composition: `operational(0.7) + reference(0.3)`
+
+Behavior:
+
+- tasks/dependencies remain primary
+- key sources are subtly surfaced
+- provenance remains accessible without clutter
+
+#### Process debugging
+
+Composition: `conflict(0.6) + historical(0.4)`
+
+Behavior:
+
+- contested edges are foregrounded
+- evolution/supersession context is visible
+- present task urgency is de-emphasized
+
+#### Domain exploration
+
+Composition: `conceptual(0.7) + reference(0.3)`
+
+Behavior:
+
+- conceptual network is foregrounded
+- source anchors remain available
+- uncertainty is tolerated but explainable
+
+### Interaction with uncertainty tolerance
+
+Mode-specific policy interaction:
+
+- **Fast**: lower suggestion threshold; may propose blends earlier.
+- **Balanced**: default blend suggestion thresholds.
+- **Precise**: higher evidence threshold; preference for single lens unless composition is strongly justified.
+
+These adjustments change suggestion thresholds only; they do not relax truth/provenance safeguards.
+
+### Interaction with team cognition
+
+Composition learning must remain source-aware:
+
+- personal composition patterns remain personal by default
+- team-level composition patterns may be suggested separately
+- suggestion source must be labeled (personal vs team)
+
+Example:
+
+> "Common team perspective here: conflict + historical."
+
+### Explainability requirement
+
+Every composition suggestion must state:
+
+- which lenses are proposed
+- why this combination is relevant now
+- what behavior it is expected to support
+
+If this cannot be explained clearly, the suggestion must not be shown.
+
+### Anti-patterns
+
+Agents must NOT:
+
+- auto-switch compositions silently
+- apply more than 2 lenses
+- create visually competing layers
+- overfit to short recent behavior bursts
+- suggest compositions without strong evidence
+
+### Doctrine lines
+
+- A lens shapes perception; composition shapes thinking.
+- The system may suggest how to look, but must never decide for the user.
+- Clarity comes from constraint, not from combining everything.
+
+## Epistemic Modes
+
+### Principle
+
+The system MUST support multiple epistemic modes that represent different standards of truth.
+
+An epistemic mode defines:
+
+- what counts as sufficient evidence
+- how uncertainty is interpreted
+- what actions are encouraged
+- how disagreement is handled
+
+Epistemic modes MUST:
+
+- modify interpretation, not underlying data
+- remain visible and understandable
+- be user-controlled
+- integrate with lenses, not replace them
+
+The system must distinguish between how users see structure (lens) and what truth standard is active (epistemic mode).
+
+### Core epistemic modes
+
+#### 1) Exploratory mode
+
+Goal: discover possibilities.
+
+Truth standard:
+
+- plausibility over proof
+- connection discovery over certainty
+
+Behavior:
+
+- tolerate high uncertainty
+- surface weak/inferred relationships (with explanation)
+- encourage conceptual exploration
+- minimize review friction
+
+Use when:
+
+- brainstorming
+- early-stage thinking
+- domain mapping
+
+#### 2) Operational mode
+
+Goal: execute reliably.
+
+Truth standard:
+
+- practical correctness
+- what works consistently now
+
+Behavior:
+
+- prioritize tasks and dependencies
+- suppress weak conceptual noise
+- moderate uncertainty tolerance
+- keep interaction friction low
+
+Use when:
+
+- workflow execution
+- task completion
+
+#### 3) Evidentiary mode
+
+Goal: maximize correctness and traceability.
+
+Truth standard:
+
+- verifiable, source-backed claims
+
+Behavior:
+
+- require strong provenance
+- suppress weak/inferred links by default
+- elevate references and lineage
+- increase review requirements
+
+Use when:
+
+- compliance
+- audits
+- formal documentation
+- decision justification
+
+#### 4) Consensus mode
+
+Goal: align shared understanding.
+
+Truth standard:
+
+- contributor agreement with explicit disagreement visibility
+
+Behavior:
+
+- surface team confirmations and rejections
+- highlight disputes and ambiguity
+- reduce personal-bias weighting
+- emphasize shared artifacts and negotiated outcomes
+
+Use when:
+
+- team collaboration
+- decision-making
+- conflict resolution
+
+### Mode controls
+
+Epistemic mode policy controls:
+
+1. **Uncertainty thresholds**
+   - Exploratory: high tolerance
+   - Operational: moderate tolerance
+   - Evidentiary: low tolerance
+   - Consensus: agreement-sensitive tolerance
+
+2. **Suggestion behavior**
+   - Exploratory: more suggestions, lower confidence threshold
+   - Operational: balanced suggestion policy
+   - Evidentiary: fewer suggestions, high-confidence only
+   - Consensus: suggestions emphasize alignment/resolution
+
+3. **Review intensity**
+   - Exploratory: minimal review
+   - Operational: selective review
+   - Evidentiary: strong review requirements
+   - Consensus: collaborative review emphasis
+
+4. **Relationship filtering**
+   - Exploratory: includes inferred/weak context
+   - Operational: actionable-first
+   - Evidentiary: confirmed + source-backed preferred
+   - Consensus: includes agreed and contested structures
+
+### Epistemic mode and lens interaction
+
+Lenses and epistemic modes are orthogonal and composable.
+
+Example with **Reference lens**:
+
+- Exploratory mode → broader source candidates
+- Evidentiary mode → verified sources only
+- Operational mode → most actionable source path
+- Consensus mode → sources weighted by team agreement/dispute
+
+Same perspective channel, different truth standard.
+
+### Mode selection rules
+
+Primary selection is explicit: user chooses the mode.
+
+System MAY suggest a mode from intent:
+
+```python
+def suggest_mode(intent):
+    if intent == "concept_exploration":
+        return "exploratory"
+    if intent == "task_execution":
+        return "operational"
+    if intent == "reference_lookup":
+        return "evidentiary"
+    if intent == "review_commit":
+        return "consensus"
+```
+
+Mode switching MUST remain user-controlled.
+
+### Scenario examples
+
+Weak relationship:
+
+- Exploratory: visible and usable for ideation
+- Operational: faint/backgrounded
+- Evidentiary: hidden or flagged pending evidence
+- Consensus: shown when actively debated
+
+Artifact creation:
+
+- Exploratory: easy to draft/promote
+- Operational: suggested when useful
+- Evidentiary: requires strong lineage/provenance
+- Consensus: requires shared agreement pathway
+
+Conflict handling:
+
+- Exploratory: interpret as exploratory divergence
+- Operational: resolve if blocking execution
+- Evidentiary: resolve or explicitly document
+- Consensus: central coordination focus
+
+### Integration with uncertainty tolerance
+
+Two-axis policy:
+
+- epistemic mode = truth standard
+- uncertainty tolerance = interaction caution level
+
+Examples:
+
+- Evidentiary + Precise → strict, slower, highly reliable
+- Exploratory + Fast → loose, rapid, idea-forward
+- Operational + Balanced → default execution profile
+
+### Implementation model
+
+```text
+UserContext
+- epistemic_mode
+- uncertainty_tolerance
+- active_lens_composition
+```
+
+Policy resolution:
+
+```python
+def resolve_policy(context):
+    base = get_mode_policy(context.epistemic_mode)
+    tolerance = get_tolerance_policy(context.uncertainty_tolerance)
+    return merge_policies(base, tolerance)
+```
+
+### UX guidance
+
+- keep a subtle always-visible mode indicator (icon + label)
+- place mode switch near lens controls
+- switching must be quick and instantly reversible
+
+User mental model should be:
+
+"I am changing how strict truth validation should be," not "I am entering a different system."
+
+### Anti-patterns
+
+Agents must NOT:
+
+- switch epistemic modes implicitly without visibility
+- hide mode effects from the user
+- default everything to evidentiary rigidity
+- default everything to exploratory looseness
+- create opaque hybrid modes
+
+### Doctrine lines
+
+- Different tasks require different standards of truth.
+- The system must make its active truth standard visible at all times.
+- Exploration tolerates ambiguity; evidence demands clarity.
+
+## Mode Alignment and Behavioral Guidance
+
+### Principle
+
+The system SHOULD detect misalignment between:
+
+- current epistemic mode
+- user intent
+- graph state (uncertainty, conflict, lifecycle)
+
+When misalignment is detected, the system SHOULD guide the user through:
+
+- interaction friction shaping
+- suggestion shaping
+- visibility adjustments
+
+The system MUST NOT:
+
+- force mode changes
+- interrupt with explicit corrective instructions
+- override user choice
+
+The system teaches through feel, not command.
+
+### Alignment scoring
+
+Define:
+
+- `mode_alignment_score ∈ [0, 1]`
+- `1.0` = highly aligned
+- `0.0` = strongly misaligned
+
+Contributing factors:
+
+- intent mismatch
+- uncertainty mismatch
+- structure mismatch (e.g., unresolved conflicts)
+- behavior mismatch (actions implying another mode)
+
+Reference model:
+
+```python
+def compute_mode_alignment(mode, intent, uncertainty, graph_state):
+    score = 1.0
+
+    if mode != expected_mode(intent):
+        score -= 0.3
+
+    if uncertainty > threshold_for_mode(mode):
+        score -= 0.3
+
+    if graph_has_conflicts(graph_state) and mode != "consensus":
+        score -= 0.2
+
+    return max(score, 0.0)
+```
+
+### Guidance policy levels
+
+Use graded, calm guidance:
+
+```python
+def apply_alignment_policy(alignment_score):
+    if alignment_score > 0.7:
+        return "smooth"
+
+    if alignment_score > 0.4:
+        return "subtle_guidance"
+
+    return "strong_guidance"
+```
+
+### Non-instructional guidance mechanisms
+
+#### 1) Friction shaping
+
+- misaligned mode: slight resistance on high-risk actions
+- aligned mode: smoother progression
+
+Example: finalization in exploratory mode should feel not-ready via stronger lineage emphasis and softer promotion affordance.
+
+#### 2) Suggestion bias
+
+Suggest actions aligned to likely-correct mode rather than instructing a mode switch.
+
+Example: in operational mode with heavy source-check behavior, elevate evidentiary actions (`link_missing_source`, `trace_lineage`).
+
+#### 3) Visibility tension
+
+When misaligned:
+
+- critical context becomes slightly more persistent
+- key uncertain elements become harder to ignore
+- non-essential paths are gently de-emphasized
+
+#### 4) Explanation tone adaptation
+
+Misalignment increases explanation explicitness and caution language.
+
+Example:
+
+- aligned: minimal explanation
+- misaligned: "This action may require stronger source support."
+
+#### 5) Progressive reveal bias
+
+In misaligned mode, critical truth context may require one extra interaction step.
+In aligned mode, the same context is immediately accessible.
+
+### UX philosophy
+
+Guidance must feel:
+
+- natural
+- non-judgmental
+- reversible
+- calm
+
+Do not produce punitive or blocking experiences.
+
+### Anti-patterns
+
+Do NOT:
+
+- tell users they are in the wrong mode
+- force mode switches
+- show heavy blocking warnings for routine mismatch
+- add punitive friction
+- shame or nag users
+
+### Doctrine lines
+
+- The system should guide through feel, not instruction.
+- Misalignment should create gentle resistance, not obstruction.
+- The correct mode should feel easier, not mandated.
