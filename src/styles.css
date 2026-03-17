@@ -23,60 +23,58 @@ textarea {
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 10px;
+  gap: 8px;
   padding: 12px;
 }
 
 .recall-band {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(62, 76, 108, 0.45);
-  background: rgba(10, 15, 26, 0.56);
-  backdrop-filter: blur(10px);
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(62, 76, 108, 0.16);
+  background: rgba(10, 15, 26, 0.2);
+  backdrop-filter: blur(6px);
+  opacity: 0.45;
+  transition: opacity 220ms ease, border-color 240ms ease, background-color 240ms ease;
 }
 
-.recall-band h1 {
-  margin: 0;
-  font-size: 0.95rem;
-  letter-spacing: 0.02em;
-}
-
-.recall-band p {
-  margin: 2px 0 0;
-  color: #7888af;
-  font-size: 0.74rem;
+.recall-band:hover,
+.recall-band:focus-within {
+  opacity: 1;
+  border-color: rgba(92, 117, 168, 0.3);
+  background: rgba(10, 15, 26, 0.42);
 }
 
 .recall-meta {
   display: flex;
   gap: 8px;
-  color: #8a99be;
-  font-size: 0.78rem;
+  color: #93a4cb;
+  font-size: 0.72rem;
 }
 
 .view-switch {
   display: inline-flex;
   border: 1px solid rgba(75, 91, 126, 0.42);
   border-radius: 999px;
-  padding: 2px;
+  padding: 1px;
   gap: 2px;
-  background: rgba(11, 17, 30, 0.48);
+  background: rgba(11, 17, 30, 0.35);
 }
 
 .view-switch button {
   border-radius: 999px;
   border: 0;
   background: transparent;
-  color: #8798bf;
-  padding: 3px 9px;
+  color: #8fa2cc;
+  padding: 2px 8px;
+  font-size: 0.76rem;
 }
 
 .view-switch button.active {
-  background: rgba(58, 78, 119, 0.45);
+  background: rgba(58, 78, 119, 0.35);
   color: #d8e2fb;
 }
 
@@ -90,14 +88,14 @@ textarea {
   position: absolute;
   inset: 0;
   z-index: 0;
-  transition: opacity 180ms ease-out, transform 220ms ease-out;
+  transition: opacity 260ms ease, transform 300ms cubic-bezier(0.2, 0.72, 0.2, 1);
 }
 
 .view-layer-canvas,
 .view-layer-archive {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(4px) scale(0.998);
+  transform: translateY(6px) scale(0.996);
 }
 
 .view-stack[data-view='canvas'] .view-layer-canvas,
@@ -107,13 +105,19 @@ textarea {
   transform: translateY(0) scale(1);
 }
 
+.view-stack[data-view='archive'] .view-layer-canvas {
+  opacity: 0.45;
+  transform: translateY(-8px) scale(0.992);
+}
+
 .spatial-canvas {
   position: relative;
   overflow: auto;
   border-radius: 14px;
-  border: 1px solid rgba(49, 65, 95, 0.42);
-  background: radial-gradient(circle at top, rgba(30, 41, 64, 0.8) 0%, rgba(13, 18, 32, 0.65) 75%);
+  border: 1px solid rgba(49, 65, 95, 0.18);
+  background: radial-gradient(circle at top, rgba(32, 44, 66, 0.48) 0%, rgba(13, 18, 32, 0.34) 75%);
   min-height: 560px;
+  backdrop-filter: blur(2px);
 }
 
 .canvas-plane {
@@ -125,22 +129,22 @@ textarea {
 .note-card {
   position: absolute;
   width: 270px;
-  border-radius: 14px;
-  border: 1px solid rgba(70, 85, 119, 0.28);
-  background: rgba(20, 28, 44, 0.5);
+  border-radius: 16px;
+  border: 1px solid rgba(121, 145, 189, 0.06);
+  background: linear-gradient(160deg, rgba(35, 48, 72, 0.38), rgba(14, 21, 34, 0.35));
   color: #dce5fa;
   padding: 11px;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 6px 16px rgba(2, 4, 9, 0.14);
-  backdrop-filter: blur(3px);
-  transition: opacity 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out, transform 180ms ease-out;
+  box-shadow: 0 10px 24px rgba(2, 4, 9, 0.12);
+  backdrop-filter: blur(7px);
+  transition: opacity 220ms ease, box-shadow 240ms ease, border-color 240ms ease, transform 260ms cubic-bezier(0.2, 0.72, 0.2, 1), filter 260ms ease;
 }
 
 .note-card[data-trace='focused'],
 .note-card[data-trace='captured'],
 .note-card[data-trace='restored'] {
-  border-color: rgba(102, 130, 186, 0.32);
+  border-color: rgba(126, 153, 208, 0.18);
 }
 
 .note-card h3 {
@@ -152,7 +156,10 @@ textarea {
 .note-card .trace {
   margin: 7px 0 8px;
   color: #a6b2d0;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 180ms ease, transform 220ms ease;
 }
 
 .note-card .state-cue {
@@ -161,26 +168,52 @@ textarea {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #7485a8;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.note-card:hover .trace,
+.note-card:hover .state-cue {
+  opacity: 0.86;
+  transform: translateY(0);
 }
 
 .capture-box,
 .archive-view {
-  background: rgba(10, 15, 26, 0.5);
-  border: 1px solid rgba(50, 67, 98, 0.45);
+  background: rgba(10, 15, 26, 0.36);
+  border: 1px solid rgba(50, 67, 98, 0.2);
   border-radius: 12px;
   padding: 10px;
 }
 
 .capture-box {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
   position: relative;
   z-index: 1;
+  backdrop-filter: blur(8px);
 }
 
-.capture-box label {
-  color: #8d9ec7;
-  font-size: 0.78rem;
+.capture-box textarea {
+  margin-bottom: 0;
+  min-height: 42px;
+  max-height: 100px;
+  resize: none;
+}
+
+.capture-action {
+  opacity: 0;
+  transform: translateY(2px);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.capture-box:focus-within .capture-action {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .capture-box textarea,
@@ -200,7 +233,7 @@ textarea {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(6, 10, 18, 0.3);
+  background: rgba(6, 10, 18, 0.16);
   backdrop-filter: blur(1.5px);
 }
 
@@ -226,7 +259,9 @@ textarea {
 
 .archive-head h2 {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #9eaed4;
 }
 
 .archive-head p,
@@ -242,7 +277,7 @@ textarea {
   margin: 10px 0 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .archive-view li {
@@ -250,15 +285,16 @@ textarea {
   justify-content: space-between;
   align-items: center;
   padding: 7px;
-  border: 1px solid rgba(45, 58, 83, 0.48);
+  border: 1px solid rgba(93, 113, 150, 0.12);
   border-radius: 10px;
-  background: rgba(14, 22, 36, 0.52);
+  background: rgba(14, 22, 36, 0.3);
+  backdrop-filter: blur(4px);
 }
 
 button {
   border-radius: 999px;
-  border: 1px solid rgba(66, 86, 124, 0.52);
-  background: rgba(25, 38, 63, 0.48);
+  border: 1px solid rgba(66, 86, 124, 0.32);
+  background: rgba(25, 38, 63, 0.38);
   color: #dce6ff;
   padding: 5px 10px;
 }
@@ -267,4 +303,9 @@ button {
   background: transparent;
   color: #a4b4d8;
   border-color: rgba(66, 86, 124, 0.3);
+}
+
+.recall-capture-toggle {
+  font-size: 0.72rem;
+  padding: 2px 8px;
 }

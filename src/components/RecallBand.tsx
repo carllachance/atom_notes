@@ -19,13 +19,9 @@ export function RecallBand({
 }: RecallBandProps) {
   return (
     <header className="recall-band">
-      <div>
-        <h1>Atom Notes</h1>
-        <p>Thinking surface</p>
-      </div>
       <div className="recall-meta">
         <span>{count} live</span>
-        <span>{archivedCount} resting</span>
+        <span>{archivedCount} drift</span>
       </div>
       <nav className="view-switch" aria-label="View selection">
         <button className={currentView === 'canvas' ? 'active' : ''} onClick={() => onSetView('canvas')}>
@@ -35,8 +31,8 @@ export function RecallBand({
           Drift
         </button>
       </nav>
-      <button className="ghost-button" onClick={onToggleQuickCapture}>
-        {quickCaptureOpen ? 'Capture tucked' : 'Capture open'}
+      <button className="ghost-button recall-capture-toggle" onClick={onToggleQuickCapture}>
+        {quickCaptureOpen ? 'Hide capture' : 'Show capture'}
       </button>
     </header>
   );
