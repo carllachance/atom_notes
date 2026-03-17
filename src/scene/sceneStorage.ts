@@ -29,7 +29,7 @@ export function loadScene(): SceneState {
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
-    currentView: 'canvas',
+    lens: 'all',
     canvasScrollLeft: 0,
     canvasScrollTop: 0
   };
@@ -38,7 +38,7 @@ export function loadScene(): SceneState {
   if (!raw) return fallback;
 
   try {
-    const parsed = JSON.parse(raw) as Partial<SceneState>;
+    const parsed = JSON.parse(raw) as Partial<SceneState> & { currentView?: 'canvas' | 'archive' };
     const normalizedNotes = Array.isArray(parsed.notes)
       ? parsed.notes.map((note, i) => normalizeNote(note, i))
       : fallback.notes;
@@ -47,7 +47,12 @@ export function loadScene(): SceneState {
       ? parsed.relationships.map((item) => normalizeRelationship(item)).filter(Boolean)
       : [];
 
-    const requestedView = parsed.currentView === 'archive' ? 'archive' : 'canvas';
+    const requestedLens =
+      parsed.lens === 'focus' || parsed.lens === 'archive'
+        ? parsed.lens
+        : parsed.currentView === 'archive'
+          ? 'archive'
+          : 'all';
     const activeNoteId =
       typeof parsed.activeNoteId === 'string' && normalizedNotes.some((note) => note.id === parsed.activeNoteId)
         ? parsed.activeNoteId
@@ -59,7 +64,7 @@ export function loadScene(): SceneState {
       activeNoteId,
       quickCaptureOpen: Boolean(parsed.quickCaptureOpen),
       lastCtrlTapTs: Number(parsed.lastCtrlTapTs ?? 0),
-      currentView: requestedView,
+      lens: requestedLens,
       canvasScrollLeft: Number(parsed.canvasScrollLeft ?? 0),
       canvasScrollTop: Number(parsed.canvasScrollTop ?? 0)
     };

@@ -5,6 +5,7 @@ import {
   openNoteInScene,
   restoreNoteInScene,
   setCanvasScrollInScene,
+  setLensInScene,
   updateNoteInScene,
   toggleNoteFocusInScene
 } from '../scene/sceneActions';
@@ -19,7 +20,7 @@ function makeScene(): SceneState {
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
-    currentView: 'canvas',
+    lens: 'all',
     canvasScrollLeft: 0,
     canvasScrollTop: 0
   };
@@ -40,16 +41,20 @@ describe('sceneActions behavior contracts', () => {
     expect(closed.activeNoteId).toBeNull();
 
     const archived = archiveNoteInScene(opened, 'n1');
-    expect(archived.currentView).toBe('archive');
+    expect(archived.lens).toBe('archive');
     expect(archived.activeNoteId).toBeNull();
     expect(archived.notes[0].archived).toBe(true);
 
     const restored = restoreNoteInScene(archived, 'n1', 4);
-    expect(restored.currentView).toBe('canvas');
+    expect(restored.lens).toBe('all');
     expect(restored.notes[0]).toMatchObject({ archived: false, z: 5 });
 
     expect(setCanvasScrollInScene(restored, 0, 0)).toBe(restored);
     expect(setCanvasScrollInScene(restored, 8, 9)).toMatchObject({ canvasScrollLeft: 8, canvasScrollTop: 9 });
+
+
+    const focusedLens = setLensInScene(restored, 'focus');
+    expect(focusedLens.lens).toBe('focus');
 
     const focused = toggleNoteFocusInScene(restored, 'n1');
     expect(focused.notes[0].inFocus).toBe(true);
