@@ -53,6 +53,7 @@ type DragState = {
 };
 
 const OPEN_THRESHOLD_PX = 6;
+const CLUSTER_FORCE_RESTORE_MS = 420;
 
 export function SpatialCanvas({
   notes,
@@ -85,13 +86,17 @@ export function SpatialCanvas({
 }: SpatialCanvasProps) {
   const dragState = useRef<DragState | null>(null);
   const dragFrameRef = useRef<number | null>(null);
+  const clusterRestoreFrameRef = useRef<number | null>(null);
+  const clusterRestoreTargetIdRef = useRef<string | null>(null);
   const pendingDragPositionRef = useRef<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
   const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [clusterForceScaleById, setClusterForceScaleById] = useState<Record<string, number>>({});
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
   const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
   const projectVisual = getProjectGroupingVisual();
-  const clusteredPositions = useSubtleCanvasClustering(notes, relationships, isDragging);
+  const clusterInteraction = useMemo(() => ({ forceScaleById: clusterForceScaleById }), [clusterForceScaleById]);
+  const clusteredPositions = useSubtleCanvasClustering(notes, relationships, isDragging, clusterInteraction);
   const clusteredNotes = useMemo(
     () => notes.map((note) => ({ ...note, x: clusteredPositions[note.id]?.x ?? note.x, y: clusteredPositions[note.id]?.y ?? note.y })),
     [clusteredPositions, notes]
@@ -100,6 +105,51 @@ export function SpatialCanvas({
     () => (activeProject ? buildClusteredProjectConnectorSegments(clusteredNotes.filter((note) => note.projectIds.includes(activeProject.id))) : projectConnectorSegments),
     [activeProject, clusteredNotes, projectConnectorSegments]
   );
+
+
+  const stopClusterRestoreAnimation = () => {
+    if (clusterRestoreFrameRef.current != null) {
+      window.cancelAnimationFrame(clusterRestoreFrameRef.current);
+      clusterRestoreFrameRef.current = null;
+    }
+    const targetId = clusterRestoreTargetIdRef.current;
+    if (targetId) {
+      setClusterForceScaleById((current) => {
+        if (!(targetId in current)) return current;
+        const { [targetId]: _removed, ...rest } = current;
+        return rest;
+      });
+      clusterRestoreTargetIdRef.current = null;
+    }
+  };
+
+  const beginClusterForceRestore = (noteId: string) => {
+    stopClusterRestoreAnimation();
+    clusterRestoreTargetIdRef.current = noteId;
+    const startedAt = window.performance.now();
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / CLUSTER_FORCE_RESTORE_MS);
+      setClusterForceScaleById((current) => {
+        if (!(noteId in current) && progress >= 1) return current;
+        if (progress >= 1) {
+          const { [noteId]: _removed, ...rest } = current;
+          return rest;
+        }
+        return { ...current, [noteId]: progress };
+      });
+
+      if (progress < 1) {
+        clusterRestoreFrameRef.current = window.requestAnimationFrame(tick);
+      } else {
+        clusterRestoreFrameRef.current = null;
+        clusterRestoreTargetIdRef.current = null;
+      }
+    };
+
+    setClusterForceScaleById((current) => ({ ...current, [noteId]: 0 }));
+    clusterRestoreFrameRef.current = window.requestAnimationFrame(tick);
+  };
 
   const flushDragPosition = () => {
     if (!dragState.current || !pendingDragPositionRef.current) return;
@@ -130,6 +180,7 @@ export function SpatialCanvas({
     const dragTargetId = dragState.current.id;
     const moved = dragState.current.moved;
     clearDragState();
+    beginClusterForceRestore(dragTargetId);
     if (finalPosition && 'x' in finalPosition && 'y' in finalPosition) {
       onDragEnd(dragTargetId, finalPosition.x, finalPosition.y, moved);
       return;
@@ -209,6 +260,7 @@ export function SpatialCanvas({
       if (dragFrameRef.current != null) {
         window.cancelAnimationFrame(dragFrameRef.current);
       }
+      stopClusterRestoreAnimation();
     };
   }, []);
 
@@ -299,6 +351,8 @@ export function SpatialCanvas({
                   startY: event.clientY,
                   moved: false
                 };
+                stopClusterRestoreAnimation();
+                setClusterForceScaleById((current) => ({ ...current, [note.id]: 0 }));
                 setDragPosition({ id: note.id, x: note.x, y: note.y });
                 pendingDragPositionRef.current = { x: note.x, y: note.y };
                 onDragStart();

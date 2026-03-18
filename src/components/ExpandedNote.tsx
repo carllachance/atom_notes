@@ -68,7 +68,11 @@ type ExpandedNoteProps = {
 
 type DragState = { dx: number; dy: number };
 type BodyMode = 'read' | 'edit';
-type SuggestedLinkRow = ProactiveLinkSuggestion & { selectedType: RelationshipType };
+type SuggestedLinkRow = ProactiveLinkSuggestion & {
+  selectedType: RelationshipType;
+  workspaceLabel: string | null;
+  workspaceColor: string | null;
+};
 
 type IconButtonKind = 'back' | 'project' | 'workspace' | 'thinking';
 
@@ -184,6 +188,23 @@ function describeDirection(fromLabel: string, toLabel: string, directional: bool
   return directional ? `${fromLabel} → ${toLabel}` : `${fromLabel} ↔ ${toLabel}`;
 }
 
+function getSuggestionDockIntro(suggestions: SuggestedLinkRow[]) {
+  const reasons = new Set(suggestions.map((suggestion) => suggestion.reason));
+  if (reasons.has('Shared tags.')) return 'Surfaced from shared tags and nearby note context.';
+  if (reasons.has('Same project context.') || reasons.has('Same project and overlapping language.')) return 'Surfaced from shared project context and nearby language.';
+  if (reasons.has('Same workspace.') || reasons.has('Same workspace and overlapping language.')) return 'Surfaced from shared workspace context and nearby language.';
+  if (reasons.has('Related workflow step.')) return 'Surfaced from likely workflow steps around this note.';
+  return 'Surfaced from overlapping language and recent note context.';
+}
+
+function getWorkspaceMeta(workspaces: Workspace[], workspaceId: string | null) {
+  const workspace = workspaceId ? workspaces.find((candidate) => candidate.id === workspaceId) ?? null : null;
+  return {
+    label: workspace?.key ?? workspace?.name ?? null,
+    color: workspace?.color ?? null
+  };
+}
+
 export function ExpandedNote({
   note,
   notes,
@@ -232,8 +253,12 @@ export function ExpandedNote({
   const [inlineHighlightedTargetId, setInlineHighlightedTargetId] = useState<string | null>(null);
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<string[]>([]);
   const [suggestionTypeOverrides, setSuggestionTypeOverrides] = useState<Record<string, RelationshipType>>({});
+  const [linkSuggestionsExpanded, setLinkSuggestionsExpanded] = useState(false);
+  const [freshSuggestionsVisible, setFreshSuggestionsVisible] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
   const inlineHighlightTimerRef = useRef<number | null>(null);
+  const freshSuggestionsTimerRef = useRef<number | null>(null);
+  const previousSuggestionSignatureRef = useRef('');
 
   const groupedRelationshipOptions = useMemo(() => {
     return DETAIL_SURFACE_RELATIONSHIP_OPTIONS.reduce<Record<DetailSurfaceRelationshipOption['group'], DetailSurfaceRelationshipOption[]>>((groups, option) => {
@@ -254,11 +279,15 @@ export function ExpandedNote({
     setInlineHighlightedTargetId(null);
     setDismissedSuggestionIds([]);
     setSuggestionTypeOverrides({});
+    setLinkSuggestionsExpanded(false);
+    setFreshSuggestionsVisible(false);
+    previousSuggestionSignatureRef.current = '';
   }, [note?.id, note?.trace]);
 
   useEffect(() => {
     return () => {
       if (inlineHighlightTimerRef.current) window.clearTimeout(inlineHighlightTimerRef.current);
+      if (freshSuggestionsTimerRef.current) window.clearTimeout(freshSuggestionsTimerRef.current);
     };
   }, []);
 
@@ -288,24 +317,61 @@ export function ExpandedNote({
     };
   }, [dragState]);
 
+  const notesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate])), [notes]);
+  const relationshipsByTargetId = useMemo(
+    () => new Map(relationships.map((relationship) => [relationship.targetId, { relationshipId: relationship.id, type: relationship.type }])),
+    [relationships]
+  );
+  const proactiveSuggestions = useMemo(() => {
+    if (!note) return [];
+    return getProactiveLinkSuggestions({
+      source: note,
+      notes,
+      existingTargetIds: new Set(relationships.map((relationship) => relationship.targetId))
+    });
+  }, [note, notes, relationships]);
+  const visibleProactiveSuggestions: SuggestedLinkRow[] = useMemo(() => proactiveSuggestions
+    .filter((suggestion) => !dismissedSuggestionIds.includes(suggestion.id))
+    .map((suggestion) => {
+      const workspaceMeta = getWorkspaceMeta(workspaces, notesById.get(suggestion.targetId)?.workspaceId ?? null);
+      return {
+        ...suggestion,
+        selectedType: suggestionTypeOverrides[suggestion.id] ?? suggestion.type ?? 'related',
+        workspaceLabel: workspaceMeta.label,
+        workspaceColor: workspaceMeta.color
+      };
+    }), [dismissedSuggestionIds, notesById, proactiveSuggestions, suggestionTypeOverrides, workspaces]);
+
+  const suggestionDockIntro = useMemo(() => getSuggestionDockIntro(visibleProactiveSuggestions), [visibleProactiveSuggestions]);
+  const suggestionSignature = useMemo(() => visibleProactiveSuggestions.map((suggestion) => suggestion.id).join('|'), [visibleProactiveSuggestions]);
+
+  useEffect(() => {
+    if (!visibleProactiveSuggestions.length) {
+      setLinkSuggestionsExpanded(false);
+      setFreshSuggestionsVisible(false);
+      previousSuggestionSignatureRef.current = '';
+      if (freshSuggestionsTimerRef.current) {
+        window.clearTimeout(freshSuggestionsTimerRef.current);
+        freshSuggestionsTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (previousSuggestionSignatureRef.current && previousSuggestionSignatureRef.current !== suggestionSignature) {
+      setFreshSuggestionsVisible(true);
+      if (freshSuggestionsTimerRef.current) window.clearTimeout(freshSuggestionsTimerRef.current);
+      freshSuggestionsTimerRef.current = window.setTimeout(() => {
+        setFreshSuggestionsVisible(false);
+        freshSuggestionsTimerRef.current = null;
+      }, 1800);
+    }
+
+    previousSuggestionSignatureRef.current = suggestionSignature;
+  }, [suggestionSignature, visibleProactiveSuggestions.length]);
+
   if (!note) return null;
   const noteProjectIds = new Set(note.projectIds);
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
-  const notesById = new Map(notes.map((candidate) => [candidate.id, candidate]));
-  const relationshipsByTargetId = new Map(
-    relationships.map((relationship) => [relationship.targetId, { relationshipId: relationship.id, type: relationship.type }])
-  );
-  const proactiveSuggestions = getProactiveLinkSuggestions({
-    source: note,
-    notes,
-    existingTargetIds: new Set(relationships.map((relationship) => relationship.targetId))
-  });
-  const visibleProactiveSuggestions: SuggestedLinkRow[] = proactiveSuggestions
-    .filter((suggestion) => !dismissedSuggestionIds.includes(suggestion.id))
-    .map((suggestion) => ({
-      ...suggestion,
-      selectedType: suggestionTypeOverrides[suggestion.id] ?? suggestion.type ?? 'related'
-    }));
   const inspectedFrom = inspectedRelationship ? notesById.get(inspectedRelationship.fromId) ?? null : null;
   const inspectedTo = inspectedRelationship ? notesById.get(inspectedRelationship.toId) ?? null : null;
   const previewDirectional = isRelationshipTypeDirectional(inspectorType);
@@ -349,6 +415,10 @@ export function ExpandedNote({
       setInlineHighlightedTargetId((current) => (current === targetId ? null : current));
       inlineHighlightTimerRef.current = null;
     }, 1400);
+  };
+
+  const previewSuggestedLink = (targetId: string) => {
+    flashInlineTarget(targetId);
   };
 
   const acceptSuggestedLink = (suggestion: SuggestedLinkRow) => {
@@ -461,33 +531,6 @@ export function ExpandedNote({
 
               <p className="filter-state-copy">Local map · {flowSummary}</p>
 
-              {visibleProactiveSuggestions.length ? (
-                <section className="connections-flow-group" aria-label="Possible next notes">
-                  <div className="connections-flow-head">
-                    <strong>Possible next</strong>
-                    <span>{visibleProactiveSuggestions.length}</span>
-                  </div>
-                  <div className="relations-list">
-                    {visibleProactiveSuggestions.map((suggestion) => (
-                      <div
-                        key={suggestion.id}
-                        className="relation-row relation-row--suggested"
-                        onMouseEnter={() => onHoverRelatedNote(suggestion.targetId)}
-                        onMouseLeave={() => onClearRelatedHover(suggestion.targetId)}
-                      >
-                        <button className="relation-main" onClick={() => acceptSuggestedLink(suggestion)}>
-                          <div className="relation-heading">
-                            <span className="relation-title">{suggestion.targetTitle}</span>
-                            <small>Could join nearby · {formatRelationshipType(suggestion.selectedType)}</small>
-                          </div>
-                          <p className="relation-explanation">{suggestion.reason}</p>
-                        </button>
-                        <button className="relation-open" onClick={() => acceptSuggestedLink(suggestion)}>Bring in</button>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
 
               <div className="connections-flow-list" aria-label="Constellation map">
                 {connectedGroups.some((group) => group.items.length) ? connectedGroups.map((group) => (
@@ -696,6 +739,65 @@ export function ExpandedNote({
           </aside>
         </div>
       </aside>
+
+      {visibleProactiveSuggestions.length ? (
+        <aside
+          className={`link-suggestions-dock ${linkSuggestionsExpanded ? 'is-expanded' : 'is-collapsed'} ${freshSuggestionsVisible ? 'is-fresh' : ''}`}
+          aria-label="Link Suggestions"
+        >
+          <button
+            type="button"
+            className="link-suggestions-dock-toggle"
+            aria-expanded={linkSuggestionsExpanded}
+            onClick={() => setLinkSuggestionsExpanded((current) => !current)}
+          >
+            <span className="link-suggestions-dock-toggle-label">Link Suggestions · {visibleProactiveSuggestions.length}</span>
+            <span className="link-suggestions-dock-toggle-icon" aria-hidden="true">{linkSuggestionsExpanded ? '−' : '+'}</span>
+          </button>
+
+          {linkSuggestionsExpanded ? (
+            <div className="link-suggestions-dock-panel">
+              <div className="link-suggestions-dock-head">
+                <div>
+                  <strong>Link Suggestions</strong>
+                  <p>{suggestionDockIntro}</p>
+                </div>
+                <span>{visibleProactiveSuggestions.length}</span>
+              </div>
+
+              <div className="link-suggestions-dock-list">
+                {visibleProactiveSuggestions.slice(0, 5).map((suggestion) => (
+                  <article
+                    key={suggestion.id}
+                    className="link-suggestion-row"
+                    onMouseEnter={() => onHoverRelatedNote(suggestion.targetId)}
+                    onMouseLeave={() => onClearRelatedHover(suggestion.targetId)}
+                  >
+                    <div className="link-suggestion-copy">
+                      <div className="link-suggestion-heading">
+                        <strong>{suggestion.targetTitle}</strong>
+                        {suggestion.workspaceLabel ? (
+                          <span
+                            className="link-suggestion-workspace"
+                            style={{ ['--workspace-accent' as string]: suggestion.workspaceColor ?? 'rgba(148, 164, 196, 0.7)' }}
+                          >
+                            {suggestion.workspaceLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p>{suggestion.reason}</p>
+                    </div>
+                    <div className="link-suggestion-actions">
+                      <button type="button" className="link-suggestion-link" onClick={() => acceptSuggestedLink(suggestion)}>Link</button>
+                      <button type="button" className="ghost-button link-suggestion-preview" onClick={() => previewSuggestedLink(suggestion.targetId)}>Preview</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </aside>
+      ) : null}
     </section>
   );
 }

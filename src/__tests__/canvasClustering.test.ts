@@ -61,3 +61,39 @@ test('strong damping keeps per-frame motion slow and controlled', () => {
   assert.ok(speedB <= DEFAULT_CLUSTER_FORCES.maxSpeed + 0.0001);
   assert.ok(DEFAULT_CLUSTER_FORCES.damping < 0.8);
 });
+
+test('dragged nodes ignore clustering forces until released', () => {
+  const displaced = syncClusterState(notes);
+  displaced.a.x += 24;
+
+  const next = stepClusterState(notes, [connected('a', 'b')], displaced, {}, {
+    forceScaleById: { a: 0 }
+  });
+
+  assert.equal(next.a.x, notes[0].x);
+  assert.equal(next.a.y, notes[0].y);
+  assert.equal(next.a.vx, 0);
+  assert.equal(next.a.vy, 0);
+  assert.equal(next.b.x, displaced.b.x);
+});
+
+test('released nodes rejoin clustering gradually and stay close to manual anchors', () => {
+  const previous = syncClusterState(notes);
+  previous.a.x += 18;
+
+  const softRelease = stepClusterState(notes, [connected('a', 'b')], previous, {}, {
+    forceScaleById: { a: 0.25 }
+  });
+  const fullRelease = stepClusterState(notes, [connected('a', 'b')], previous, {}, {
+    forceScaleById: { a: 1 }
+  });
+
+  const softOffset = Math.hypot(softRelease.a.x - notes[0].x, softRelease.a.y - notes[0].y);
+  const fullOffset = Math.hypot(fullRelease.a.x - notes[0].x, fullRelease.a.y - notes[0].y);
+  const softSpeed = Math.hypot(softRelease.a.vx, softRelease.a.vy);
+  const fullSpeed = Math.hypot(fullRelease.a.vx, fullRelease.a.vy);
+
+  assert.ok(softOffset <= fullOffset, 'early release should stay closer to the user anchor');
+  assert.ok(softSpeed <= fullSpeed, 'early release should move more gently than full clustering');
+  assert.ok(softOffset <= DEFAULT_CLUSTER_FORCES.maxOffset * 0.6 + 0.0001);
+});

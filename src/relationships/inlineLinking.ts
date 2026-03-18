@@ -55,6 +55,38 @@ function sharedCount(a: string[], b: string[]) {
   return a.filter((token) => bSet.has(token)).length;
 }
 
+function normalizeAnchorTokens(values: string[]) {
+  return values
+    .map((value) => normalizeSearchText(value))
+    .filter((value) => value.length >= 2);
+}
+
+function describeContextualReason(options: {
+  titleExactScore: number;
+  fuzzyTitleMatches: number;
+  semanticMatches: number;
+  sharedAnchors: number;
+  sameProject: boolean;
+  sameWorkspace: boolean;
+  heuristicSuggestion: { id: string } | null;
+  cue: InferredInlineRelationship;
+}) {
+  const { titleExactScore, fuzzyTitleMatches, semanticMatches, sharedAnchors, sameProject, sameWorkspace, heuristicSuggestion, cue } = options;
+
+  if (titleExactScore) return 'Mentioned directly in this note.';
+  if (sharedAnchors > 0) return 'Shared tags.';
+  if (fuzzyTitleMatches >= 2) return 'Similar title language.';
+  if (semanticMatches >= 2 && (sameProject || sameWorkspace)) return sameProject ? 'Same project and overlapping language.' : 'Same workspace and overlapping language.';
+  if (sameProject) return 'Same project context.';
+  if (sameWorkspace) return 'Same workspace.';
+  if (heuristicSuggestion) return 'Connected to similar notes.';
+  if (cue.type === 'depends_on' || cue.type === 'supports' || cue.type === 'leads_to') return 'Related workflow step.';
+  if (cue.type === 'references' || cue.type === 'derived_from') return 'Useful source or provenance context.';
+  if (cue.type === 'part_of') return 'Fits the same structure.';
+  if (cue.type === 'contradicts') return 'Potential conflict to review.';
+  return 'Similar note context.';
+}
+
 function getLineSlice(body: string, index: number) {
   const lineStart = body.lastIndexOf('\n', Math.max(0, index - 1)) + 1;
   const lineEndCandidate = body.indexOf('\n', index);
@@ -153,6 +185,7 @@ export function getProactiveLinkSuggestions({
   const normalizedSourceText = normalizeSearchText(sourceText);
   const sourceKeywords = extractKeywords(sourceText);
   const sourceProjectIds = new Set(source.projectIds);
+  const sourceAnchors = normalizeAnchorTokens(source.anchors);
   const heuristicMap = new Map((source.inferredRelationships ?? []).map((relationship) => [relationship.targetId, relationship]));
 
   const ranked = notes
@@ -169,9 +202,10 @@ export function getProactiveLinkSuggestions({
       const semanticMatches = sharedCount(extractKeywords(`${candidate.title ?? ''}\n${candidate.body}`), sourceKeywords);
       const semanticScore = Math.min(2.2, semanticMatches * 0.55);
 
+      const sharedAnchors = sharedCount(normalizeAnchorTokens(candidate.anchors), sourceAnchors);
       const sameProject = candidate.projectIds.some((projectId) => sourceProjectIds.has(projectId));
       const sameWorkspace = Boolean(source.workspaceId) && source.workspaceId === candidate.workspaceId;
-      const contextScore = (sameProject ? 0.7 : 0) + (sameWorkspace ? 0.55 : 0);
+      const contextScore = (sharedAnchors ? Math.min(1.4, sharedAnchors * 0.65) : 0) + (sameProject ? 0.7 : 0) + (sameWorkspace ? 0.55 : 0);
 
       const heuristicSuggestion = heuristicMap.get(candidate.id) ?? null;
       const heuristicScore = heuristicSuggestion ? 0.95 : 0;
@@ -183,15 +217,16 @@ export function getProactiveLinkSuggestions({
 
       const score = titleExactScore + fuzzyTitleScore + semanticScore + contextScore + heuristicScore + cueScore;
       const confidence = Math.max(0, Math.min(0.98, score / 8.6));
-      const reason = titleExactScore
-        ? 'Mentioned directly in this note.'
-        : fuzzyTitleMatches >= 2
-          ? 'Strong title overlap with what you are writing.'
-          : semanticMatches >= 2
-            ? 'Semantically close to the current note.'
-            : sameProject || sameWorkspace
-              ? 'Nearby in the current project or workspace context.'
-              : heuristicSuggestion?.reason ?? cue.reason;
+      const reason = describeContextualReason({
+        titleExactScore,
+        fuzzyTitleMatches,
+        semanticMatches,
+        sharedAnchors,
+        sameProject,
+        sameWorkspace,
+        heuristicSuggestion,
+        cue
+      });
 
       return {
         id: `${source.id}:${candidate.id}:${type}`,
@@ -203,7 +238,7 @@ export function getProactiveLinkSuggestions({
         reason
       };
     })
-    .filter((candidate) => candidate.score >= 2)
+    .filter((candidate) => candidate.score >= 1.4)
     .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.targetTitle.localeCompare(b.targetTitle)))
     .slice(0, limit);
 
