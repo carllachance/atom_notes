@@ -78,6 +78,13 @@ function normalizeAIPanel(raw: Partial<AIPanelViewState> | undefined): AIPanelVi
     mode,
     query: String(raw?.query ?? ''),
     response: raw?.response ?? null,
+    transcript: Array.isArray(raw?.transcript) ? raw.transcript.map((entry, index) => ({
+      id: String(entry?.id ?? `msg-${index}`),
+      role: (entry?.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+      mode: entry?.mode === 'explore' || entry?.mode === 'summarize' || entry?.mode === 'act' ? entry.mode : mode,
+      content: String(entry?.content ?? ''),
+      createdAt: Number(entry?.createdAt ?? now())
+    })).filter((entry) => entry.content.trim()) : [],
     loading: false
   };
 }
@@ -93,7 +100,7 @@ export function loadScene(): SceneState {
     quickCaptureOpen: false,
     captureComposer: { open: true, draft: '', lastCreatedNoteId: null },
     focusMode: { highlight: true, isolate: false },
-    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, loading: false },
+    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, transcript: [], loading: false },
     lastCtrlTapTs: 0,
     lens: createDefaultLens(),
     canvasScrollLeft: 0,

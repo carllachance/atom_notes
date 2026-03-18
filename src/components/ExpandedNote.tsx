@@ -7,6 +7,7 @@ import {
 } from '../detailSurface/detailSurfaceModel';
 import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
+import { toggleMarkdownCheckbox } from '../markdownProjection';
 import { getCompactDisplayTitle } from '../noteText';
 import { isRelationshipTypeDirectional } from '../relationshipLogic';
 import { ProjectDraft } from '../projects/projectModel';
@@ -63,6 +64,7 @@ type ExpandedNoteProps = {
 
 type DragState = { dx: number; dy: number };
 type BodyMode = 'read' | 'edit';
+type SidebarSection = 'connections' | 'organize';
 
 const DEFAULT_PROJECT_DRAFT: ProjectDraft = { key: '', name: '', color: '#7aa2f7', description: '' };
 const DEFAULT_WORKSPACE_DRAFT: WorkspaceDraft = { key: '', name: '', color: '#5fbf97', description: '' };
@@ -144,6 +146,7 @@ export function ExpandedNote({
   const [inspectorType, setInspectorType] = useState<RelationshipType>('related');
   const [previewDirectionReversed, setPreviewDirectionReversed] = useState(false);
   const [showSecondaryActions, setShowSecondaryActions] = useState(false);
+  const [activeSidebarSection, setActiveSidebarSection] = useState<SidebarSection>('connections');
   const panelRef = useRef<HTMLElement | null>(null);
 
   const linkableNotes = useMemo(() => (note ? notes.filter((candidate) => candidate.id !== note.id && !candidate.archived) : []), [note, notes]);
@@ -167,6 +170,7 @@ export function ExpandedNote({
     setWorkspaceDraft(DEFAULT_WORKSPACE_DRAFT);
     setLinkTargetId('');
     setShowSecondaryActions(false);
+    setActiveSidebarSection('connections');
   }, [note?.id, note?.trace]);
 
   useEffect(() => {
@@ -246,18 +250,26 @@ export function ExpandedNote({
 
         <div className="expanded-note-layout">
           <div className="expanded-note-main">
-            <input aria-label="Note title" value={note.title ?? ''} onChange={(event) => onChange(note.id, { title: event.target.value })} />
+            <input className="note-title-field" aria-label="Note title" placeholder="Untitled note" value={note.title ?? ''} onChange={(event) => onChange(note.id, { title: event.target.value })} />
 
             <div className="body-mode-switch" role="tablist" aria-label="Note body mode">
               <button role="tab" aria-selected={bodyMode === 'read'} className={bodyMode === 'read' ? 'active' : ''} onClick={() => setBodyMode('read')}>Read</button>
               <button role="tab" aria-selected={bodyMode === 'edit'} className={bodyMode === 'edit' ? 'active' : ''} onClick={() => setBodyMode('edit')}>Edit</button>
             </div>
 
-            {bodyMode === 'read' ? <MarkdownProjectionView source={note.body} /> : <textarea aria-label="Note body markdown" value={note.body} onChange={(event) => onChange(note.id, { body: event.target.value })} />}
+            <div className="note-body-surface" data-mode={bodyMode}>
+              {bodyMode === 'read' ? <MarkdownProjectionView source={note.body} onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })} /> : <textarea className="note-body-field" aria-label="Note body markdown" placeholder="Write freely…" value={note.body} onChange={(event) => onChange(note.id, { body: event.target.value })} />}
+            </div>
           </div>
 
           <aside className="expanded-note-sidebar">
-            <section className="detail-card" aria-label="Relationships">
+            <nav className="detail-section-tabs" aria-label="Note detail sections">
+              <button className={activeSidebarSection === 'connections' ? 'active' : ''} onClick={() => setActiveSidebarSection('connections')}>Connections</button>
+              <button className={activeSidebarSection === 'organize' ? 'active' : ''} onClick={() => setActiveSidebarSection('organize')}>Organize</button>
+            </nav>
+
+            {activeSidebarSection === 'connections' ? (
+            <section className="detail-card" aria-label="Connections">
               <div className="section-head">
                 <strong>Relationships</strong>
                 <span className="section-meta">{relationships.length} visible</span>
@@ -429,7 +441,10 @@ export function ExpandedNote({
                 ) : null}
               </div>
             </section>
+            ) : null}
 
+            {activeSidebarSection === 'organize' ? (
+            <>
             <section className="detail-card project-membership" aria-label="Workspace scope">
               <div className="section-head"><strong>Workspace</strong><button className="ghost-button" onClick={() => setShowWorkspaceComposer((open) => !open)}>{showWorkspaceComposer ? 'Close workspace tools' : 'New workspace'}</button></div>
               <select value={note.workspaceId ?? ''} onChange={(event) => onSetWorkspaceId(note.id, event.target.value || null)}>
@@ -493,6 +508,8 @@ export function ExpandedNote({
                 <p className="relations-empty">Archive and focus controls stay here so the note content remains primary.</p>
               )}
             </section>
+            </>
+            ) : null}
           </aside>
         </div>
       </aside>

@@ -1,3 +1,4 @@
+import { FormEvent } from 'react';
 import { getNextInsightsRailState, INSIGHTS_RAIL_MODES } from '../detailSurface/detailSurfaceModel';
 import { ActionSuggestion, AIInteractionMode, AIPanelViewState, NoteCardModel, Project } from '../types';
 
@@ -19,10 +20,23 @@ type AIPanelProps = {
 };
 
 function placeholderForMode(mode: AIInteractionMode, selectedNote: NoteCardModel | null) {
-  if (mode === 'explore') return 'Explore relationships…';
-  if (mode === 'summarize') return 'Summarize this note or cluster…';
-  if (mode === 'act') return 'Propose a safe action…';
-  return selectedNote ? 'Ask about this note…' : 'Ask about the current canvas…';
+  if (mode === 'explore') return selectedNote ? `Explore what branches away from “${selectedNote.title ?? 'this note'}”` : 'Explore nearby relationships and patterns';
+  if (mode === 'summarize') return selectedNote ? 'Summarize the selected note and its nearby context' : 'Summarize the visible notes';
+  if (mode === 'act') return selectedNote ? 'Suggest a safe next action for this note' : 'Suggest a safe next action for this canvas';
+  return selectedNote ? `Ask about “${selectedNote.title ?? 'this note'}”` : 'Ask about the current canvas';
+}
+
+function transcriptLabel(mode: AIInteractionMode) {
+  switch (mode) {
+    case 'explore':
+      return 'Explore';
+    case 'summarize':
+      return 'Summarize';
+    case 'act':
+      return 'Act';
+    default:
+      return 'Ask';
+  }
 }
 
 export function AIPanel({
@@ -42,8 +56,14 @@ export function AIPanel({
   onCancelAction
 }: AIPanelProps) {
   const notesById = new Map(notes.map((note) => [note.id, note]));
-  const resolvedReferences = panel.response?.references.map((referenceId) => notesById.get(referenceId)).filter(Boolean) as NoteCardModel[] | undefined;
+  const latestResponse = panel.response;
+  const resolvedReferences = latestResponse?.references.map((referenceId) => notesById.get(referenceId)).filter(Boolean) as NoteCardModel[] | undefined;
   const isExpanded = panel.state !== 'hidden';
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onRun();
+  };
 
   return (
     <aside className="ai-panel" data-state={panel.state}>
@@ -85,36 +105,56 @@ export function AIPanel({
             </div>
           </header>
 
-          <div className="ai-query-row">
-            <label className="ai-query-label" htmlFor="ai-query-input">Ground the response in visible notes</label>
-            <textarea
-              id="ai-query-input"
-              placeholder={placeholderForMode(panel.mode, selectedNote)}
-              value={panel.query}
-              onChange={(event) => onQueryChange(event.target.value)}
-            />
-            <button onClick={onRun} disabled={!panel.query.trim() || panel.loading}>{panel.loading ? 'Thinking…' : 'Run'}</button>
-          </div>
+          <form className="ai-chat-shell" onSubmit={handleSubmit}>
+            <label className="ai-query-label" htmlFor="ai-query-input">Chat with the current note context</label>
+            <div className="ai-query-row">
+              <input
+                id="ai-query-input"
+                className="ai-query-input"
+                placeholder={placeholderForMode(panel.mode, selectedNote)}
+                value={panel.query}
+                onChange={(event) => onQueryChange(event.target.value)}
+              />
+              <button type="submit" disabled={!panel.query.trim() || panel.loading}>{panel.loading ? 'Thinking…' : 'Send'}</button>
+            </div>
+            <p className="ai-query-hint">{transcriptLabel(panel.mode)} mode stays grounded in visible notes and the selected note’s local graph.</p>
+          </form>
 
           {pendingAction ? (
             <div className="ai-action-preview">
               <strong>Confirm action</strong>
               <p>{pendingAction.label}</p>
               <div>
-                <button className="ghost-button" onClick={onCancelAction}>Cancel</button>
-                <button onClick={onConfirmAction}>Apply</button>
+                <button className="ghost-button" onClick={onCancelAction} type="button">Cancel</button>
+                <button onClick={onConfirmAction} type="button">Apply</button>
               </div>
             </div>
           ) : null}
 
-          {panel.response ? (
+          <div className="ai-transcript" aria-live="polite">
+            {panel.transcript.length ? panel.transcript.map((entry) => (
+              <section key={entry.id} className={`ai-message ai-message--${entry.role}`}>
+                <div className="ai-message-meta">
+                  <span>{entry.role === 'user' ? 'You' : `Insights · ${transcriptLabel(entry.mode)}`}</span>
+                </div>
+                <p>{entry.content}</p>
+              </section>
+            )) : (
+              <div className="ai-empty-state">Start with a question, an exploration prompt, a summary request, or an action request. The transcript stays visible here so the exchange feels explicit instead of hidden behind mode buttons.</div>
+            )}
+          </div>
+
+          {latestResponse ? (
             <div className="ai-response">
               <section className="ai-summary-block">
-                <span className="ai-block-label">Grounded answer</span>
-                <p className="ai-answer">{panel.response.answer}</p>
+                <div className="ai-section-heading">
+                  <span className="ai-block-label">Latest grounded answer</span>
+                  <small>Directly tied to notes in the current canvas</small>
+                </div>
+                <p className="ai-answer">{latestResponse.answer}</p>
               </section>
 
-              {panel.response.sections.map((section) => (
+              {latestResponse.sections.map((section) => (
                 <section key={section.id} className="ai-section">
                   <span className="ai-block-label">{section.title}</span>
                   <p>{section.body}</p>
@@ -125,7 +165,7 @@ export function AIPanel({
                 <section className="ai-grounded-references">
                   <div className="ai-section-heading">
                     <span className="ai-block-label">Grounded references</span>
-                    <small>Clickable notes from the current graph</small>
+                    <small>Open related notes from the current graph</small>
                   </div>
                   <div className="ai-reference-grid">
                     {resolvedReferences.map((reference) => (
@@ -138,9 +178,9 @@ export function AIPanel({
                 </section>
               ) : null}
 
-              {panel.response.actions?.length ? (
+              {latestResponse.actions?.length ? (
                 <div className="ai-action-chips">
-                  {panel.response.actions.map((action) => (
+                  {latestResponse.actions.map((action) => (
                     <button key={action.id} className="ghost-button" onClick={() => onPreviewAction(action)}>
                       {action.label}
                     </button>
@@ -148,9 +188,7 @@ export function AIPanel({
                 </div>
               ) : null}
             </div>
-          ) : (
-            <div className="ai-empty-state">The panel stays grounded in visible notes, recent notes, and the selected note.</div>
-          )}
+          ) : null}
         </div>
       ) : null}
     </aside>

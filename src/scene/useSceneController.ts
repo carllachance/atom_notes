@@ -309,17 +309,47 @@ export function useSceneController() {
   }, [mutations]);
 
   const runInsights = useCallback(async () => {
-    if (!scene.aiPanel.query.trim()) return;
-    mutations.setAIPanel({ loading: true, response: null });
+    const query = scene.aiPanel.query.trim();
+    if (!query) return;
+
+    const userEntry = {
+      id: crypto.randomUUID(),
+      role: 'user' as const,
+      mode: scene.aiPanel.mode,
+      content: query,
+      createdAt: now()
+    };
+
+    mutations.setAIPanel({
+      loading: true,
+      state: 'open',
+      transcript: [...scene.aiPanel.transcript, userEntry]
+    });
+
     const response = await runConnectedInsights(scene, {
-      query: scene.aiPanel.query,
+      query,
       selectedNoteId: scene.activeNoteId ?? undefined,
       visibleNoteIds: visibleNotes.map((note) => note.id),
       activeProjectIds: lensPresentation.activeProject ? [lensPresentation.activeProject.id] : [],
       recentNoteIds: scene.captureComposer.lastCreatedNoteId ? [scene.captureComposer.lastCreatedNoteId] : [],
       mode: scene.aiPanel.mode
     });
-    mutations.setAIPanel({ loading: false, response, state: 'open' });
+
+    const assistantEntry = {
+      id: crypto.randomUUID(),
+      role: 'assistant' as const,
+      mode: scene.aiPanel.mode,
+      content: response.answer,
+      createdAt: now()
+    };
+
+    mutations.setAIPanel({
+      loading: false,
+      response,
+      query: '',
+      state: 'open',
+      transcript: [...scene.aiPanel.transcript, userEntry, assistantEntry]
+    });
   }, [lensPresentation.activeProject, mutations, scene, visibleNotes]);
 
   const confirmPendingAction = useCallback(() => {

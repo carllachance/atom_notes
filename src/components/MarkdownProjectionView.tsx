@@ -3,6 +3,7 @@ import { InlineToken, parseMarkdownProjection } from '../markdownProjection';
 
 type MarkdownProjectionViewProps = {
   source: string;
+  onToggleCheckbox?: (lineIndex: number, checked: boolean) => void;
 };
 
 function renderInline(tokens: InlineToken[]) {
@@ -19,7 +20,7 @@ function renderInline(tokens: InlineToken[]) {
   });
 }
 
-export function MarkdownProjectionView({ source }: MarkdownProjectionViewProps) {
+export function MarkdownProjectionView({ source, onToggleCheckbox }: MarkdownProjectionViewProps) {
   const blocks = useMemo(() => parseMarkdownProjection(source), [source]);
 
   if (!blocks.length) return <p className="markdown-empty">No content yet.</p>;
@@ -51,11 +52,19 @@ export function MarkdownProjectionView({ source }: MarkdownProjectionViewProps) 
           return (
             <ListTag key={`list-${index}`}>
               {block.items.map((item, itemIndex) => (
-                <li key={`i-${itemIndex}`}>
+                <li key={`i-${itemIndex}`} data-has-checkbox={item.checked !== null}>
                   {item.checked !== null ? (
-                    <input type="checkbox" checked={item.checked} readOnly tabIndex={-1} aria-hidden="true" />
-                  ) : null}
-                  <span>{renderInline(item.tokens)}</span>
+                    <label className="markdown-checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={item.checked}
+                        onChange={(event) => onToggleCheckbox?.(item.lineIndex, event.target.checked)}
+                      />
+                      <span>{renderInline(item.tokens)}</span>
+                    </label>
+                  ) : (
+                    <span>{renderInline(item.tokens)}</span>
+                  )}
                 </li>
               ))}
             </ListTag>
