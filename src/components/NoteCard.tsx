@@ -10,6 +10,7 @@ type NoteCardProps = {
   position: { x: number; y: number } | null;
   meta?: LensNotePresentation;
   focusHighlightEnabled: boolean;
+  focusModeActive: boolean;
   recentlyClosed: boolean;
   ambientRelated: boolean;
   ambientPulse: boolean;
@@ -47,7 +48,7 @@ function formatIntentLabel(intent: NoteCardModel['intent']) {
   return intent ? intent.toUpperCase() : null;
 }
 
-function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recentlyClosed, ambientRelated, ambientPulse, ambientGlowLevel, isDragging, isDirectlyDragging, revealMatched, revealActive, isActive, isHovered, activeProjectLabel, activeProjectColor, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave }: NoteCardProps) {
+function NoteCardComponent({ note, position, meta, focusHighlightEnabled, focusModeActive, recentlyClosed, ambientRelated, ambientPulse, ambientGlowLevel, isDragging, isDirectlyDragging, revealMatched, revealActive, isActive, isHovered, activeProjectLabel, activeProjectColor, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave }: NoteCardProps) {
   const bias = getTraceVisualBias(note);
   const projectVisual = getProjectNoteVisual(meta?.projectState === 'member' ? 'member' : meta?.surfaced ? 'subordinate' : 'none');
   const displayTitle = getCompactDisplayTitle(note);
@@ -59,6 +60,7 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recent
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
   const resolvedPosition = position ?? { x: note.x, y: note.y };
   const intentLabel = formatIntentLabel(note.intent);
+  const focusOpacity = focusModeActive && !isFocus ? 0.62 : 1;
 
   return (
     <article
@@ -81,7 +83,7 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recent
         transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift - (isDirectlyDragging ? 6 : isDragging ? 2 : 0)}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale * dragScale})`,
         transformOrigin: 'top left',
         zIndex: note.z,
-        opacity: bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity,
+        opacity: bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity * focusOpacity,
         filter: `blur(${bias.blur}px)`,
         ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0',
         ['--project-accent' as string]: meta?.projectAccent ?? activeProjectColor ?? 'rgba(122, 162, 247, 0.42)',
@@ -119,6 +121,7 @@ export const NoteCard = memo(NoteCardComponent, (prev, next) => {
     prev.meta?.workspaceState === next.meta?.workspaceState &&
     prev.meta?.contextLabel === next.meta?.contextLabel &&
     prev.focusHighlightEnabled === next.focusHighlightEnabled &&
+    prev.focusModeActive === next.focusModeActive &&
     prev.recentlyClosed === next.recentlyClosed &&
     prev.ambientRelated === next.ambientRelated &&
     prev.ambientPulse === next.ambientPulse &&
