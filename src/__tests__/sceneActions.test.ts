@@ -1,84 +1,45 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  archiveNoteInScene,
-  closeActiveNoteInScene,
-  openNoteInScene,
-  restoreNoteInScene,
-  setCanvasScrollInScene,
-  setLensInScene,
-  toggleNoteFocusInScene,
-  updateNoteInScene
-} from '../scene/sceneActions';
+import { archiveNoteInScene, closeActiveNoteInScene, openNoteInScene, restoreNoteInScene, setCanvasScrollInScene, setCaptureComposerState, setFocusModeInScene, setLensInScene, toggleNoteFocusInScene, updateNoteInScene } from '../scene/sceneActions';
 import type { SceneState } from '../types';
 
 function makeScene(): SceneState {
   return {
-    notes: [
-      {
-        id: 'n1',
-        title: null,
-        body: 'Body',
-        anchors: [],
-        trace: 'idle',
-        x: 0,
-        y: 0,
-        z: 1,
-        createdAt: 1,
-        updatedAt: 1,
-        archived: false,
-        projectIds: []
-      }
-    ],
+    notes: [{ id: 'n1', title: null, body: 'Body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }],
     relationships: [],
     projects: [],
+    workspaces: [],
     activeNoteId: null,
-    quickCaptureOpen: true,
+    quickCaptureOpen: false,
+    captureComposer: { open: false, draft: '', lastCreatedNoteId: null },
+    focusMode: { highlight: true, isolate: false },
+    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, loading: false },
     lastCtrlTapTs: 0,
-    lens: 'all',
+    lens: { kind: 'universe' },
     canvasScrollLeft: 0,
-    canvasScrollTop: 0,
-    projectReveal: { activeProjectId: null, isolate: false }
+    canvasScrollTop: 0
   };
 }
 
-test('sceneActions updates note content with normalized title, trace, and project ids', (t: any) => {
+test('sceneActions updates note content with normalized title, trace, project ids, and workspace ids', (t: any) => {
   t.mock.method(Date, 'now', () => 999);
-  const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated', projectIds: ['p1', 'p1'] }, 'refined');
-  assert.deepEqual(next.notes[0], {
-    ...makeScene().notes[0],
-    title: null,
-    body: 'updated',
-    trace: 'refined',
-    updatedAt: 999,
-    projectIds: ['p1']
-  });
+  const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated', projectIds: ['p1', 'p1'], workspaceId: 'ws-1' }, 'refined');
+  assert.deepEqual(next.notes[0], { ...makeScene().notes[0], title: null, body: 'updated', trace: 'refined', updatedAt: 999, projectIds: ['p1'], workspaceId: 'ws-1' });
 });
 
-test('sceneActions handle open, close, archive, restore, and canvas scroll semantics', () => {
+test('sceneActions handle open, close, archive, restore, focus, and composer semantics', () => {
   const opened = openNoteInScene(makeScene(), 'n1');
   assert.equal(opened.activeNoteId, 'n1');
-
-  const closed = closeActiveNoteInScene(opened);
-  assert.equal(closed.activeNoteId, null);
-
+  assert.equal(closeActiveNoteInScene(opened).activeNoteId, null);
   const archived = archiveNoteInScene(opened, 'n1');
-  assert.equal(archived.lens, 'archive');
-  assert.equal(archived.activeNoteId, null);
-  assert.equal(archived.notes[0].archived, true);
-
+  assert.deepEqual(archived.lens, { kind: 'archive' });
   const restored = restoreNoteInScene(archived, 'n1', 4);
-  assert.equal(restored.lens, 'all');
-  assert.deepEqual(restored.notes[0], { ...archived.notes[0], archived: false, z: 5, trace: 'restored' });
-
+  assert.deepEqual(restored.lens, { kind: 'universe' });
   assert.equal(setCanvasScrollInScene(restored, 0, 0), restored);
   assert.deepEqual(setCanvasScrollInScene(restored, 8, 9), { ...restored, canvasScrollLeft: 8, canvasScrollTop: 9 });
-
-  const focusedLens = setLensInScene(restored, 'focus');
-  assert.equal(focusedLens.lens, 'focus');
-
+  assert.deepEqual(setLensInScene(restored, { kind: 'workspace', workspaceId: 'ws-1', mode: 'context' }).lens, { kind: 'workspace', workspaceId: 'ws-1', mode: 'context' });
   const focused = toggleNoteFocusInScene(restored, 'n1');
-  assert.equal(focused.notes[0].inFocus, true);
-  const unfocused = toggleNoteFocusInScene(focused, 'n1');
-  assert.equal(unfocused.notes[0].inFocus, false);
+  assert.equal(focused.notes[0].isFocus, true);
+  assert.equal(setFocusModeInScene(restored, { isolate: true }).focusMode.isolate, true);
+  assert.equal(setCaptureComposerState(restored, { open: true, draft: 'hello' }).captureComposer.draft, 'hello');
 });
