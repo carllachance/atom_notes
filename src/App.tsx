@@ -139,6 +139,7 @@ export function App() {
           selectedNote={activeNote}
           visibleNotesCount={visibleNotes.length}
           activeProject={lensPresentation.activeProject}
+          notes={scene.notes}
           onStateChange={setAIPanelVisibility}
           onModeChange={(mode) => setAIPanel({ mode })}
           onQueryChange={(query) => setAIPanel({ query })}

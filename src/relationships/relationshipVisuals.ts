@@ -4,18 +4,21 @@ export type SemanticRelationshipCategory = 'direct' | 'inferred';
 export type RelationshipVisualCategory = SemanticRelationshipCategory | 'project';
 export type RelationshipVisualEmphasis = 'default' | 'hovered' | 'selected';
 export type ProjectNoteVisualState = 'none' | 'member' | 'subordinate';
+export type RelationshipStructureCategory = 'semantic' | 'structural';
+
+const STRUCTURAL_TYPES = new Set<RelationshipType>(['part_of', 'derived_from']);
 
 export const RELATIONSHIP_VISUAL_TOKENS = {
   semanticPalette: {
-    related: { edge: 'rgba(113, 162, 255, 0.44)', nodeBorder: 'rgba(145, 182, 255, 0.34)', nodeGlow: 'rgba(90, 137, 227, 0.22)', label: 'Related' },
-    references: { edge: 'rgba(177, 132, 255, 0.46)', nodeBorder: 'rgba(206, 173, 255, 0.34)', nodeGlow: 'rgba(146, 103, 225, 0.22)', label: 'Reference' },
-    depends_on: { edge: 'rgba(117, 208, 139, 0.48)', nodeBorder: 'rgba(140, 229, 160, 0.36)', nodeGlow: 'rgba(92, 176, 116, 0.22)', label: 'Depends on' },
-    supports: { edge: 'rgba(132, 211, 194, 0.46)', nodeBorder: 'rgba(159, 229, 214, 0.34)', nodeGlow: 'rgba(95, 184, 163, 0.22)', label: 'Supports' },
-    contradicts: { edge: 'rgba(234, 114, 114, 0.48)', nodeBorder: 'rgba(244, 145, 145, 0.36)', nodeGlow: 'rgba(204, 92, 92, 0.24)', label: 'Contradicts' },
-    part_of: { edge: 'rgba(227, 181, 95, 0.48)', nodeBorder: 'rgba(236, 203, 136, 0.36)', nodeGlow: 'rgba(186, 145, 72, 0.22)', label: 'Part of' },
-    leads_to: { edge: 'rgba(245, 158, 85, 0.46)', nodeBorder: 'rgba(250, 186, 136, 0.34)', nodeGlow: 'rgba(210, 126, 74, 0.22)', label: 'Leads to' },
-    derived_from: { edge: 'rgba(226, 176, 106, 0.46)', nodeBorder: 'rgba(240, 200, 146, 0.34)', nodeGlow: 'rgba(196, 150, 88, 0.22)', label: 'Derived from' }
-  } satisfies Record<RelationshipType, { edge: string; nodeBorder: string; nodeGlow: string; label: string }>,
+    related: { edge: 'rgba(113, 162, 255, 0.44)', nodeBorder: 'rgba(145, 182, 255, 0.34)', nodeGlow: 'rgba(90, 137, 227, 0.22)', label: 'Related', description: 'Conceptual context' },
+    references: { edge: 'rgba(177, 132, 255, 0.46)', nodeBorder: 'rgba(206, 173, 255, 0.34)', nodeGlow: 'rgba(146, 103, 225, 0.22)', label: 'Reference', description: 'Source or provenance link' },
+    depends_on: { edge: 'rgba(117, 208, 139, 0.48)', nodeBorder: 'rgba(140, 229, 160, 0.36)', nodeGlow: 'rgba(92, 176, 116, 0.22)', label: 'Depends on', description: 'Active dependency' },
+    supports: { edge: 'rgba(132, 211, 194, 0.46)', nodeBorder: 'rgba(159, 229, 214, 0.34)', nodeGlow: 'rgba(95, 184, 163, 0.22)', label: 'Supports', description: 'Supporting evidence or momentum' },
+    contradicts: { edge: 'rgba(234, 114, 114, 0.48)', nodeBorder: 'rgba(244, 145, 145, 0.36)', nodeGlow: 'rgba(204, 92, 92, 0.24)', label: 'Contradicts', description: 'Conflict or inconsistency' },
+    part_of: { edge: 'rgba(227, 181, 95, 0.48)', nodeBorder: 'rgba(236, 203, 136, 0.36)', nodeGlow: 'rgba(186, 145, 72, 0.22)', label: 'Part of', description: 'Structural containment' },
+    leads_to: { edge: 'rgba(245, 158, 85, 0.46)', nodeBorder: 'rgba(250, 186, 136, 0.34)', nodeGlow: 'rgba(210, 126, 74, 0.22)', label: 'Leads to', description: 'Directional outcome' },
+    derived_from: { edge: 'rgba(226, 176, 106, 0.46)', nodeBorder: 'rgba(240, 200, 146, 0.34)', nodeGlow: 'rgba(196, 150, 88, 0.22)', label: 'Derived from', description: 'Structural lineage' }
+  } satisfies Record<RelationshipType, { edge: string; nodeBorder: string; nodeGlow: string; label: string; description: string }>,
   semantic: {
     direct: {
       edge: { strokeWidth: 2.2, dasharray: 'none', baseOpacity: 0.28, scoreOpacityRange: 0.2, maxOpacity: 0.56, blurRadius: 7 },
@@ -45,26 +48,40 @@ export function getSemanticRelationshipCategory(relationship: Relationship): Sem
   return relationship.isInferred || relationship.explicitness === 'inferred' ? 'inferred' : 'direct';
 }
 
+export function getRelationshipStructureCategory(relationship: Relationship): RelationshipStructureCategory {
+  return STRUCTURAL_TYPES.has(relationship.type) ? 'structural' : 'semantic';
+}
+
 export function getSemanticRelationshipVisual(relationship: Relationship, score: number, emphasis: RelationshipVisualEmphasis = 'default') {
   const category = getSemanticRelationshipCategory(relationship);
+  const structure = getRelationshipStructureCategory(relationship);
   const palette = RELATIONSHIP_VISUAL_TOKENS.semanticPalette[relationship.type];
   const semanticTokens = RELATIONSHIP_VISUAL_TOKENS.semantic[category];
   const emphasisTokens = RELATIONSHIP_VISUAL_TOKENS.emphasis[emphasis];
+  const directionalOpacityBoost = relationship.directional ? 0.02 : 0;
+  const structuralOpacityPenalty = structure === 'structural' ? 0.03 : 0;
+  const structuralDasharray = structure === 'structural'
+    ? category === 'inferred'
+      ? '2 10'
+      : '1 7'
+    : semanticTokens.edge.dasharray;
 
   return {
     category,
+    structure,
     label: palette.label,
+    description: palette.description,
     edge: {
       stroke: palette.edge,
-      strokeWidth: semanticTokens.edge.strokeWidth,
-      dasharray: semanticTokens.edge.dasharray,
+      strokeWidth: structure === 'structural' ? semanticTokens.edge.strokeWidth + 0.15 : semanticTokens.edge.strokeWidth,
+      dasharray: structuralDasharray,
       blurRadius: semanticTokens.edge.blurRadius,
-      opacity: clamp((semanticTokens.edge.baseOpacity + score * semanticTokens.edge.scoreOpacityRange) * emphasisTokens.edgeOpacityMultiplier, 0, semanticTokens.edge.maxOpacity)
+      opacity: clamp((semanticTokens.edge.baseOpacity + directionalOpacityBoost - structuralOpacityPenalty + score * semanticTokens.edge.scoreOpacityRange) * emphasisTokens.edgeOpacityMultiplier, 0, semanticTokens.edge.maxOpacity)
     },
     node: {
       borderColor: palette.nodeBorder,
       glowColor: palette.nodeGlow,
-      borderStyle: semanticTokens.node.borderStyle,
+      borderStyle: structure === 'structural' && category === 'direct' ? 'dotted' : semanticTokens.node.borderStyle,
       backgroundOpacity: semanticTokens.node.backgroundOpacity * emphasisTokens.nodeOpacityMultiplier,
       labelOpacity: semanticTokens.node.labelOpacity,
       glowOpacity: semanticTokens.node.glowOpacity * emphasisTokens.glowOpacityMultiplier

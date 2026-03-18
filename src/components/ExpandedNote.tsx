@@ -47,21 +47,52 @@ type ExpandedNoteProps = {
 type DragState = { dx: number; dy: number };
 type BodyMode = 'read' | 'edit';
 
+type RelationshipOption = {
+  type: RelationshipType;
+  label: string;
+  group: 'Core context' | 'Operational flow' | 'Structure';
+  description: string;
+};
+
 const DEFAULT_PROJECT_DRAFT: ProjectDraft = { key: '', name: '', color: '#7aa2f7', description: '' };
 const DEFAULT_WORKSPACE_DRAFT: WorkspaceDraft = { key: '', name: '', color: '#5fbf97', description: '' };
-const RELATIONSHIP_OPTIONS: Array<{ type: RelationshipType; label: string }> = [
-  { type: 'related', label: 'Related' },
-  { type: 'references', label: 'References' },
-  { type: 'depends_on', label: 'Depends on' },
-  { type: 'supports', label: 'Supports' },
-  { type: 'contradicts', label: 'Contradicts' },
-  { type: 'part_of', label: 'Part of' },
-  { type: 'leads_to', label: 'Leads to' },
-  { type: 'derived_from', label: 'Derived from' }
+const RELATIONSHIP_OPTIONS: RelationshipOption[] = [
+  { type: 'related', label: 'Related', group: 'Core context', description: 'Shared concept or nearby idea.' },
+  { type: 'references', label: 'References', group: 'Core context', description: 'Source, citation, or supporting artifact.' },
+  { type: 'depends_on', label: 'Depends on', group: 'Operational flow', description: 'This note needs the other note first.' },
+  { type: 'supports', label: 'Supports', group: 'Operational flow', description: 'Reinforces or enables the other note.' },
+  { type: 'contradicts', label: 'Contradicts', group: 'Operational flow', description: 'Signals conflict or inconsistency.' },
+  { type: 'leads_to', label: 'Leads to', group: 'Operational flow', description: 'Points toward the next likely result.' },
+  { type: 'part_of', label: 'Part of', group: 'Structure', description: 'Places this note inside a larger structure.' },
+  { type: 'derived_from', label: 'Derived from', group: 'Structure', description: 'Captures provenance or lineage.' }
 ];
+
+const RELATIONSHIP_FILTER_OPTIONS = [{ type: 'all' as const, label: 'All' }, ...RELATIONSHIP_OPTIONS.map(({ type, label }) => ({ type, label }))];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function formatRelationshipType(type: RelationshipType) {
+  return RELATIONSHIP_OPTIONS.find((option) => option.type === type)?.label ?? type.replace(/_/g, ' ');
+}
+
+function describeFilterState(activeFilter: 'all' | RelationshipType, relationshipTotals: Record<RelationshipType, number>, relationshipsLength: number) {
+  if (activeFilter === 'all') {
+    return `Showing all visible relationships (${relationshipsLength}). Hover a type to preview that local slice, or click to keep it active.`;
+  }
+
+  const count = relationshipTotals[activeFilter] ?? 0;
+  return `${formatRelationshipType(activeFilter)} is pinned (${count}). The background web and the modal list now stay aligned to that one explainable connection type.`;
+}
+
+function describeRelationship(relationship: VisibleRelationship) {
+  const parts = [formatRelationshipType(relationship.type)];
+  if (['depends_on', 'supports', 'leads_to', 'part_of', 'derived_from', 'references'].includes(relationship.type)) parts.push('directional');
+  if (['part_of', 'derived_from'].includes(relationship.type)) parts.push('structural');
+  parts.push(relationship.explicitness === 'inferred' ? 'inferred' : 'explicit');
+  if (relationship.explicitness === 'inferred') parts.push(relationship.state === 'proposed' ? 'awaiting confirmation' : 'confirmed inference');
+  return parts.join(' · ');
 }
 
 export function ExpandedNote({
@@ -104,6 +135,14 @@ export function ExpandedNote({
   const panelRef = useRef<HTMLElement | null>(null);
 
   const linkableNotes = useMemo(() => (note ? notes.filter((candidate) => candidate.id !== note.id && !candidate.archived) : []), [note, notes]);
+  const groupedRelationshipOptions = useMemo(() => {
+    return RELATIONSHIP_OPTIONS.reduce<Record<RelationshipOption['group'], RelationshipOption[]>>((groups, option) => {
+      groups[option.group] ??= [];
+      groups[option.group].push(option);
+      return groups;
+    }, { 'Core context': [], 'Operational flow': [], 'Structure': [] });
+  }, []);
+  const selectedRelationshipOption = RELATIONSHIP_OPTIONS.find((option) => option.type === linkType) ?? RELATIONSHIP_OPTIONS[0];
 
   useEffect(() => {
     setPosition({ x: 0, y: 0 });
@@ -140,6 +179,7 @@ export function ExpandedNote({
   if (!note) return null;
   const noteProjectIds = new Set(note.projectIds);
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
+  const filterState = describeFilterState(activeFilter, relationshipTotals, relationships.length);
 
   return (
     <section className="expanded-note-shell">
@@ -159,19 +199,27 @@ export function ExpandedNote({
               {noteWorkspace ? (
                 <button className={`project-pill workspace-pill ${activeWorkspaceLensId === noteWorkspace.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: noteWorkspace.color }} onClick={() => onSetWorkspaceLens(activeWorkspaceLensId === noteWorkspace.id ? null : noteWorkspace.id)}>{noteWorkspace.key}</button>
               ) : <span className="workspace-inline-label">No workspace</span>}
+              {isFocus ? <span className="focus-badge focus-badge--persistent">Focus</span> : null}
             </div>
           </div>
           <button className="ghost-button" onClick={onClose}>Back to canvas</button>
         </header>
 
         <div className="relationship-strip relationship-strip-grid">
-          <button className={activeFilter === 'all' ? 'active' : ''} onClick={() => onSetFilter('all')}>All <span>{relationships.length}</span></button>
-          {RELATIONSHIP_OPTIONS.map(({ type, label }) => (
-            <button key={type} className={activeFilter === type ? 'active' : ''} onMouseEnter={() => onSetFilter(type)} onMouseLeave={() => onSetFilter('all')} onClick={() => onSetFilter(activeFilter === type ? 'all' : type)}>
-              {label} <span>{relationshipTotals[type] ?? 0}</span>
+          {RELATIONSHIP_FILTER_OPTIONS.map(({ type, label }) => (
+            <button
+              key={type}
+              className={activeFilter === type ? 'active' : ''}
+              onMouseEnter={() => onSetFilter(type)}
+              onMouseLeave={() => onSetFilter(activeFilter)}
+              onClick={() => onSetFilter(activeFilter === type ? 'all' : type)}
+            >
+              {label} <span>{type === 'all' ? relationships.length : relationshipTotals[type] ?? 0}</span>
             </button>
           ))}
         </div>
+
+        <p className="filter-state-copy">{filterState}</p>
 
         <input aria-label="Note title" value={note.title ?? ''} onChange={(event) => onChange(note.id, { title: event.target.value })} />
 
@@ -231,10 +279,11 @@ export function ExpandedNote({
 
         <section className="relations-list" aria-label="Relations">
           {relationships.length ? relationships.map((relationship) => (
-            <div key={relationship.id} className="relation-row">
+            <div key={relationship.id} className={`relation-row relation-row--${relationship.explicitness} relation-row--${relationship.type}`}>
               <button className="relation-main" onClick={() => onOpenRelated(relationship.targetId, relationship.id)}>
                 <span className="relation-title">{relationship.targetTitle}</span>
-                <small>{relationship.type.replace(/_/g, ' ')} · {relationship.explicitness === 'inferred' ? relationship.explanation : 'Explicit link'}</small>
+                <small>{describeRelationship(relationship)}</small>
+                <p className="relation-explanation">{relationship.explicitness === 'inferred' ? relationship.explanation : 'Explicit link created in the modal.'}</p>
               </button>
               {relationship.explicitness === 'inferred' && relationship.state === 'proposed' ? <button className="relation-confirm" onClick={() => onConfirmRelationship(relationship.id)}>Confirm</button> : null}
             </div>
@@ -244,15 +293,39 @@ export function ExpandedNote({
         <div className="link-compose">
           <button className="ghost-button" onClick={() => setShowLinkComposer((open) => !open)}>{showLinkComposer ? 'Close link tools' : 'Link note'}</button>
           {showLinkComposer ? (
-            <div className="link-row">
-              <select value={linkTargetId} onChange={(event) => setLinkTargetId(event.target.value)}>
-                <option value="">Select a note…</option>
-                {linkableNotes.map((candidate) => <option key={candidate.id} value={candidate.id}>{getCompactDisplayTitle(candidate)}</option>)}
-              </select>
-              <select value={linkType} onChange={(event) => setLinkType(event.target.value as RelationshipType)}>
-                {RELATIONSHIP_OPTIONS.map(({ type, label }) => <option key={type} value={type}>{label}</option>)}
-              </select>
-              <button onClick={() => { if (!linkTargetId) return; onCreateExplicitLink(note.id, linkTargetId, linkType); setLinkTargetId(''); setShowLinkComposer(false); }}>Add</button>
+            <div className="link-composer-card">
+              <div className="link-row">
+                <select value={linkTargetId} onChange={(event) => setLinkTargetId(event.target.value)}>
+                  <option value="">Select a note…</option>
+                  {linkableNotes.map((candidate) => <option key={candidate.id} value={candidate.id}>{getCompactDisplayTitle(candidate)}</option>)}
+                </select>
+                <select value={linkType} onChange={(event) => setLinkType(event.target.value as RelationshipType)}>
+                  {Object.entries(groupedRelationshipOptions).map(([group, options]) => (
+                    <optgroup key={group} label={group}>
+                      {options.map(({ type, label }) => <option key={type} value={type}>{label}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+                <button onClick={() => { if (!linkTargetId) return; onCreateExplicitLink(note.id, linkTargetId, linkType); setLinkTargetId(''); setShowLinkComposer(false); }}>Add</button>
+              </div>
+              <p className="link-compose-description">
+                <strong>{selectedRelationshipOption.label}</strong> · {selectedRelationshipOption.description}
+              </p>
+              <div className="link-compose-groups" aria-label="Relationship type guide">
+                {Object.entries(groupedRelationshipOptions).map(([group, options]) => (
+                  <section key={group} className="link-compose-group">
+                    <strong>{group}</strong>
+                    <ul>
+                      {options.map((option) => (
+                        <li key={option.type}>
+                          <span>{option.label}</span>
+                          <small>{option.description}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>

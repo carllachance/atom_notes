@@ -26,6 +26,7 @@ type NoteCardProps = {
 };
 
 function getVisualState(note: NoteCardModel, focusHighlightEnabled: boolean, flags: { isActive: boolean; revealActive: boolean; ambientPulse: boolean; ambientGlowLevel: number; recentlyClosed: boolean; revealMatched: boolean; ambientRelated: boolean; isHovered: boolean; }) {
+  const isFocus = Boolean(note.isFocus ?? note.inFocus);
   if (note.archived) return 'archived';
   if (flags.isActive) return 'active';
   if (flags.revealActive) return 'reveal-active';
@@ -33,7 +34,8 @@ function getVisualState(note: NoteCardModel, focusHighlightEnabled: boolean, fla
   if (flags.recentlyClosed) return 'recent';
   if (flags.revealMatched) return 'reveal-match';
   if (flags.ambientRelated && flags.ambientGlowLevel > 0.01) return 'ambient-related';
-  if (focusHighlightEnabled && (note.isFocus ?? note.inFocus)) return 'focus';
+  if (focusHighlightEnabled && isFocus) return 'focus-highlight';
+  if (isFocus) return 'focus';
   if (flags.isHovered) return 'hover';
   return 'default';
 }
@@ -73,7 +75,7 @@ export function NoteCard({ note, meta, focusHighlightEnabled, recentlyClosed, am
       }}
     >
       <div className="note-card-badges">
-        {isFocus ? <span className="focus-badge">Focus</span> : null}
+        {isFocus ? <span className="focus-badge focus-badge--persistent">Focus</span> : null}
         {note.intent ? <span className="context-badge">{note.intent}</span> : null}
         {meta?.projectState === 'member' && activeProjectLabel ? <span className="project-badge">{activeProjectLabel}</span> : null}
         {meta?.contextLabel ? <span className="context-badge">{meta.contextLabel}</span> : null}
