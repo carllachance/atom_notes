@@ -1,11 +1,12 @@
-import { createNote, normalizeNote, now } from '../notes/noteModel';
+import { normalizeNote, now } from '../notes/noteModel';
 import { normalizeProject } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import { AIInteractionMode, ActionSuggestion, AIPanelViewState, CaptureComposerState, FocusMode, InsightTimelineEntry, Lens, Relationship, RelationshipType, SceneState, Workspace } from '../types';
+import { createDemoScene } from '../data/demoScene';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
-import { createDefaultLens, normalizeLens } from './lens';
+import { normalizeLens } from './lens';
 
-export const SCENE_KEY = 'atom-notes.scene.v5';
+export const SCENE_KEY = 'atom-notes.scene.v6';
 
 function normalizeRelationshipType(raw: unknown): RelationshipType {
   switch (raw) {
@@ -136,27 +137,23 @@ function normalizeAIPanel(raw: Partial<AIPanelViewState> | undefined): AIPanelVi
   };
 }
 
+function isLegacyWelcomeScene(scene: Pick<SceneState, 'notes' | 'relationships' | 'projects' | 'workspaces'>) {
+  return (
+    scene.notes.length === 1 &&
+    scene.relationships.length === 0 &&
+    scene.projects.length === 0 &&
+    scene.workspaces.length === 0 &&
+    scene.notes[0]?.title === 'Welcome to Atom Notes' &&
+    scene.notes[0]?.body === 'Drag this card around.'
+  );
+}
+
 export function loadScene(): SceneState {
-  const fallback: SceneState = {
-    notes: [createNote('Welcome to Atom Notes\nDrag this card around.', 1)],
-    relationships: [],
-    projects: [],
-    workspaces: [],
-    insightTimeline: [],
-    isDragging: false,
-    activeNoteId: null,
-    quickCaptureOpen: false,
-    captureComposer: { open: true, draft: '', lastCreatedNoteId: null },
-    focusMode: { highlight: true, isolate: false },
-    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, transcript: [], loading: false },
-    lastCtrlTapTs: 0,
-    lens: createDefaultLens(),
-    canvasScrollLeft: 0,
-    canvasScrollTop: 0
-  };
+  const fallback = createDemoScene();
 
   const raw =
     localStorage.getItem(SCENE_KEY) ??
+    localStorage.getItem('atom-notes.scene.v5') ??
     localStorage.getItem('atom-notes.scene.v4') ??
     localStorage.getItem('atom-notes.scene.v3') ??
     localStorage.getItem('atom-notes.scene.v2') ??
@@ -198,7 +195,7 @@ export function loadScene(): SceneState {
       ? parsed.activeNoteId
       : null;
 
-    return {
+    const normalizedScene = {
       notes: normalizedNotes,
       relationships: refreshInferredRelationships(normalizedNotes, normalizedRelationships as Relationship[], now()),
       projects: normalizedProjects,
@@ -214,7 +211,9 @@ export function loadScene(): SceneState {
       lens: requestedLens,
       canvasScrollLeft: Number(parsed.canvasScrollLeft ?? 0),
       canvasScrollTop: Number(parsed.canvasScrollTop ?? 0)
-    };
+    } satisfies SceneState;
+
+    return isLegacyWelcomeScene(normalizedScene) ? fallback : normalizedScene;
   } catch {
     return fallback;
   }

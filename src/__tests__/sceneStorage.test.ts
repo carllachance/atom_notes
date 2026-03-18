@@ -1,5 +1,6 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { demoNotes, demoRelationships, demoWorkspaces } from '../data/demoSeed';
 import { loadScene, saveScene, SCENE_KEY } from '../scene/sceneStorage';
 import type { SceneState } from '../types';
 
@@ -20,14 +21,32 @@ beforeEach((t: any) => {
   t.mock.method(globalThis.crypto, 'randomUUID', () => 'uuid-1');
 });
 
-test('sceneStorage loads fallback scene when no persisted data exists', () => {
+test('sceneStorage loads the synthetic demo scene when no persisted data exists', () => {
   const scene = loadScene();
-  assert.equal(scene.notes.length, 1);
-  assert.equal(scene.notes[0].title, 'Welcome to Atom Notes');
-  assert.equal(scene.notes[0].body, 'Drag this card around.');
+  assert.equal(scene.notes.length, demoNotes.length);
+  assert.equal(scene.workspaces.length, demoWorkspaces.length);
+  assert.equal(scene.notes[0].title, 'Daily Fed Report Overview');
+  assert.match(scene.notes[0].body, /Reference portal/);
+  assert.equal(scene.relationships.filter((relationship) => relationship.explicitness === 'explicit').length, demoRelationships.length);
   assert.deepEqual(scene.captureComposer, { open: true, draft: '', lastCreatedNoteId: null });
   assert.deepEqual(scene.focusMode, { highlight: true, isolate: false });
   assert.equal(scene.aiPanel.state, 'hidden');
+});
+
+test('sceneStorage upgrades the legacy welcome seed to the synthetic demo scene', () => {
+  localStorage.setItem(
+    'atom-notes.scene.v5',
+    JSON.stringify({
+      notes: [{ id: 'welcome', title: 'Welcome to Atom Notes', body: 'Drag this card around.' }],
+      relationships: [],
+      projects: [],
+      workspaces: []
+    })
+  );
+
+  const scene = loadScene();
+  assert.equal(scene.notes.length, demoNotes.length);
+  assert.equal(scene.notes.some((note) => note.id === 'welcome'), false);
 });
 
 test('sceneStorage migrates legacy project reveal state into a formal project lens and persists workspaces', () => {
