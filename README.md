@@ -1,95 +1,83 @@
-# Atomic Notes (atom_notes)
+Atomic Notes (atom_notes)
 
-A local-first, graph-aware note system where notes are living artifacts—not static text. Each note can evolve in structure, context, and meaning over time, while preserving its full history and relationships.
+From complexity to clarity.
 
+Atomic Notes is a local-first workspace where ideas don’t sit in folders—they connect, evolve, and surface themselves when they matter.
 
----
-
-Core Idea
-
-Traditional tools fragment work:
-
-Notes (ideas)
-
-Tasks (execution)
-
-Documentation (knowledge)
-
-
-Atomic Notes treats all of these as the same underlying object: a note that can shift roles depending on context.
-
-> A note is not a file. It is a node in a system of thought.
-
-
+It’s designed for people who think in threads, not files.
 
 
 ---
 
-What Makes This Different
+The Vision
 
-1. Notes as Atoms
+Most tools force you to decide too early:
 
-Each note is a small, self-contained unit:
+Is this a note?
 
-Text, checklist, code, links, attachments
+A task?
 
-Embedded AI chat scoped to the note
-
-Persistent context
+A document?
 
 
-Notes can belong to multiple "molecules" (contexts, workflows, or topics) simultaneously.
+Atomic Notes removes that decision.
+
+Everything starts as a note—and grows into whatever it needs to become.
+
+> A note can become a task, a project, a research hub, or a decision trail—without ever losing its history.
 
 
----
-
-2. Relationships Are First-Class
-
-Notes are connected through explicit and inferred relationships:
-
-Source → target links
-
-Contextual associations ("related to", "derived from", "impacts")
-
-Time-aware relevance (recent vs stale)
-
-
-The system ranks and surfaces relationships dynamically rather than relying on folders.
 
 
 ---
 
-3. Graph-Driven Discovery
+What It Feels Like
 
-Instead of navigating folders, you query the system:
+You open the app and start typing:
 
-Concepts ("Reg W")
-
-Actions ("submit")
-
-Inputs ("fed report")
+> “daily fed report”
 
 
-The system responds by constructing a living graph view of relevant notes and relationships.
+
+Instead of a list of files, the system responds with a living view:
+
+Relevant notes appear
+
+Connections form between them
+
+Patterns emerge visually
 
 
----
+You don’t go looking for information.
 
-4. State Without Fragmentation
-
-A note can evolve without being recreated:
-
-Note → Task → Project
-
-Research → Decision → Execution
-
-
-All history, attachments, and AI context remain intact.
+It assembles around your intent.
 
 
 ---
 
-5. Embedded AI Per Note
+Core Experience
+
+Capture Without Friction
+
+Quickly drop anything into the system:
+
+Thoughts
+
+Links
+
+Code snippets
+
+Checklists
+
+Attachments
+
+
+No forms. No structure required.
+
+
+---
+
+Notes That Think With You
 
 Each note includes its own AI context:
 
@@ -97,96 +85,109 @@ Ask questions about the note
 
 Analyze attachments and links
 
-Preserve reasoning history locally
+Keep reasoning tied to the note itself
 
 
-This avoids the typical "stateless chat" problem.
+Your thinking stays grounded and persistent, not scattered across chats.
 
 
 ---
 
-Example Use Cases
+Relationships Over Folders
 
-Research Hopper
+Instead of organizing notes manually, the system builds connections:
 
-Quickly collect links (articles, videos) into notes and triage them:
+What relates to this?
 
-Open → evaluate → discard or enrich
+What depends on this?
 
-Keep only what matters
-
-
-Regulatory / Procedure Analysis
-
-Ingest documents (e.g., policies, eCFR)
-
-Break into atomic notes
-
-Track relationships and downstream impacts
+What changed because of this?
 
 
-Workflow Intelligence
+These relationships are:
 
-Map procedures into connected notes
+Explicit (you define them)
 
-Identify automation opportunities
+Inferred (the system suggests them)
 
-Surface dependencies and risks
-
-
-Personal Knowledge System
-
-Replace scattered notes, bookmarks, and docs
-
-Build a connected knowledge graph over time
+Time-aware (what’s relevant now vs what’s fading)
 
 
 
 ---
 
-Architecture (High-Level)
+A Living Graph, Not a Static List
 
-Frontend
+Your knowledge isn’t stored—it’s continuously shaped.
 
-Desktop app (Tauri)
+Important ideas surface
 
-Interactive canvas + graph visualization
+Old context fades but never disappears
 
-Note-centric UI with embedded AI
-
-
-Data Model
-
-Notes (atoms)
-
-Relationships (edges)
-
-Workspaces / contexts (optional grouping)
+Hidden connections become visible
 
 
-Core Behaviors
+The system doesn’t just store information.
 
-Relationship scoring + ranking
+It helps you see it.
 
-Stale vs active signal handling
 
-Deterministic graph curation (bounded node count)
+---
+
+Why It Exists
+
+Work today is fragmented:
+
+Notes live in one place
+
+Tasks in another
+
+Research somewhere else
+
+
+This creates constant context switching.
+
+Atomic Notes is an attempt to unify all of that into a single object:
+
+> A living work artifact that carries its content, context, relationships, and reasoning together.
+
 
 
 
 ---
 
-Key Design Principles
+Example Moments
 
-Local-first: Your data stays with you
+“What was I working on here?”
 
-Composable: Small units combine into larger meaning
+Open a note → see everything connected → instantly regain context.
 
-Explainable: Relationships and rankings are inspectable
+“Does this impact anything?”
 
-Low friction: Capture should be immediate
+Add new information → relationships surface downstream effects.
 
-Calm UI: Reduce visual noise, emphasize clarity
+“Where did this idea come from?”
+
+Trace backwards through connected notes and decisions.
+
+“What actually matters right now?”
+
+The system prioritizes active, relevant connections automatically.
+
+
+---
+
+Design Principles
+
+Local-first → your data stays with you
+
+Low friction → capture should feel effortless
+
+Explainable → relationships are visible, not hidden
+
+Composable → small ideas build into larger systems
+
+Calm by default → clarity over visual noise
 
 
 
@@ -194,17 +195,17 @@ Calm UI: Reduce visual noise, emphasize clarity
 
 Current Status
 
-This project is under active development.
+Active build.
 
-Recent areas of focus:
+Recent focus areas:
 
-Graph ranking and stale relationship handling
+Graph clarity and ranking
 
-Capture flow simplification
+Reducing capture friction
 
-UI clarity and reduced cognitive load
+Simplifying UI language and interaction
 
-Deterministic graph rendering
+Making relationships feel intuitive, not technical
 
 
 
@@ -214,7 +215,7 @@ Getting Started
 
 Prerequisites
 
-Node.js (LTS recommended)
+Node.js (LTS)
 
 npm or pnpm
 
@@ -227,58 +228,36 @@ git clone https://github.com/your-username/atom_notes.git
 cd atom_notes
 npm install
 
-Run (Tauri Dev)
+Run
 
 npm run tauri dev
 
-> Note: On Linux, you may need system dependencies like webkit2gtk and javascriptcoregtk installed.
 
+---
+
+Direction
+
+Where this is heading:
+
+Query-first interface (start with intent, not location)
+
+Automated document ingestion and atomization
+
+Stronger relationship inference
+
+Visual exploration that scales with complexity
+
+Multi-agent workflows for analysis and enrichment
 
 
 
 ---
 
-Roadmap (Directional)
+Closing Thought
 
-[ ] Graph query-first entry experience
+Most tools help you store more.
 
-[ ] Document ingestion pipeline (docx, PDF, web)
-
-[ ] Automated atomization + relationship extraction
-
-[ ] Visual relationship editing tools
-
-[ ] Time-based insights (drift, staleness, resurfacing)
-
-[ ] Multi-agent workflows for analysis and enrichment
-
-
-
----
-
-Contributing
-
-This is currently a personal project, but feedback and ideas are welcome.
-
-If you’re exploring the repo:
-
-Focus on core primitives (notes + relationships)
-
-Avoid premature abstraction
-
-Keep UI decisions grounded in clarity over novelty
-
-
-
----
-
-Philosophy
-
-> From complexity to clarity.
-
-
-
-The goal is not to store more information, but to make relationships visible so that understanding emerges naturally.
+Atomic Notes is about helping you understand more.
 
 
 ---
