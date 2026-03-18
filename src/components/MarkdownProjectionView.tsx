@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, type ReactNode } from 'react';
 import { InlineToken, parseMarkdownProjection } from '../markdownProjection';
 
 type MarkdownProjectionViewProps = {
@@ -18,6 +18,44 @@ function renderInline(tokens: InlineToken[]) {
     }
     return <Fragment key={`t-${index}`}>{token.value}</Fragment>;
   });
+}
+
+type CheckboxRowProps = {
+  checked: boolean;
+  disabled: boolean;
+  children: ReactNode;
+  onToggle?: (checked: boolean) => void;
+};
+
+function CheckboxRow({ checked, disabled, children, onToggle }: CheckboxRowProps) {
+  const content = (
+    <>
+      <span className="markdown-checkbox-indicator" aria-hidden="true">
+        <span className="markdown-checkbox-indicator-mark">{checked ? '✓' : ''}</span>
+      </span>
+      <span className="markdown-checkbox-copy">{children}</span>
+    </>
+  );
+
+  if (disabled) {
+    return (
+      <div className="markdown-checkbox-row markdown-checkbox-row--static" role="checkbox" aria-checked={checked}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="markdown-checkbox-row markdown-checkbox-row--interactive"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={() => onToggle?.(!checked)}
+    >
+      {content}
+    </button>
+  );
 }
 
 export function MarkdownProjectionView({ source, onToggleCheckbox }: MarkdownProjectionViewProps) {
@@ -54,14 +92,13 @@ export function MarkdownProjectionView({ source, onToggleCheckbox }: MarkdownPro
               {block.items.map((item, itemIndex) => (
                 <li key={`i-${itemIndex}`} data-has-checkbox={item.checked !== null}>
                   {item.checked !== null ? (
-                    <label className="markdown-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={item.checked}
-                        onChange={(event) => onToggleCheckbox?.(item.lineIndex, event.target.checked)}
-                      />
-                      <span>{renderInline(item.tokens)}</span>
-                    </label>
+                    <CheckboxRow
+                      checked={item.checked}
+                      disabled={!onToggleCheckbox}
+                      onToggle={(checked) => onToggleCheckbox?.(item.lineIndex, checked)}
+                    >
+                      {renderInline(item.tokens)}
+                    </CheckboxRow>
                   ) : (
                     <span>{renderInline(item.tokens)}</span>
                   )}
