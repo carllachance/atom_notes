@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { confirmRelationshipInScene, createExplicitRelationshipInScene, traverseToRelatedInScene } from '../relationships/relationshipActions';
+import { confirmRelationshipInScene, createExplicitRelationshipInScene, restoreRelationshipInScene, traverseToRelatedInScene, updateRelationshipInScene } from '../relationships/relationshipActions';
 import type { SceneState } from '../types';
 
 function baseScene(): SceneState {
@@ -44,4 +44,46 @@ test('relationshipActions confirms and traverses relationships deterministically
   const traversed = traverseToRelatedInScene(confirmed, 'b', 'rel-x');
   assert.equal(traversed.activeNoteId, 'b');
   assert.equal(traversed.relationships[0].lastActiveAt, 200);
+});
+
+test('relationshipActions updates a relationship in place and reconciles inferred duplicates', (t: any) => {
+  t.mock.method(Date, 'now', () => 300);
+  const scene = {
+    ...baseScene(),
+    relationships: [
+      { id: 'rel-edit', fromId: 'a', toId: 'b', type: 'references' as const, state: 'confirmed' as const, explicitness: 'inferred' as const, directional: true, confidence: 0.8, isInferred: true, explanation: 'Shared source', heuristicSupported: true, createdAt: 10, lastActiveAt: 10 },
+      { id: 'rel-dup', fromId: 'a', toId: 'b', type: 'related' as const, state: 'proposed' as const, explicitness: 'inferred' as const, directional: false, confidence: 0.5, isInferred: true, explanation: 'Shared keyword', heuristicSupported: true, createdAt: 11, lastActiveAt: 11 }
+    ]
+  };
+
+  const updated = updateRelationshipInScene(scene, 'rel-edit', 'depends_on', 'b', 'a');
+  assert.equal(updated.relationships.length, 1);
+  assert.deepEqual(updated.relationships[0], {
+    ...scene.relationships[0],
+    fromId: 'b',
+    toId: 'a',
+    type: 'depends_on',
+    directional: true,
+    state: 'confirmed',
+    explicitness: 'explicit',
+    confidence: 1,
+    isInferred: false,
+    explanation: 'Edited in the relationship inspector.',
+    heuristicSupported: true,
+    lastActiveAt: 300
+  });
+});
+
+test('relationshipActions can restore the prior relationship snapshot for undo', (t: any) => {
+  t.mock.method(Date, 'now', () => 400);
+  const editedScene = {
+    ...baseScene(),
+    relationships: [
+      { id: 'rel-edit', fromId: 'b', toId: 'a', type: 'depends_on' as const, state: 'confirmed' as const, explicitness: 'explicit' as const, directional: true, confidence: 1, isInferred: false, explanation: 'Edited in the relationship inspector.', heuristicSupported: true, createdAt: 10, lastActiveAt: 300 }
+    ]
+  };
+  const snapshot = { id: 'rel-edit', fromId: 'a', toId: 'b', type: 'references' as const, state: 'confirmed' as const, explicitness: 'inferred' as const, directional: true, confidence: 0.8, isInferred: true, explanation: 'Shared source', heuristicSupported: true, createdAt: 10, lastActiveAt: 10 };
+
+  const restored = restoreRelationshipInScene(editedScene, snapshot);
+  assert.equal(restored.relationships.some((relationship) => relationship.id === 'rel-edit' && relationship.type === 'references' && relationship.explicitness === 'inferred'), true);
 });

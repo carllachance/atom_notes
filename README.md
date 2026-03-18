@@ -43,6 +43,12 @@ Modes:
 - Summarize
 - Act
 
+The Insights surface now behaves as a slim rail:
+- one toggle expands/collapses the rail
+- compact mode buttons stay visible when collapsed
+- labels appear on hover or stay inline when expanded
+- active mode remains visually distinct without adding a second row of state controls
+
 ## Core domain
 
 ### Notes
@@ -73,6 +79,12 @@ Relationships preserve:
 - explanation
 - recency
 
+When a note is open:
+- the modal uses a content-first layout on wide screens
+- relationships stay summary-first in `All` view
+- selecting a relationship type reveals only that slice
+- in-place relationship editing preserves the existing relationship record and supports undo
+
 ### Lenses
 Persisted lenses:
 - `universe`
@@ -94,9 +106,10 @@ Lens rules are centralized in selector/state logic so the graph stays singular w
 - async note intent / project / relationship suggestion inference
 - expanded relationship ontology and visuals
 - Focus highlight + isolate controls
-- right-side Insights panel with context header and mode switching
+- slim right-side Insights rail with compact mode switching
 - graph-first Connected Insights service with references and action chips
 - confirmation flow for mutating AI actions
+- content-first note detail layout with summary-first relationship disclosure
 
 ## Development
 

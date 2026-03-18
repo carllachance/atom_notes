@@ -5,7 +5,7 @@ import { createNote, now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
 import { getProjectsForNote } from '../projects/projectSelectors';
 import { getRankedRelationshipsForNote, getRelationshipTargetNoteId, refreshInferredRelationships } from '../relationshipLogic';
-import { ActionSuggestion, AIInteractionMode, RelationshipType, SceneState } from '../types';
+import { ActionSuggestion, AIInteractionMode, Relationship, RelationshipType, SceneState } from '../types';
 import { getWorkspaceForNote } from '../workspaces/workspaceSelectors';
 import { loadScene, saveScene } from './sceneStorage';
 import { getLensPresentation } from './lens';
@@ -29,6 +29,8 @@ export function useSceneController() {
   const [viewportCenter, setViewportCenter] = useState({ x: 540, y: 360 });
   const [highlightedNoteIds, setHighlightedNoteIds] = useState<string[]>([]);
   const [pendingAction, setPendingAction] = useState<ActionSuggestion | null>(null);
+  const [inspectedRelationshipId, setInspectedRelationshipId] = useState<string | null>(null);
+  const [lastRelationshipEdit, setLastRelationshipEdit] = useState<{ before: Relationship; afterId: string } | null>(null);
 
   const lensPresentation = useMemo(() => getLensPresentation(scene), [scene]);
   const focusFilteredVisibleNotes = useMemo(() => {
@@ -83,10 +85,18 @@ export function useSceneController() {
         explicitness: relationship.explicitness,
         state: relationship.state,
         explanation: relationship.explanation,
-        heuristicSupported: relationship.heuristicSupported
+        heuristicSupported: relationship.heuristicSupported,
+        fromId: relationship.fromId,
+        toId: relationship.toId,
+        directional: relationship.directional
       };
     });
   }, [activeNote, activeRelationships, scene.notes]);
+
+  const inspectedRelationship = useMemo(
+    () => scene.relationships.find((relationship) => relationship.id === inspectedRelationshipId) ?? null,
+    [inspectedRelationshipId, scene.relationships]
+  );
 
   const ambient = useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships: scene.relationships, allNotes: scene.notes });
 
@@ -112,6 +122,23 @@ export function useSceneController() {
   useEffect(() => {
     setActiveRevealMatchIndex((index) => (lensPresentation.revealMatchIds.length === 0 ? 0 : index % lensPresentation.revealMatchIds.length));
   }, [lensPresentation.revealMatchIds]);
+
+  useEffect(() => {
+    if (!activeNote) {
+      setInspectedRelationshipId(null);
+      return;
+    }
+
+    if (
+      inspectedRelationshipId &&
+      !scene.relationships.some(
+        (relationship) =>
+          relationship.id === inspectedRelationshipId && (relationship.fromId === activeNote.id || relationship.toId === activeNote.id)
+      )
+    ) {
+      setInspectedRelationshipId(null);
+    }
+  }, [activeNote, inspectedRelationshipId, scene.relationships]);
 
   const runAsyncInference = useCallback((noteId: string) => {
     const note = scene.notes.find((candidate) => candidate.id === noteId);
@@ -242,6 +269,30 @@ export function useSceneController() {
     mutations.setCaptureComposer({ lastCreatedNoteId: null, open: false, draft: '' });
   }, [mutations, scene.captureComposer.lastCreatedNoteId]);
 
+  const inspectRelationship = useCallback((relationshipId: string) => {
+    setInspectedRelationshipId(relationshipId);
+  }, []);
+
+  const closeRelationshipInspector = useCallback(() => {
+    setInspectedRelationshipId(null);
+  }, []);
+
+  const updateRelationship = useCallback((relationshipId: string, type: RelationshipType, fromId: string, toId: string) => {
+    const previous = scene.relationships.find((relationship) => relationship.id === relationshipId);
+    if (!previous) return;
+
+    mutations.updateRelationship(relationshipId, type, fromId, toId);
+    setLastRelationshipEdit({ before: previous, afterId: relationshipId });
+    setInspectedRelationshipId(relationshipId);
+  }, [mutations, scene.relationships]);
+
+  const undoRelationshipEdit = useCallback(() => {
+    if (!lastRelationshipEdit) return;
+    mutations.restoreRelationship(lastRelationshipEdit.before);
+    setInspectedRelationshipId(lastRelationshipEdit.before.id);
+    setLastRelationshipEdit(null);
+  }, [lastRelationshipEdit, mutations]);
+
   const openAIReference = useCallback((noteId: string) => {
     setHighlightedNoteIds([noteId]);
     mutations.onOpenNote(noteId);
@@ -294,6 +345,8 @@ export function useSceneController() {
     highlightedNoteIds,
     hoveredNoteId: ambient.hoveredNoteId,
     relationshipFilter,
+    inspectedRelationship,
+    canUndoRelationshipEdit: Boolean(lastRelationshipEdit),
     recentlyClosedNoteId: ambient.recentlyClosedNoteId,
     rankedRelationships,
     relationshipPanelItems,
@@ -308,6 +361,8 @@ export function useSceneController() {
     pendingAction,
     setPendingAction,
     setRelationshipFilter,
+    inspectRelationship,
+    closeRelationshipInspector,
     closeActiveNote: mutations.closeActiveNote,
     updateNote: mutations.updateNote,
     bringToFront: mutations.bringToFront,
@@ -317,6 +372,8 @@ export function useSceneController() {
     setAIPanelVisibility: mutations.setAIPanelVisibility,
     createExplicitRelationship: mutations.createExplicitRelationship,
     confirmRelationship: mutations.confirmRelationship,
+    updateRelationship,
+    undoRelationshipEdit,
     traverseToRelated: mutations.traverseToRelated,
     toggleNoteFocus: mutations.toggleNoteFocus,
     setNoteProjects: mutations.setNoteProjects,
