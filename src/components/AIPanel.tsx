@@ -1,6 +1,7 @@
-import { FormEvent } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { INSIGHTS_RAIL_MODES, getNextInsightsRailState } from '../detailSurface/detailSurfaceModel';
-import { ActionSuggestion, AIInteractionMode, AIPanelViewState, InsightsResponse, NoteCardModel, Project, Workspace } from '../types';
+import { getInsightTimelineForNote } from '../insights/insightTimeline';
+import { ActionSuggestion, AIInteractionMode, AIPanelViewState, InsightTimelineEntry, InsightsResponse, NoteCardModel, Project, Workspace } from '../types';
 
 type AIPanelProps = {
   panel: AIPanelViewState;
@@ -11,6 +12,7 @@ type AIPanelProps = {
   scopeLabel: string;
   notes: NoteCardModel[];
   streamedResponse: InsightsResponse | null;
+  timelineEntries: InsightTimelineEntry[];
   streaming: boolean;
   onStateChange: (state: AIPanelViewState['state']) => void;
   onModeChange: (mode: AIInteractionMode) => void;
@@ -36,6 +38,16 @@ function placeholderForMode(mode: AIInteractionMode, selectedNote: NoteCardModel
   if (mode === 'summarize') return selectedNote ? 'Condense this note and its strongest neighbors' : 'Condense the current scope';
   if (mode === 'act') return selectedNote ? 'Recommend the safest next action for this note' : 'Recommend the next action for this workspace';
   return selectedNote ? 'Ask from the perspective of the current note' : 'Ask about the current scope';
+}
+
+function formatTimelineTimestamp(timestamp: number) {
+  const deltaMs = Date.now() - timestamp;
+  const deltaMinutes = Math.max(1, Math.round(deltaMs / 60000));
+  if (deltaMinutes < 60) return `${deltaMinutes}m`;
+  const deltaHours = Math.round(deltaMinutes / 60);
+  if (deltaHours < 24) return `${deltaHours}h`;
+  const deltaDays = Math.round(deltaHours / 24);
+  return `${deltaDays}d`;
 }
 
 function getIntentPrompts(mode: AIInteractionMode, selectedNote: NoteCardModel | null, scopeLabel: string): string[] {
@@ -77,6 +89,7 @@ export function AIPanel({
   scopeLabel,
   notes,
   streamedResponse,
+  timelineEntries,
   streaming,
   onStateChange,
   onModeChange,
@@ -94,11 +107,27 @@ export function AIPanel({
   const resolvedReferences = activeResponse?.references.map((referenceId) => notesById.get(referenceId)).filter(Boolean) as NoteCardModel[] | undefined;
   const isExpanded = panel.state !== 'hidden';
   const promptSuggestions = getIntentPrompts(panel.mode, selectedNote, scopeLabel);
+  const [showOlderTimeline, setShowOlderTimeline] = useState(false);
+  const timeline = useMemo(() => (selectedNote ? getInsightTimelineForNote(timelineEntries, selectedNote.id) : { nowEntries: [], visibleEarlierEntries: [], hiddenEarlierEntries: [] }), [selectedNote, timelineEntries]);
+
+  useEffect(() => {
+    setShowOlderTimeline(false);
+  }, [selectedNote?.id, timelineEntries.length]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onRun();
   };
+
+  const handleTimelineAction = (action: InsightTimelineEntry['actions'][number]) => {
+    if (action.kind === 'open') {
+      onOpenReference(action.noteId);
+      return;
+    }
+    onPreviewAction(action.suggestion);
+  };
+
+  const visibleEarlierEntries = showOlderTimeline ? [...timeline.visibleEarlierEntries, ...timeline.hiddenEarlierEntries] : timeline.visibleEarlierEntries;
 
   return (
     <aside className="ai-panel" data-state={panel.state} data-note-active={noteIsOpen ? 'true' : 'false'}>
@@ -169,6 +198,84 @@ export function AIPanel({
               </div>
             </div>
           ) : null}
+
+          <section className="ai-timeline" aria-label="Insight timeline">
+            <div className="ai-section-heading">
+              <span className="ai-block-label">Insight timeline</span>
+              <small>{selectedNote ? 'Meaningful shifts only' : 'Open a note to track how understanding evolves'}</small>
+            </div>
+
+            {selectedNote ? (
+              <div className="ai-timeline-groups">
+                <div className="ai-timeline-group">
+                  <span className="ai-timeline-label">Now</span>
+                  {timeline.nowEntries.length ? (
+                    <ul className="ai-timeline-list">
+                      {timeline.nowEntries.map((entry) => (
+                        <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
+                          <div className="ai-timeline-copy">
+                            <div className="ai-timeline-row">
+                              <strong>{entry.title}</strong>
+                              <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
+                            </div>
+                            <p>{entry.detail}</p>
+                          </div>
+                          {entry.actions.length ? (
+                            <div className="ai-inline-actions ai-inline-actions--timeline">
+                              {entry.actions.map((action) => (
+                                <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
+                                  {action.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="ai-empty-state ai-empty-state--timeline">High-value insight changes will gather here as links, projects, and grounded outputs accumulate.</div>
+                  )}
+                </div>
+
+                {(visibleEarlierEntries.length || timeline.hiddenEarlierEntries.length) ? (
+                  <div className="ai-timeline-group">
+                    <div className="ai-timeline-heading-row">
+                      <span className="ai-timeline-label">Earlier</span>
+                      {timeline.hiddenEarlierEntries.length ? (
+                        <button className="ghost-button ai-timeline-toggle" onClick={() => setShowOlderTimeline((value) => !value)} type="button">
+                          {showOlderTimeline ? 'Show less' : `Show ${timeline.hiddenEarlierEntries.length} older`}
+                        </button>
+                      ) : null}
+                    </div>
+                    <ul className="ai-timeline-list">
+                      {visibleEarlierEntries.map((entry) => (
+                        <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
+                          <div className="ai-timeline-copy">
+                            <div className="ai-timeline-row">
+                              <strong>{entry.title}</strong>
+                              <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
+                            </div>
+                            <p>{entry.detail}</p>
+                          </div>
+                          {entry.actions.length ? (
+                            <div className="ai-inline-actions ai-inline-actions--timeline">
+                              {entry.actions.map((action) => (
+                                <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
+                                  {action.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="ai-empty-state ai-empty-state--timeline">Select a note to see its evolving timeline of structural changes, project moves, and grounded AI outputs.</div>
+            )}
+          </section>
 
           <div className="ai-transcript" aria-live="polite">
             {panel.transcript.length ? panel.transcript.map((entry) => (

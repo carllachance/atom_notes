@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { inferNoteMetadata } from '../ai/inference';
 import { runConnectedInsights } from '../ai/connectedInsights';
+import { appendInsightTimelineEntries, createAIInsightTimelineEntry } from '../insights/insightTimeline';
 import { createNote, now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
 import { getProjectsForNote } from '../projects/projectSelectors';
@@ -435,12 +436,20 @@ export function useSceneController() {
         createdAt: now()
       };
 
-      mutations.setAIPanel({
-        loading: false,
-        response,
-        query: '',
-        state: 'open',
-        transcript: [...scene.aiPanel.transcript, userEntry, assistantEntry]
+      setScene((prev) => {
+        const nextScene: SceneState = {
+          ...prev,
+          aiPanel: {
+            ...prev.aiPanel,
+            loading: false,
+            response,
+            query: '',
+            state: 'open' as const,
+            transcript: [...scene.aiPanel.transcript, userEntry, assistantEntry]
+          }
+        };
+        const timelineEntry = prev.activeNoteId ? createAIInsightTimelineEntry(nextScene, prev.activeNoteId, response, scene.aiPanel.mode, query, assistantEntry.createdAt) : null;
+        return timelineEntry ? appendInsightTimelineEntries(nextScene, [timelineEntry]) : nextScene;
       });
     });
   }, [lensPresentation.activeProject, mutations, scene, streamInsightsResponse, visibleNotes]);
@@ -496,6 +505,7 @@ export function useSceneController() {
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    activeInsightTimeline: activeNote ? (scene.insightTimeline ?? []).filter((entry) => entry.noteId === activeNote.id) : [],
     streamingResponse,
     isStreamingResponse,
     ambientRelatedNoteIds: ambient.ambientRelatedNoteIds,

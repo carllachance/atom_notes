@@ -160,6 +160,30 @@ export type InsightsResponse = {
   highlightNoteIds?: string[];
 };
 
+export type InsightTimelineAction =
+  | {
+      id: string;
+      label: string;
+      kind: 'open';
+      noteId: string;
+    }
+  | {
+      id: string;
+      label: string;
+      kind: 'preview';
+      suggestion: ActionSuggestion;
+    };
+
+export type InsightTimelineEntry = {
+  id: string;
+  noteId: string;
+  kind: 'structural' | 'action' | 'ai';
+  title: string;
+  detail: string;
+  createdAt: number;
+  actions: InsightTimelineAction[];
+};
+
 export type AITranscriptEntry = {
   id: string;
   role: 'user' | 'assistant';
@@ -182,6 +206,7 @@ export type SceneState = {
   relationships: Relationship[];
   projects: Project[];
   workspaces: Workspace[];
+  insightTimeline?: InsightTimelineEntry[];
   isDragging: boolean;
   activeNoteId: string | null;
   quickCaptureOpen: boolean;

@@ -1,3 +1,4 @@
+import { appendInsightTimelineEntries, createProjectTimelineEntries } from '../insights/insightTimeline';
 import { now } from '../notes/noteModel';
 import { SceneState } from '../types';
 import { createProject, normalizeProjectIds, ProjectDraft } from './projectModel';
@@ -40,8 +41,9 @@ export function createProjectInScene(scene: SceneState, draft: ProjectDraft): Sc
 export function createProjectAndAssignToNoteInScene(scene: SceneState, noteId: string, draft: ProjectDraft): SceneState {
   const { project, projects } = resolveProject(scene, draft);
   const t = now();
+  const previousProjectIds = scene.notes.find((note) => note.id === noteId)?.projectIds ?? [];
 
-  return {
+  const nextScene = {
     ...scene,
     projects,
     notes: scene.notes.map((note) =>
@@ -55,14 +57,18 @@ export function createProjectAndAssignToNoteInScene(scene: SceneState, noteId: s
         : note
     )
   };
+
+  const nextProjectIds = nextScene.notes.find((note) => note.id === noteId)?.projectIds ?? [];
+  return appendInsightTimelineEntries(nextScene, createProjectTimelineEntries(nextScene, noteId, previousProjectIds, nextProjectIds, t));
 }
 
 export function setNoteProjectsInScene(scene: SceneState, noteId: string, projectIds: string[]): SceneState {
   const validProjectIds = new Set(scene.projects.map((project) => project.id));
   const nextProjectIds = normalizeProjectIds(projectIds).filter((projectId) => validProjectIds.has(projectId));
+  const previousProjectIds = scene.notes.find((note) => note.id === noteId)?.projectIds ?? [];
   const t = now();
 
-  return {
+  const nextScene = {
     ...scene,
     notes: scene.notes.map((note) =>
       note.id === noteId
@@ -75,4 +81,6 @@ export function setNoteProjectsInScene(scene: SceneState, noteId: string, projec
         : note
     )
   };
+
+  return appendInsightTimelineEntries(nextScene, createProjectTimelineEntries(nextScene, noteId, previousProjectIds, nextProjectIds, t));
 }

@@ -41,6 +41,7 @@ test('project creation persists stable metadata and supports zero/one/many note 
   const manyMembership = setNoteProjectsInScene(singleMembership, 'n1', ['proj-1', 'proj-2', 'missing', 'proj-1']);
   assert.deepEqual(manyMembership.notes[0].projectIds, ['proj-1', 'proj-2']);
   assert.equal(getNotesForProject(manyMembership.notes, 'proj-1').length, 1);
+  assert.deepEqual(manyMembership.insightTimeline?.map((entry) => entry.title), ['Added to Operations', 'Added to Ship Launch Deck', 'Removed from Operations']);
 });
 
 test('project selectors build sparse connector segments for highlighted project families', () => {

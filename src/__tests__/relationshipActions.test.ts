@@ -37,6 +37,7 @@ test('relationshipActions creates explicit relationship and prevents duplicate e
   t.mock.method(globalThis.crypto, 'randomUUID', () => 'rel-1');
   const scene1 = createExplicitRelationshipInScene(baseScene(), 'a', 'b', 'references');
   assert.equal(scene1.relationships.some((r) => r.id === 'rel-1' && r.explicitness === 'explicit'), true);
+  assert.deepEqual(scene1.insightTimeline?.map((entry) => entry.title), ['Linked to B', 'Connected with A']);
   const scene2 = createExplicitRelationshipInScene(scene1, 'a', 'b', 'references');
   assert.equal(scene2, scene1);
 });

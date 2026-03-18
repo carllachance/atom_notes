@@ -43,6 +43,10 @@ function getVisualState(note: NoteCardModel, focusHighlightEnabled: boolean, fla
   return 'default';
 }
 
+function formatIntentLabel(intent: NoteCardModel['intent']) {
+  return intent ? intent.toUpperCase() : null;
+}
+
 function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recentlyClosed, ambientRelated, ambientPulse, ambientGlowLevel, isDragging, isDirectlyDragging, revealMatched, revealActive, isActive, isHovered, activeProjectLabel, activeProjectColor, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave }: NoteCardProps) {
   const bias = getTraceVisualBias(note);
   const projectVisual = getProjectNoteVisual(meta?.projectState === 'member' ? 'member' : meta?.surfaced ? 'subordinate' : 'none');
@@ -53,6 +57,7 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recent
   const emphasisOpacity = meta?.emphasis === 'supporting' ? 0.82 : 1;
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
   const resolvedPosition = position ?? { x: note.x, y: note.y };
+  const intentLabel = formatIntentLabel(note.intent);
 
   return (
     <article
@@ -82,11 +87,12 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recent
         animation: isDragging ? 'none' : undefined
       }}
     >
-      <div className="note-card-badges">
-        {isFocus ? <span className="focus-badge focus-badge--persistent">Focus</span> : null}
-        {note.intent ? <span className="context-badge">{note.intent}</span> : null}
-        {meta?.projectState === 'member' && activeProjectLabel ? <span className="project-badge">{activeProjectLabel}</span> : null}
-        {meta?.contextLabel ? <span className="context-badge">{meta.contextLabel}</span> : null}
+      <div className="note-card-meta">
+        {isFocus ? <span className="note-meta-token note-meta-token--focus">Focus</span> : null}
+        {intentLabel ? <span className="note-meta-token">{intentLabel}</span> : null}
+        {meta?.projectState === 'member' && activeProjectLabel ? <span className="note-meta-token note-meta-token--project">{activeProjectLabel}</span> : null}
+        {meta?.workspaceState === 'orphan' ? <span className="note-meta-token note-meta-token--attention">No workspace</span> : null}
+        {meta?.contextLabel ? <span className="note-meta-context">{meta.contextLabel}</span> : null}
       </div>
       <h3 title={displayTitle}>{displayTitle}</h3>
       <p className="summary-preview">{summaryPreview}</p>
