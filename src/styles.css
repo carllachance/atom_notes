@@ -507,21 +507,38 @@ button {
 .relationship-edge {
   fill: none;
   stroke-linecap: round;
-  stroke-width: 1.7;
   filter: drop-shadow(0 0 6px rgba(67, 90, 138, 0.08));
-  transition: stroke-opacity 180ms ease;
+  transition: stroke-opacity 180ms ease, stroke-width 180ms ease;
 }
 
-.relationship-edge[data-explicitness='explicit'] {
-  stroke-width: 1.95;
+.relationship-edge--steady {
+  animation: none;
 }
 
+.relationship-edge--inferred {
+  animation: relationship-inferred-breathe 5.8s ease-in-out infinite;
+}
+
+.relationship-edge[data-visual-kind='inferred'] {
+  filter: drop-shadow(0 0 4px rgba(67, 90, 138, 0.06));
+}
+
+.relationship-project-hull {
+  filter: drop-shadow(0 0 18px rgba(36, 49, 76, 0.08));
+}
+
+.relationship-project-label {
+  fill: rgba(212, 221, 243, 0.82);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
 .related-node {
   position: absolute;
   pointer-events: auto;
   border-radius: 999px;
-  border: 1px solid rgba(118, 138, 188, 0.24);
+  border: 1px solid rgba(118, 138, 188, var(--relationship-node-border-opacity, 0.24));
   background: rgba(17, 25, 39, 0.5);
   color: rgba(201, 214, 243, 0.9);
   font-size: 0.68rem;
@@ -530,11 +547,44 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 6px 16px rgba(2, 4, 9, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(129, 148, 196, var(--relationship-node-halo-opacity, 0.12)),
+    0 6px 16px rgba(2, 4, 9, 0.1);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
-.related-node[data-explicitness='explicit'] {
-  border-color: rgba(154, 177, 232, 0.34);
+.related-node[data-visual-kind='direct'] {
+  background: rgba(18, 26, 42, 0.58);
+}
+
+.related-node[data-visual-kind='inferred'] {
+  background: rgba(16, 22, 36, 0.42);
+}
+
+.related-node[data-has-project='true'] {
+  box-shadow:
+    0 0 0 1px rgba(162, 178, 220, calc(var(--relationship-node-halo-opacity, 0.12) + 0.04)),
+    0 0 0 10px rgba(105, 122, 160, 0.06),
+    0 6px 16px rgba(2, 4, 9, 0.1);
+}
+
+.related-node:hover {
+  background: rgba(25, 35, 56, 0.66);
+}
+
+.related-node[data-visual-kind='inferred']:hover {
+  border-style: dashed;
+}
+
+@keyframes relationship-inferred-breathe {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .expanded-note-header {

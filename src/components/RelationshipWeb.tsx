@@ -1,7 +1,13 @@
 import { useMemo } from 'react';
 import { getCompactDisplayTitle } from '../noteText';
 import { NoteCardModel, Relationship, RelationshipType } from '../types';
-import { getRelationshipTargetNoteId } from '../relationshipLogic';
+import {
+  buildProjectGroups,
+  buildVisibleRelationshipProjectMap,
+  getProjectGroupPresentation,
+  getRelationshipEdgePresentation,
+  getRelationshipTargetIdForVisual
+} from '../relationships/relationshipVisuals';
 
 type RankedRelationship = {
   relationship: Relationship;
@@ -24,15 +30,6 @@ type VisibleEdge = {
 
 const NOTE_CARD_WIDTH = 270;
 const NOTE_CARD_HEIGHT = 124;
-const EDGE_TYPE_STYLES: Record<RelationshipType, { color: string }> = {
-  related_concept: { color: 'rgba(113, 162, 255, 0.34)' },
-  references: { color: 'rgba(177, 132, 255, 0.34)' }
-};
-
-function getEdgeLineStyle(relationship: Relationship) {
-  if (relationship.explicitness === 'explicit') return undefined;
-  return '8 8';
-}
 
 export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter, onTraverse }: RelationshipWebProps) {
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
@@ -45,7 +42,7 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
     return filtered
       .slice(0, 10)
       .map((item) => {
-        const targetId = getRelationshipTargetNoteId(item.relationship, activeNote.id);
+        const targetId = getRelationshipTargetIdForVisual(item.relationship, activeNote.id);
         const target = notesById.get(targetId);
         if (!target) return null;
         return {
@@ -58,15 +55,44 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
   }, [activeNote.id, filter, notesById, rankedRelationships]);
 
   const visibleTargets = visibleEdges.slice(0, 8);
+  const projectGroups = useMemo(() => buildProjectGroups(activeNote, visibleTargets), [activeNote, visibleTargets]);
+  const relationshipProjectMap = useMemo(() => buildVisibleRelationshipProjectMap(activeNote, visibleTargets), [activeNote, visibleTargets]);
   const activeCenterX = activeNote.x + NOTE_CARD_WIDTH / 2;
   const activeCenterY = activeNote.y + NOTE_CARD_HEIGHT / 2;
+  const projectGroupPresentation = getProjectGroupPresentation();
 
   return (
     <div className="relationship-web-layer">
       <svg className="relationship-web" viewBox="0 0 1800 1100" preserveAspectRatio="none" aria-hidden="true">
+        {projectGroups.map((group) => (
+          <g key={group.id} className="relationship-project-group" data-visual-kind="project">
+            <rect
+              x={group.bounds.x}
+              y={group.bounds.y}
+              width={group.bounds.width}
+              height={group.bounds.height}
+              rx={46}
+              className="relationship-project-hull"
+              fill={projectGroupPresentation.fill}
+              fillOpacity={projectGroupPresentation.fillOpacity}
+              stroke={projectGroupPresentation.stroke}
+              strokeOpacity={projectGroupPresentation.strokeOpacity}
+              strokeWidth={projectGroupPresentation.strokeWidth}
+              strokeDasharray={projectGroupPresentation.strokeDasharray}
+            />
+            <text
+              x={group.bounds.x + 24}
+              y={group.bounds.y + 24}
+              className="relationship-project-label"
+              fillOpacity={projectGroupPresentation.labelOpacity}
+            >
+              {group.label.toUpperCase()}
+            </text>
+          </g>
+        ))}
+
         {visibleTargets.map(({ relationship, target, score }) => {
-          const edgeStyle = EDGE_TYPE_STYLES[relationship.type];
-          const confidenceOpacity = Math.min(0.44, 0.18 + score * 0.2);
+          const edgePresentation = getRelationshipEdgePresentation(relationship, { score });
           const targetCenterX = target.x + NOTE_CARD_WIDTH / 2;
           const targetCenterY = target.y + NOTE_CARD_HEIGHT / 2;
           const controlOffset = Math.max(30, Math.abs(targetCenterX - activeCenterX) * 0.18);
@@ -76,30 +102,43 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
             <path
               key={relationship.id}
               d={path}
-              className="relationship-edge"
+              className={`relationship-edge ${edgePresentation.motionClassName}`}
               data-type={relationship.type}
               data-explicitness={relationship.explicitness}
-              stroke={edgeStyle.color}
-              strokeOpacity={confidenceOpacity}
-              strokeDasharray={getEdgeLineStyle(relationship)}
+              data-visual-kind={edgePresentation.kind}
+              stroke={edgePresentation.stroke}
+              strokeOpacity={edgePresentation.strokeOpacity}
+              strokeWidth={edgePresentation.strokeWidth}
+              strokeDasharray={edgePresentation.strokeDasharray}
             />
           );
         })}
       </svg>
 
-      {visibleTargets.map(({ target: note, relationship }) => (
-        <button
-          key={note.id}
-          className="related-node"
-          title={relationship.explanation}
-          data-type={relationship.type}
-          data-explicitness={relationship.explicitness}
-          style={{ transform: `translate(${note.x + 95}px, ${note.y + 44}px)` }}
-          onClick={() => onTraverse(note.id, relationship.id)}
-        >
-          {getCompactDisplayTitle(note, 36)}
-        </button>
-      ))}
+      {visibleTargets.map(({ target: note, relationship, score }) => {
+        const edgePresentation = getRelationshipEdgePresentation(relationship, { score });
+        const hasProject = relationshipProjectMap.get(relationship.id) ?? false;
+
+        return (
+          <button
+            key={note.id}
+            className="related-node"
+            data-visual-kind={edgePresentation.kind}
+            data-has-project={hasProject ? 'true' : 'false'}
+            title={relationship.explanation}
+            data-type={relationship.type}
+            data-explicitness={relationship.explicitness}
+            style={{
+              transform: `translate(${note.x + 95}px, ${note.y + 44}px)`,
+              ['--relationship-node-border-opacity' as string]: edgePresentation.nodeBorderOpacity.toFixed(3),
+              ['--relationship-node-halo-opacity' as string]: edgePresentation.nodeHaloOpacity.toFixed(3)
+            }}
+            onClick={() => onTraverse(note.id, relationship.id)}
+          >
+            {getCompactDisplayTitle(note, 36)}
+          </button>
+        );
+      })}
     </div>
   );
 }
