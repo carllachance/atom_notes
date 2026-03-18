@@ -1,8 +1,30 @@
 import { now } from '../notes/noteModel';
-import { refreshInferredRelationships, relationshipPairKey } from '../relationshipLogic';
-import { RelationshipType, SceneState } from '../types';
+import { isRelationshipTypeDirectional, refreshInferredRelationships, relationshipNodePairKey, relationshipPairKey } from '../relationshipLogic';
+import { Relationship, RelationshipType, SceneState } from '../types';
 
-const DIRECTIONAL_TYPES = new Set<RelationshipType>(['references', 'depends_on', 'supports', 'part_of', 'leads_to', 'derived_from']);
+function reconcileRelationships(scene: SceneState, updatedRelationship: Relationship) {
+  const updatedPairKey = relationshipPairKey(
+    updatedRelationship.fromId,
+    updatedRelationship.toId,
+    updatedRelationship.type,
+    updatedRelationship.directional
+  );
+  const updatedNodePairKey = relationshipNodePairKey(updatedRelationship.fromId, updatedRelationship.toId);
+
+  const relationships = scene.relationships
+    .filter((relationship) => relationship.id !== updatedRelationship.id)
+    .filter((relationship) => {
+      const pairKey = relationshipPairKey(relationship.fromId, relationship.toId, relationship.type, relationship.directional);
+      if (pairKey === updatedPairKey) return false;
+      if (relationship.explicitness === 'inferred' && relationshipNodePairKey(relationship.fromId, relationship.toId) === updatedNodePairKey) {
+        return false;
+      }
+      return true;
+    })
+    .concat(updatedRelationship);
+
+  return { ...scene, relationships: refreshInferredRelationships(scene.notes, relationships, now()) };
+}
 
 export function createExplicitRelationshipInScene(
   scene: SceneState,
@@ -10,7 +32,7 @@ export function createExplicitRelationshipInScene(
   toId: string,
   type: RelationshipType
 ): SceneState {
-  const directional = DIRECTIONAL_TYPES.has(type);
+  const directional = isRelationshipTypeDirectional(type);
   const key = relationshipPairKey(fromId, toId, type, directional);
   const existing = scene.relationships.find(
     (relationship) => relationshipPairKey(relationship.fromId, relationship.toId, relationship.type, relationship.directional) === key
@@ -34,11 +56,40 @@ export function createExplicitRelationshipInScene(
     lastActiveAt: now()
   };
 
-  const relationships = scene.relationships
-    .filter((relationship) => relationshipPairKey(relationship.fromId, relationship.toId, relationship.type, relationship.directional) !== key)
-    .concat(explicitRelationship);
+  return reconcileRelationships(scene, explicitRelationship);
+}
 
-  return { ...scene, relationships: refreshInferredRelationships(scene.notes, relationships, now()) };
+export function updateRelationshipInScene(
+  scene: SceneState,
+  relationshipId: string,
+  type: RelationshipType,
+  fromId: string,
+  toId: string
+): SceneState {
+  const existing = scene.relationships.find((relationship) => relationship.id === relationshipId);
+  if (!existing) return scene;
+
+  const directional = isRelationshipTypeDirectional(type);
+  const editedRelationship: Relationship = {
+    ...existing,
+    fromId,
+    toId,
+    type,
+    directional,
+    state: 'confirmed',
+    explicitness: 'explicit',
+    isInferred: false,
+    confidence: 1,
+    explanation: 'Edited in the relationship inspector.',
+    heuristicSupported: true,
+    lastActiveAt: now()
+  };
+
+  return reconcileRelationships(scene, editedRelationship);
+}
+
+export function restoreRelationshipInScene(scene: SceneState, snapshot: Relationship): SceneState {
+  return reconcileRelationships(scene, snapshot);
 }
 
 export function confirmRelationshipInScene(scene: SceneState, relationshipId: string): SceneState {

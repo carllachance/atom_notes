@@ -26,6 +26,14 @@ const TYPE_DIRECTIONAL: Record<RelationshipType, boolean> = {
   derived_from: true
 };
 
+export function isRelationshipTypeDirectional(type: RelationshipType) {
+  return TYPE_DIRECTIONAL[type];
+}
+
+export function relationshipNodePairKey(a: string, b: string) {
+  return [a, b].sort().join('::');
+}
+
 const PHRASE_RELATIONSHIPS: Array<{ pattern: RegExp; type: RelationshipType; reason: string }> = [
   { pattern: /depends on/i, type: 'depends_on', reason: 'Contains “depends on”.' },
   { pattern: /supports?/i, type: 'supports', reason: 'Contains “supports”.' },
@@ -182,6 +190,11 @@ export function refreshInferredRelationships(notes: NoteCardModel[], relationshi
   const inferredCandidates = collectInferenceCandidates(notes, nowTs);
   const candidateIds = new Set(inferredCandidates.map((relationship) => relationship.id));
   const existingById = new Map(normalizedExisting.map((relationship) => [relationship.id, relationship]));
+  const explicitPairKeys = new Set(
+    normalizedExisting
+      .filter((relationship) => relationship.explicitness === 'explicit')
+      .map((relationship) => relationshipNodePairKey(relationship.fromId, relationship.toId))
+  );
 
   const persisted = normalizedExisting.filter((relationship) => relationship.explicitness === 'explicit').map((relationship) => ({
     ...relationship,
@@ -192,11 +205,16 @@ export function refreshInferredRelationships(notes: NoteCardModel[], relationshi
 
   const staleConfirmedInferred = normalizedExisting
     .filter(
-      (relationship) => relationship.explicitness === 'inferred' && relationship.state === 'confirmed' && !candidateIds.has(relationship.id)
+      (relationship) =>
+        relationship.explicitness === 'inferred' &&
+        relationship.state === 'confirmed' &&
+        !candidateIds.has(relationship.id) &&
+        !explicitPairKeys.has(relationshipNodePairKey(relationship.fromId, relationship.toId))
     )
     .map((relationship) => ({ ...relationship, heuristicSupported: false, isInferred: true }));
 
   const mergedInferred = inferredCandidates.map((candidate) => {
+    if (explicitPairKeys.has(relationshipNodePairKey(candidate.fromId, candidate.toId))) return null;
     const existing = existingById.get(candidate.id);
     if (!existing) return candidate;
 
@@ -209,7 +227,7 @@ export function refreshInferredRelationships(notes: NoteCardModel[], relationshi
       confidence: existing.confidence ?? candidate.confidence,
       isInferred: true
     };
-  });
+  }).filter((relationship): relationship is Relationship => Boolean(relationship));
 
   return dedupeRelationships([...persisted, ...staleConfirmedInferred, ...mergedInferred]);
 }

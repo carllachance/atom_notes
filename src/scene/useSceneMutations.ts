@@ -16,7 +16,7 @@ import {
   updateNoteInScene
 } from './sceneActions';
 import { Lens, RelationshipType, SceneState } from '../types';
-import { createExplicitRelationshipInScene, confirmRelationshipInScene, traverseToRelatedInScene } from '../relationships/relationshipActions';
+import { createExplicitRelationshipInScene, confirmRelationshipInScene, restoreRelationshipInScene, traverseToRelatedInScene, updateRelationshipInScene } from '../relationships/relationshipActions';
 import { createProjectAndAssignToNoteInScene, setNoteProjectsInScene } from '../projects/projectActions';
 import { ProjectDraft } from '../projects/projectModel';
 import { createWorkspaceAndAssignToNoteInScene, setNoteWorkspaceInScene } from '../workspaces/workspaceActions';
@@ -91,6 +91,14 @@ export function useSceneMutations({
     setScene((prev) => confirmRelationshipInScene(prev, relationshipId));
   }, [setScene]);
 
+  const updateRelationship = useCallback((relationshipId: string, type: RelationshipType, fromId: string, toId: string) => {
+    setScene((prev) => updateRelationshipInScene(prev, relationshipId, type, fromId, toId));
+  }, [setScene]);
+
+  const restoreRelationship = useCallback((relationship: SceneState['relationships'][number]) => {
+    setScene((prev) => restoreRelationshipInScene(prev, relationship));
+  }, [setScene]);
+
   const traverseToRelated = useCallback((targetNoteId: string, relationshipId: string) => {
     onNoteTraversed(targetNoteId);
     setScene((prev) => traverseToRelatedInScene(prev, targetNoteId, relationshipId));
@@ -144,6 +152,8 @@ export function useSceneMutations({
     setAIPanelVisibility,
     createExplicitRelationship,
     confirmRelationship,
+    updateRelationship,
+    restoreRelationship,
     traverseToRelated,
     onCanvasScroll,
     onOpenNote,

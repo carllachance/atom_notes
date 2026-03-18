@@ -27,6 +27,8 @@ export function App() {
     pendingAction,
     hoveredNoteId,
     relationshipFilter,
+    inspectedRelationship,
+    canUndoRelationshipEdit,
     recentlyClosedNoteId,
     rankedRelationships,
     relationshipPanelItems,
@@ -40,6 +42,8 @@ export function App() {
     revealActiveNoteId,
     setPendingAction,
     setRelationshipFilter,
+    inspectRelationship,
+    closeRelationshipInspector,
     closeActiveNote,
     updateNote,
     bringToFront,
@@ -49,6 +53,8 @@ export function App() {
     setAIPanelVisibility,
     createExplicitRelationship,
     confirmRelationship,
+    updateRelationship,
+    undoRelationshipEdit,
     traverseToRelated,
     toggleNoteFocus,
     setNoteProjects,
@@ -153,7 +159,7 @@ export function App() {
       </section>
 
       {activeNote ? <div className="canvas-dim" /> : null}
-      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} onTraverse={traverseToRelated} /> : null}
+      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} onInspectRelationship={inspectRelationship} /> : null}
 
       <CaptureComposer
         isOpen={scene.captureComposer.open}
@@ -173,6 +179,8 @@ export function App() {
         noteProjects={activeNoteProjects}
         noteWorkspace={activeWorkspace}
         relationships={relationshipPanelItems}
+        inspectedRelationship={inspectedRelationship}
+        canUndoRelationshipEdit={canUndoRelationshipEdit}
         relationshipTotals={relationshipTotals}
         activeFilter={relationshipFilter}
         activeProjectRevealId={lensPresentation.activeProject?.id ?? null}
@@ -185,8 +193,12 @@ export function App() {
         }}
         onArchive={onArchiveNote}
         onOpenRelated={traverseToRelated}
+        onInspectRelationship={inspectRelationship}
+        onCloseRelationshipInspector={closeRelationshipInspector}
         onCreateExplicitLink={createExplicitRelationship}
         onConfirmRelationship={confirmRelationship}
+        onUpdateRelationship={updateRelationship}
+        onUndoRelationshipEdit={undoRelationshipEdit}
         onToggleFocus={toggleNoteFocus}
         onSetProjectIds={setNoteProjects}
         onCreateProject={createProjectForNote}

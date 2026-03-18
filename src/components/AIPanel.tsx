@@ -1,3 +1,4 @@
+import { getNextInsightsRailState, INSIGHTS_RAIL_MODES } from '../detailSurface/detailSurfaceModel';
 import { ActionSuggestion, AIInteractionMode, AIPanelViewState, NoteCardModel, Project } from '../types';
 
 type AIPanelProps = {
@@ -42,33 +43,48 @@ export function AIPanel({
 }: AIPanelProps) {
   const notesById = new Map(notes.map((note) => [note.id, note]));
   const resolvedReferences = panel.response?.references.map((referenceId) => notesById.get(referenceId)).filter(Boolean) as NoteCardModel[] | undefined;
+  const isExpanded = panel.state !== 'hidden';
 
   return (
     <aside className="ai-panel" data-state={panel.state}>
-      <header className="ai-panel-header">
-        <div>
-          <strong>Insights</strong>
-          <small>
-            {selectedNote ? `Selected: ${selectedNote.title ?? 'Untitled'}` : 'No note selected'} · {visibleNotesCount} visible · {activeProject?.key ?? 'All projects'}
-          </small>
-        </div>
-        <div className="ai-panel-state-switch">
-          <button className={panel.state === 'hidden' ? 'active' : ''} onClick={() => onStateChange('hidden')}>Hide</button>
-          <button className={panel.state === 'peek' ? 'active' : ''} onClick={() => onStateChange('peek')}>Peek</button>
-          <button className={panel.state === 'open' ? 'active' : ''} onClick={() => onStateChange('open')}>Open</button>
-        </div>
-      </header>
+      <div className="ai-rail">
+        <button
+          className="ai-panel-toggle"
+          onClick={() => onStateChange(getNextInsightsRailState(panel.state))}
+          aria-label={panel.state === 'hidden' ? 'Expand Insights rail' : 'Collapse Insights rail'}
+          title={panel.state === 'hidden' ? 'Expand Insights rail' : 'Collapse Insights rail'}
+        >
+          <span aria-hidden="true">{panel.state === 'hidden' ? '←' : '→'}</span>
+          <span className="ai-panel-toggle-label">Insights</span>
+        </button>
 
-      <nav className="ai-mode-switch" aria-label="AI mode">
-        {(['ask', 'explore', 'summarize', 'act'] as AIInteractionMode[]).map((mode) => (
-          <button key={mode} className={panel.mode === mode ? 'active' : ''} onClick={() => onModeChange(mode)}>
-            {mode}
-          </button>
-        ))}
-      </nav>
+        <nav className="ai-mode-switch" aria-label="AI mode">
+          {INSIGHTS_RAIL_MODES.map(({ mode, label, shortLabel }) => (
+            <button
+              key={mode}
+              className={panel.mode === mode ? 'active' : ''}
+              onClick={() => onModeChange(mode)}
+              aria-label={label}
+              title={label}
+            >
+              <span className="ai-mode-short" aria-hidden="true">{shortLabel}</span>
+              <span className="ai-mode-label">{label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
 
-      {panel.state === 'hidden' ? null : (
-        <>
+      {isExpanded ? (
+        <div className="ai-panel-body">
+          <header className="ai-panel-header">
+            <div>
+              <strong>Insights</strong>
+              <small>
+                {selectedNote ? `Selected: ${selectedNote.title ?? 'Untitled'}` : 'No note selected'} · {visibleNotesCount} visible · {activeProject?.key ?? 'All projects'}
+              </small>
+            </div>
+          </header>
+
           <div className="ai-query-row">
             <label className="ai-query-label" htmlFor="ai-query-input">Ground the response in visible notes</label>
             <textarea
@@ -135,8 +151,8 @@ export function AIPanel({
           ) : (
             <div className="ai-empty-state">The panel stays grounded in visible notes, recent notes, and the selected note.</div>
           )}
-        </>
-      )}
+        </div>
+      ) : null}
     </aside>
   );
 }
