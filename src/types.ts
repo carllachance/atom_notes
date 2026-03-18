@@ -131,7 +131,7 @@ export type AIPanelState = 'hidden' | 'peek' | 'open';
 export type ActionSuggestion = {
   id: string;
   label: string;
-  kind: 'highlight_nodes' | 'focus_cluster' | 'open_note' | 'preview_relationships' | 'create_summary';
+  kind: 'highlight_nodes' | 'focus_cluster' | 'open_note' | 'preview_relationships' | 'create_summary' | 'append_to_note' | 'create_link' | 'pin_to_note';
   noteIds?: string[];
   noteId?: string;
   relationships?: Array<{ fromId: string; toId: string; type: RelationshipType }>;
@@ -157,6 +157,7 @@ export type InsightsResponse = {
   references: string[];
   results: InsightsResult[];
   actions?: ActionSuggestion[];
+  highlightNoteIds?: string[];
 };
 
 export type AITranscriptEntry = {

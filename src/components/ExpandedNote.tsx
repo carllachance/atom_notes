@@ -5,9 +5,11 @@ import {
 } from '../detailSurface/detailSurfaceModel';
 import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
+import { InlineNoteLinkEditor } from './InlineNoteLinkEditor';
 import { toggleMarkdownCheckbox } from '../markdownProjection';
 import { getCompactDisplayTitle } from '../noteText';
 import { isRelationshipTypeDirectional } from '../relationshipLogic';
+import { getProactiveLinkSuggestions, ProactiveLinkSuggestion } from '../relationships/inlineLinking';
 import { ProjectDraft } from '../projects/projectModel';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } from '../types';
@@ -48,6 +50,7 @@ type ExpandedNoteProps = {
   onInspectRelationship: (relationshipId: string) => void;
   onCloseRelationshipInspector: () => void;
   onCreateExplicitLink: (fromId: string, toId: string, type: RelationshipType) => void;
+  onCreateInlineLinkedNote: (sourceNoteId: string, title: string, type: RelationshipType) => string | null;
   onConfirmRelationship: (relationshipId: string) => void;
   onUpdateRelationship: (relationshipId: string, type: RelationshipType, fromId: string, toId: string) => void;
   onUndoRelationshipEdit: () => void;
@@ -65,6 +68,7 @@ type ExpandedNoteProps = {
 type DragState = { dx: number; dy: number };
 type BodyMode = 'read' | 'edit';
 type SidebarSection = 'connections' | 'organize';
+type SuggestedLinkRow = ProactiveLinkSuggestion & { selectedType: RelationshipType };
 
 const DEFAULT_PROJECT_DRAFT: ProjectDraft = { key: '', name: '', color: '#7aa2f7', description: '' };
 const DEFAULT_WORKSPACE_DRAFT: WorkspaceDraft = { key: '', name: '', color: '#5fbf97', description: '' };
@@ -139,6 +143,7 @@ export function ExpandedNote({
   onInspectRelationship,
   onCloseRelationshipInspector,
   onCreateExplicitLink,
+  onCreateInlineLinkedNote,
   onConfirmRelationship,
   onUpdateRelationship,
   onUndoRelationshipEdit,
@@ -152,9 +157,6 @@ export function ExpandedNote({
   onHoverRelatedNote,
   onClearRelatedHover
 }: ExpandedNoteProps) {
-  const [linkTargetId, setLinkTargetId] = useState('');
-  const [linkType, setLinkType] = useState<RelationshipType>('related');
-  const [showLinkComposer, setShowLinkComposer] = useState(false);
   const [showProjectComposer, setShowProjectComposer] = useState(false);
   const [showWorkspaceComposer, setShowWorkspaceComposer] = useState(false);
   const [projectDraft, setProjectDraft] = useState<ProjectDraft>(DEFAULT_PROJECT_DRAFT);
@@ -165,9 +167,12 @@ export function ExpandedNote({
   const [inspectorType, setInspectorType] = useState<RelationshipType>('related');
   const [previewDirectionReversed, setPreviewDirectionReversed] = useState(false);
   const [activeSidebarSection, setActiveSidebarSection] = useState<SidebarSection>('connections');
+  const [inlineHighlightedTargetId, setInlineHighlightedTargetId] = useState<string | null>(null);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<string[]>([]);
+  const [suggestionTypeOverrides, setSuggestionTypeOverrides] = useState<Record<string, RelationshipType>>({});
   const panelRef = useRef<HTMLElement | null>(null);
+  const inlineHighlightTimerRef = useRef<number | null>(null);
 
-  const linkableNotes = useMemo(() => (note ? notes.filter((candidate) => candidate.id !== note.id && !candidate.archived) : []), [note, notes]);
   const groupedRelationshipOptions = useMemo(() => {
     return DETAIL_SURFACE_RELATIONSHIP_OPTIONS.reduce<Record<DetailSurfaceRelationshipOption['group'], DetailSurfaceRelationshipOption[]>>((groups, option) => {
       groups[option.group] ??= [];
@@ -175,20 +180,26 @@ export function ExpandedNote({
       return groups;
     }, { 'Core context': [], 'Operational flow': [], 'Structure': [] });
   }, []);
-  const selectedRelationshipOption = getDetailSurfaceRelationshipOption(linkType);
 
   useEffect(() => {
     setPosition({ x: 0, y: 0 });
     setDragState(null);
     setBodyMode(note?.trace === 'captured' ? 'edit' : 'read');
-    setShowLinkComposer(false);
     setShowProjectComposer(false);
     setShowWorkspaceComposer(false);
     setProjectDraft(DEFAULT_PROJECT_DRAFT);
     setWorkspaceDraft(DEFAULT_WORKSPACE_DRAFT);
-    setLinkTargetId('');
     setActiveSidebarSection('connections');
+    setInlineHighlightedTargetId(null);
+    setDismissedSuggestionIds([]);
+    setSuggestionTypeOverrides({});
   }, [note?.id, note?.trace]);
+
+  useEffect(() => {
+    return () => {
+      if (inlineHighlightTimerRef.current) window.clearTimeout(inlineHighlightTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!inspectedRelationship) return;
@@ -220,6 +231,20 @@ export function ExpandedNote({
   const noteProjectIds = new Set(note.projectIds);
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
   const notesById = new Map(notes.map((candidate) => [candidate.id, candidate]));
+  const relationshipsByTargetId = new Map(
+    relationships.map((relationship) => [relationship.targetId, { relationshipId: relationship.id, type: relationship.type }])
+  );
+  const proactiveSuggestions = getProactiveLinkSuggestions({
+    source: note,
+    notes,
+    existingTargetIds: new Set(relationships.map((relationship) => relationship.targetId))
+  });
+  const visibleProactiveSuggestions: SuggestedLinkRow[] = proactiveSuggestions
+    .filter((suggestion) => !dismissedSuggestionIds.includes(suggestion.id))
+    .map((suggestion) => ({
+      ...suggestion,
+      selectedType: suggestionTypeOverrides[suggestion.id] ?? suggestion.type ?? 'related'
+    }));
   const inspectedFrom = inspectedRelationship ? notesById.get(inspectedRelationship.fromId) ?? null : null;
   const inspectedTo = inspectedRelationship ? notesById.get(inspectedRelationship.toId) ?? null : null;
   const previewDirectional = isRelationshipTypeDirectional(inspectorType);
@@ -253,6 +278,23 @@ export function ExpandedNote({
   }));
   const flowSummary = summarizeConnectionFlows(connectedGroups);
 
+  const flashInlineTarget = (targetId: string) => {
+    setInlineHighlightedTargetId(targetId);
+    onHoverRelatedNote(targetId);
+    if (inlineHighlightTimerRef.current) window.clearTimeout(inlineHighlightTimerRef.current);
+    inlineHighlightTimerRef.current = window.setTimeout(() => {
+      onClearRelatedHover(targetId);
+      setInlineHighlightedTargetId((current) => (current === targetId ? null : current));
+      inlineHighlightTimerRef.current = null;
+    }, 1400);
+  };
+
+  const acceptSuggestedLink = (suggestion: SuggestedLinkRow) => {
+    onCreateExplicitLink(note.id, suggestion.targetId, suggestion.selectedType);
+    flashInlineTarget(suggestion.targetId);
+    setDismissedSuggestionIds((current) => [...new Set([...current, suggestion.id])]);
+  };
+
   return (
     <section className="expanded-note-shell">
       <aside ref={panelRef} className="expanded-note" style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
@@ -285,7 +327,52 @@ export function ExpandedNote({
         <div className="expanded-note-layout">
           <div className="expanded-note-main">
             <div className="note-body-surface" data-mode={bodyMode}>
-              {bodyMode === 'read' ? <MarkdownProjectionView source={note.body} onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })} /> : <textarea className="note-body-field" aria-label="Note body markdown" placeholder="Write freely…" value={note.body} onChange={(event) => onChange(note.id, { body: event.target.value })} />}
+              {bodyMode === 'read' ? (
+                <MarkdownProjectionView source={note.body} onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })} />
+              ) : (
+                <InlineNoteLinkEditor
+                  note={note}
+                  notes={notes}
+                  relationshipsByTargetId={relationshipsByTargetId}
+                  highlightedTargetId={inlineHighlightedTargetId}
+                  proactiveSuggestions={visibleProactiveSuggestions}
+                  onBodyChange={(body) => onChange(note.id, { body })}
+                  onCreateLink={({ targetId, type }) => {
+                    onCreateExplicitLink(note.id, targetId, type);
+                    flashInlineTarget(targetId);
+                  }}
+                  onCreateLinkedNote={(title, type) => {
+                    const targetId = onCreateInlineLinkedNote(note.id, title, type);
+                    if (targetId) flashInlineTarget(targetId);
+                    return targetId;
+                  }}
+                  onUpdateRelationshipType={(relationshipId, type, targetId) => {
+                    const relationship = relationships.find((item) => item.id === relationshipId);
+                    if (!relationship) return;
+                    onUpdateRelationship(relationshipId, type, relationship.fromId, relationship.toId);
+                    flashInlineTarget(targetId);
+                  }}
+                  onHighlightTarget={(targetId) => {
+                    setInlineHighlightedTargetId(targetId);
+                    onHoverRelatedNote(targetId);
+                  }}
+                  onClearHighlight={(targetId) => {
+                    onClearRelatedHover(targetId);
+                    setInlineHighlightedTargetId((current) => (current === targetId ? null : current));
+                  }}
+                  onAcceptProactiveSuggestion={(suggestionId) => {
+                    const suggestion = visibleProactiveSuggestions.find((item) => item.id === suggestionId);
+                    if (!suggestion) return;
+                    acceptSuggestedLink(suggestion);
+                  }}
+                  onDismissProactiveSuggestion={(suggestionId) => {
+                    setDismissedSuggestionIds((current) => [...new Set([...current, suggestionId])]);
+                  }}
+                  onChangeProactiveSuggestionType={(suggestionId, type) => {
+                    setSuggestionTypeOverrides((current) => ({ ...current, [suggestionId]: type }));
+                  }}
+                />
+              )}
             </div>
           </div>
 
@@ -303,6 +390,34 @@ export function ExpandedNote({
               </div>
 
               <p className="filter-state-copy">{flowSummary}</p>
+
+              {visibleProactiveSuggestions.length ? (
+                <section className="connections-flow-group" aria-label="Suggested links">
+                  <div className="connections-flow-head">
+                    <strong>Suggested</strong>
+                    <span>{visibleProactiveSuggestions.length}</span>
+                  </div>
+                  <div className="relations-list">
+                    {visibleProactiveSuggestions.map((suggestion) => (
+                      <div
+                        key={suggestion.id}
+                        className="relation-row relation-row--suggested"
+                        onMouseEnter={() => onHoverRelatedNote(suggestion.targetId)}
+                        onMouseLeave={() => onClearRelatedHover(suggestion.targetId)}
+                      >
+                        <button className="relation-main" onClick={() => acceptSuggestedLink(suggestion)}>
+                          <div className="relation-heading">
+                            <span className="relation-title">{suggestion.targetTitle}</span>
+                            <small>Suggested · {formatRelationshipType(suggestion.selectedType)}</small>
+                          </div>
+                          <p className="relation-explanation">{suggestion.reason}</p>
+                        </button>
+                        <button className="relation-open" onClick={() => acceptSuggestedLink(suggestion)}>Link</button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <div className="connections-flow-list" aria-label="Connected notes">
                 {connectedGroups.some((group) => group.items.length) ? connectedGroups.map((group) => (
@@ -431,31 +546,6 @@ export function ExpandedNote({
                   </div>
                 </section>
               ) : null}
-
-              <div className="link-compose">
-                <button className="ghost-button" onClick={() => setShowLinkComposer((open) => !open)}>{showLinkComposer ? 'Close link tools' : 'Link note'}</button>
-                {showLinkComposer ? (
-                  <div className="link-composer-inline">
-                    <div className="link-row">
-                      <select value={linkTargetId} onChange={(event) => setLinkTargetId(event.target.value)}>
-                        <option value="">Select a note…</option>
-                        {linkableNotes.map((candidate) => <option key={candidate.id} value={candidate.id}>{getCompactDisplayTitle(candidate)}</option>)}
-                      </select>
-                      <select value={linkType} onChange={(event) => setLinkType(event.target.value as RelationshipType)}>
-                        {Object.entries(groupedRelationshipOptions).map(([group, options]) => (
-                          <optgroup key={group} label={group}>
-                            {options.map(({ type, label }) => <option key={type} value={type}>{label}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
-                      <button onClick={() => { if (!linkTargetId) return; onCreateExplicitLink(note.id, linkTargetId, linkType); setLinkTargetId(''); setShowLinkComposer(false); }}>Add</button>
-                    </div>
-                    <p className="link-compose-description">
-                      <strong>{selectedRelationshipOption.label}</strong> · {selectedRelationshipOption.description}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
             </section>
             ) : null}
 

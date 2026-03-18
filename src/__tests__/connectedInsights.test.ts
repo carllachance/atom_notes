@@ -29,8 +29,10 @@ function makeScene(): SceneState {
 
 test('runConnectedInsights returns graph-grounded results, reasons, and actions', async () => {
   const response = await runConnectedInsights(makeScene(), { query: 'policy', selectedNoteId: 'a', activeProjectIds: ['p1'], visibleNoteIds: ['a', 'b'], mode: 'explore' });
-  assert.ok(response.answer.includes('relevant notes'));
+  assert.ok(response.answer.includes('graph'));
   assert.equal(response.results[0].noteId, 'b');
   assert.ok(response.results[0].reasons.some((reason) => reason.includes('direct match') || reason.includes('connected via')));
   assert.ok(response.actions?.some((action) => action.kind === 'focus_cluster'));
+  assert.ok(response.actions?.some((action) => action.kind === 'create_link'));
+  assert.deepEqual(response.highlightNoteIds, ['b', 'a']);
 });

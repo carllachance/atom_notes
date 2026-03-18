@@ -17,7 +17,14 @@ import {
   updateNoteInScene
 } from './sceneActions';
 import { Lens, RelationshipType, SceneState } from '../types';
-import { createExplicitRelationshipInScene, confirmRelationshipInScene, restoreRelationshipInScene, traverseToRelatedInScene, updateRelationshipInScene } from '../relationships/relationshipActions';
+import {
+  createExplicitRelationshipInScene,
+  createInlineLinkedNoteInScene,
+  confirmRelationshipInScene,
+  restoreRelationshipInScene,
+  traverseToRelatedInScene,
+  updateRelationshipInScene
+} from '../relationships/relationshipActions';
 import { createProjectAndAssignToNoteInScene, setNoteProjectsInScene } from '../projects/projectActions';
 import { ProjectDraft } from '../projects/projectModel';
 import { createWorkspaceAndAssignToNoteInScene, setNoteWorkspaceInScene } from '../workspaces/workspaceActions';
@@ -93,6 +100,16 @@ export function useSceneMutations({
     setScene((prev) => createExplicitRelationshipInScene(prev, fromId, toId, type));
   }, [setScene]);
 
+  const createInlineLinkedNote = useCallback((sourceNoteId: string, title: string, type: RelationshipType) => {
+    let targetNoteId: string | null = null;
+    setScene((prev) => {
+      const next = createInlineLinkedNoteInScene(prev, sourceNoteId, title, type);
+      targetNoteId = next.targetNoteId;
+      return next.scene;
+    });
+    return targetNoteId;
+  }, [setScene]);
+
   const confirmRelationship = useCallback((relationshipId: string) => {
     setScene((prev) => confirmRelationshipInScene(prev, relationshipId));
   }, [setScene]);
@@ -158,6 +175,7 @@ export function useSceneMutations({
     setAIPanel,
     setAIPanelVisibility,
     createExplicitRelationship,
+    createInlineLinkedNote,
     confirmRelationship,
     updateRelationship,
     restoreRelationship,
