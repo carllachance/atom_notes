@@ -227,6 +227,15 @@ textarea {
   transition: opacity 160ms ease, box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease, filter 180ms ease, background 180ms ease;
 }
 
+.note-card[data-dragging='true'] {
+  transition: none;
+  animation: none;
+}
+
+.note-card[data-direct-dragging='true'] {
+  cursor: grabbing;
+}
+
 
 .note-card[data-visual-state='hover'] {
   border-color: var(--note-hover-border);

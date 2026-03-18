@@ -27,6 +27,7 @@ export function App() {
     pendingAction,
     hoveredNoteId,
     relationshipFilter,
+    isDragging,
     inspectedRelationship,
     canUndoRelationshipEdit,
     recentlyClosedNoteId,
@@ -47,6 +48,7 @@ export function App() {
     closeActiveNote,
     updateNote,
     bringToFront,
+    setIsDragging,
     setLens,
     setFocusMode,
     setAIPanel,
@@ -112,7 +114,7 @@ export function App() {
             <SpatialCanvas
               notes={visibleNotes}
               noteMetaById={lensPresentation.noteMetaById}
-            focusHighlightEnabled={scene.focusMode.highlight}
+              focusHighlightEnabled={scene.focusMode.highlight}
               activeNoteId={activeNote?.id ?? null}
               hoveredNoteId={hoveredNoteId}
               revealMatchedNoteIds={visibleRevealMatchIds}
@@ -123,13 +125,18 @@ export function App() {
               relatedGlowNoteIds={ambientRelatedNoteIds}
               ambientGlowLevel={ambientGlowLevel}
               pulseNoteId={pulseNoteId}
+              isDragging={isDragging}
               recenterTarget={recenterTarget}
               activeProject={lensPresentation.activeProject}
               projectConnectorSegments={lensPresentation.projectConnectorSegments}
               onScroll={onCanvasScroll}
               onViewportCenterChange={onViewportCenterChange}
               onMetricsChange={setCanvasMetrics}
-              onDrag={(id, x, y) => updateNote(id, { x, y }, 'moved')}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={(id, x, y, moved) => {
+                if (moved) updateNote(id, { x, y }, 'moved');
+                setIsDragging(false);
+              }}
               onOpen={onOpenNote}
               onBringToFront={bringToFront}
               onHoverStart={onHoverStart}

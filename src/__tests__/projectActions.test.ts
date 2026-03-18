@@ -15,6 +15,7 @@ function makeScene(): SceneState {
     relationships: [],
     projects: [],
     workspaces: [],
+    isDragging: false,
     activeNoteId: null,
     quickCaptureOpen: false,
     captureComposer: { open: false, draft: '', lastCreatedNoteId: null },

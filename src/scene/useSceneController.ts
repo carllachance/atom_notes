@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { inferNoteMetadata } from '../ai/inference';
 import { runConnectedInsights } from '../ai/connectedInsights';
 import { createNote, now } from '../notes/noteModel';
@@ -32,7 +32,12 @@ export function useSceneController() {
   const [inspectedRelationshipId, setInspectedRelationshipId] = useState<string | null>(null);
   const [lastRelationshipEdit, setLastRelationshipEdit] = useState<{ before: Relationship; afterId: string } | null>(null);
 
-  const lensPresentation = useMemo(() => getLensPresentation(scene), [scene]);
+  const liveLensPresentation = useMemo(() => getLensPresentation(scene), [scene]);
+  const stableLensPresentationRef = useRef(liveLensPresentation);
+  if (!scene.isDragging) {
+    stableLensPresentationRef.current = liveLensPresentation;
+  }
+  const lensPresentation = scene.isDragging ? stableLensPresentationRef.current : liveLensPresentation;
   const focusFilteredVisibleNotes = useMemo(() => {
     const notes = lensPresentation.visibleNotes;
     return scene.focusMode.isolate ? notes.filter((note) => Boolean(note.isFocus ?? note.inFocus)) : notes;
@@ -67,7 +72,12 @@ export function useSceneController() {
     return totals;
   }, [activeRelationships]);
 
-  const rankedRelationships = useMemo(() => (activeNote ? getRankedRelationshipsForNote(activeNote.id, scene) : []), [activeNote, scene]);
+  const liveRankedRelationships = useMemo(() => (activeNote ? getRankedRelationshipsForNote(activeNote.id, scene) : []), [activeNote, scene]);
+  const stableRankedRelationshipsRef = useRef(liveRankedRelationships);
+  if (!scene.isDragging) {
+    stableRankedRelationshipsRef.current = liveRankedRelationships;
+  }
+  const rankedRelationships = scene.isDragging ? stableRankedRelationshipsRef.current : liveRankedRelationships;
 
   const relationshipPanelItems = useMemo(() => {
     if (!activeNote) return [];
@@ -354,7 +364,8 @@ export function useSceneController() {
     ambientRelatedNoteIds: ambient.ambientRelatedNoteIds,
     ambientGlowLevel: ambient.ambientGlowLevel,
     pulseNoteId: ambient.pulseNoteId,
-    recenterTarget: ambient.recenterTarget,
+    isDragging: scene.isDragging,
+    recenterTarget: scene.isDragging ? null : ambient.recenterTarget,
     revealState: { query: scene.lens.kind === 'reveal' ? scene.lens.query : '', matchedNoteIds: lensPresentation.revealMatchIds, activeMatchIndex: activeRevealMatchIndex },
     visibleRevealMatchIds: revealMatchedNoteIds,
     revealActiveNoteId,
@@ -366,6 +377,7 @@ export function useSceneController() {
     closeActiveNote: mutations.closeActiveNote,
     updateNote: mutations.updateNote,
     bringToFront: mutations.bringToFront,
+    setIsDragging: mutations.setIsDragging,
     setLens: mutations.setLens,
     setFocusMode: mutations.setFocusMode,
     setAIPanel: mutations.setAIPanel,

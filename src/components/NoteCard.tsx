@@ -1,4 +1,4 @@
-import { PointerEvent } from 'react';
+import { memo, PointerEvent } from 'react';
 import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
 import { getProjectNoteVisual } from '../relationships/relationshipVisuals';
 import { describeNoteTrace, getTraceVisualBias } from '../trace';
@@ -7,12 +7,15 @@ import { LensNotePresentation } from '../scene/lens';
 
 type NoteCardProps = {
   note: NoteCardModel;
+  position: { x: number; y: number } | null;
   meta?: LensNotePresentation;
   focusHighlightEnabled: boolean;
   recentlyClosed: boolean;
   ambientRelated: boolean;
   ambientPulse: boolean;
   ambientGlowLevel: number;
+  isDragging: boolean;
+  isDirectlyDragging: boolean;
   revealMatched: boolean;
   revealActive: boolean;
   isActive: boolean;
@@ -40,7 +43,7 @@ function getVisualState(note: NoteCardModel, focusHighlightEnabled: boolean, fla
   return 'default';
 }
 
-export function NoteCard({ note, meta, focusHighlightEnabled, recentlyClosed, ambientRelated, ambientPulse, ambientGlowLevel, revealMatched, revealActive, isActive, isHovered, activeProjectLabel, activeProjectColor, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave }: NoteCardProps) {
+function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recentlyClosed, ambientRelated, ambientPulse, ambientGlowLevel, isDragging, isDirectlyDragging, revealMatched, revealActive, isActive, isHovered, activeProjectLabel, activeProjectColor, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave }: NoteCardProps) {
   const bias = getTraceVisualBias(note);
   const projectVisual = getProjectNoteVisual(meta?.projectState === 'member' ? 'member' : meta?.surfaced ? 'subordinate' : 'none');
   const displayTitle = getCompactDisplayTitle(note);
@@ -49,6 +52,7 @@ export function NoteCard({ note, meta, focusHighlightEnabled, recentlyClosed, am
   const emphasisScale = meta?.emphasis === 'supporting' ? 0.985 : 1;
   const emphasisOpacity = meta?.emphasis === 'supporting' ? 0.82 : 1;
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
+  const resolvedPosition = position ?? { x: note.x, y: note.y };
 
   return (
     <article
@@ -63,15 +67,19 @@ export function NoteCard({ note, meta, focusHighlightEnabled, recentlyClosed, am
       data-project-state={meta?.projectState ?? 'none'}
       data-workspace-state={meta?.workspaceState ?? 'none'}
       data-emphasis={meta?.emphasis ?? 'context'}
+      data-dragging={isDragging ? 'true' : 'false'}
+      data-direct-dragging={isDirectlyDragging ? 'true' : 'false'}
       style={{
-        transform: `translate(${note.x}px, ${note.y - bias.lift}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale})`,
+        transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale})`,
         transformOrigin: 'top left',
         zIndex: note.z,
         opacity: bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity,
         filter: `blur(${bias.blur}px)`,
         ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0',
         ['--project-accent' as string]: activeProjectColor ?? 'rgba(122, 162, 247, 0.42)',
-        ['--project-glow-strength' as string]: String(projectVisual.glowStrength)
+        ['--project-glow-strength' as string]: String(projectVisual.glowStrength),
+        transition: isDragging ? 'none' : undefined,
+        animation: isDragging ? 'none' : undefined
       }}
     >
       <div className="note-card-badges">
@@ -86,3 +94,30 @@ export function NoteCard({ note, meta, focusHighlightEnabled, recentlyClosed, am
     </article>
   );
 }
+
+export const NoteCard = memo(NoteCardComponent, (prev, next) => {
+  return (
+    prev.note === next.note &&
+    prev.position?.x === next.position?.x &&
+    prev.position?.y === next.position?.y &&
+    prev.meta?.emphasis === next.meta?.emphasis &&
+    prev.meta?.surfaced === next.meta?.surfaced &&
+    prev.meta?.revealed === next.meta?.revealed &&
+    prev.meta?.projectState === next.meta?.projectState &&
+    prev.meta?.workspaceState === next.meta?.workspaceState &&
+    prev.meta?.contextLabel === next.meta?.contextLabel &&
+    prev.focusHighlightEnabled === next.focusHighlightEnabled &&
+    prev.recentlyClosed === next.recentlyClosed &&
+    prev.ambientRelated === next.ambientRelated &&
+    prev.ambientPulse === next.ambientPulse &&
+    prev.ambientGlowLevel === next.ambientGlowLevel &&
+    prev.isDragging === next.isDragging &&
+    prev.isDirectlyDragging === next.isDirectlyDragging &&
+    prev.revealMatched === next.revealMatched &&
+    prev.revealActive === next.revealActive &&
+    prev.isActive === next.isActive &&
+    prev.isHovered === next.isHovered &&
+    prev.activeProjectLabel === next.activeProjectLabel &&
+    prev.activeProjectColor === next.activeProjectColor
+  );
+});

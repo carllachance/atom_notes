@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getProjectGroupingVisual } from '../relationships/relationshipVisuals';
 import { NoteCardModel, Project } from '../types';
 import { LensNotePresentation } from '../scene/lens';
@@ -26,13 +26,15 @@ type SpatialCanvasProps = {
   relatedGlowNoteIds: string[];
   pulseNoteId: string | null;
   ambientGlowLevel: number;
+  isDragging: boolean;
   recenterTarget: RecenterTarget | null;
   activeProject: Project | null;
   projectConnectorSegments: ProjectConnectorSegment[];
   onScroll: (left: number, top: number) => void;
   onViewportCenterChange: (x: number, y: number) => void;
   onMetricsChange: (metrics: CanvasViewportMetrics) => void;
-  onDrag: (id: string, x: number, y: number) => void;
+  onDragStart: () => void;
+  onDragEnd: (id: string, x: number, y: number, moved: boolean) => void;
   onOpen: (id: string) => void;
   onBringToFront: (id: string) => void;
   onHoverStart: (id: string) => void;
@@ -64,23 +66,65 @@ export function SpatialCanvas({
   relatedGlowNoteIds,
   pulseNoteId,
   ambientGlowLevel,
+  isDragging,
   recenterTarget,
   activeProject,
   projectConnectorSegments,
   onScroll,
   onViewportCenterChange,
   onMetricsChange,
-  onDrag,
+  onDragStart,
+  onDragEnd,
   onOpen,
   onBringToFront,
   onHoverStart,
   onHoverEnd
 }: SpatialCanvasProps) {
   const dragState = useRef<DragState | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
+  const pendingDragPositionRef = useRef<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(null);
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
   const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
   const projectVisual = getProjectGroupingVisual();
+
+  const flushDragPosition = () => {
+    if (!dragState.current || !pendingDragPositionRef.current) return;
+    const { x, y } = pendingDragPositionRef.current;
+    setDragPosition({ id: dragState.current.id, x, y });
+    dragFrameRef.current = null;
+  };
+
+  const queueDragPosition = (x: number, y: number) => {
+    pendingDragPositionRef.current = { x, y };
+    if (dragFrameRef.current != null) return;
+    dragFrameRef.current = window.requestAnimationFrame(flushDragPosition);
+  };
+
+  const clearDragState = () => {
+    if (dragFrameRef.current != null) {
+      window.cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    pendingDragPositionRef.current = null;
+    dragState.current = null;
+    setDragPosition(null);
+  };
+
+  const finishDrag = () => {
+    if (!dragState.current) return;
+    const finalPosition = pendingDragPositionRef.current ?? dragPosition;
+    const dragTargetId = dragState.current.id;
+    const moved = dragState.current.moved;
+    clearDragState();
+    if (finalPosition && 'x' in finalPosition && 'y' in finalPosition) {
+      onDragEnd(dragTargetId, finalPosition.x, finalPosition.y, moved);
+      return;
+    }
+    const fallbackNote = notes.find((note) => note.id === dragTargetId);
+    onDragEnd(dragTargetId, fallbackNote?.x ?? 0, fallbackNote?.y ?? 0, moved);
+  };
 
   const emitViewportCenter = () => {
     const node = canvasRef.current;
@@ -149,6 +193,14 @@ export function SpatialCanvas({
   }, [onMetricsChange, onViewportCenterChange]);
 
   useEffect(() => {
+    return () => {
+      if (dragFrameRef.current != null) {
+        window.cancelAnimationFrame(dragFrameRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const node = canvasRef.current;
     if (!node || !recenterTarget) return;
 
@@ -173,15 +225,13 @@ export function SpatialCanvas({
           dragState.current.moved = true;
         }
 
-        onDrag(
-          dragState.current.id,
+        queueDragPosition(
           event.clientX - dragState.current.dx + canvasRef.current!.scrollLeft,
           event.clientY - dragState.current.dy + canvasRef.current!.scrollTop
         );
       }}
-      onPointerUp={() => {
-        dragState.current = null;
-      }}
+      onPointerUp={finishDrag}
+      onPointerCancel={finishDrag}
     >
       <div className="canvas-plane">
         {activeProject ? (
@@ -209,12 +259,15 @@ export function SpatialCanvas({
             <NoteCard
               key={note.id}
               note={note}
+              position={dragPosition?.id === note.id ? { x: dragPosition.x, y: dragPosition.y } : null}
               meta={meta}
               focusHighlightEnabled={focusHighlightEnabled}
               recentlyClosed={recentlyClosedNoteId === note.id}
               ambientRelated={relatedGlowIdsSet.has(note.id)}
               ambientPulse={pulseNoteId === note.id}
               ambientGlowLevel={ambientGlowLevel}
+              isDragging={isDragging}
+              isDirectlyDragging={dragPosition?.id === note.id}
               revealMatched={revealMatchedIdsSet.has(note.id)}
               revealActive={revealActiveNoteId === note.id}
               isActive={activeNoteId === note.id}
@@ -234,6 +287,9 @@ export function SpatialCanvas({
                   startY: event.clientY,
                   moved: false
                 };
+                setDragPosition({ id: note.id, x: note.x, y: note.y });
+                pendingDragPositionRef.current = { x: note.x, y: note.y };
+                onDragStart();
                 onBringToFront(note.id);
                 event.currentTarget.setPointerCapture(event.pointerId);
               }}

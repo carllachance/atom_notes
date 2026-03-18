@@ -55,6 +55,10 @@ export function bringNoteToFrontInScene(scene: SceneState, id: string): SceneSta
   };
 }
 
+export function setIsDraggingInScene(scene: SceneState, isDragging: boolean): SceneState {
+  return scene.isDragging === isDragging ? scene : { ...scene, isDragging };
+}
+
 export function setLensInScene(scene: SceneState, lens: Lens): SceneState {
   return { ...scene, lens: normalizeLens(lens) };
 }
