@@ -14,6 +14,7 @@ export function App() {
     archivedNotes,
     hoveredNoteId,
     relationshipFilter,
+    selectedContextNoteIds,
     recentlyClosedNoteId,
     rankedRelationships,
     relationshipPanelItems,
@@ -43,6 +44,9 @@ export function App() {
     onHoverStart,
     onHoverEnd,
     onWhereWasI,
+    onFocusSelectedNote,
+    onFocusSelectedCluster,
+    onResetView,
     onRevealQueryChange,
     onReveal,
     onRevealNext,
@@ -65,13 +69,18 @@ export function App() {
         onReveal={onReveal}
         onRevealPrev={onRevealPrev}
         onRevealNext={onRevealNext}
+        onFocusSelectedNote={onFocusSelectedNote}
+        onFocusSelectedCluster={onFocusSelectedCluster}
+        onResetView={onResetView}
       />
 
       <section className="view-stack" data-lens={scene.lens}>
         <div className="view-layer view-layer-canvas">
           <SpatialCanvas
             notes={visibleNotes}
+            relationships={scene.relationships}
             activeNoteId={activeNote?.id ?? null}
+            selectedContextNoteIds={selectedContextNoteIds}
             hoveredNoteId={hoveredNoteId}
             revealMatchedNoteIds={visibleRevealMatchIds}
             revealActiveNoteId={revealActiveNoteId}
@@ -103,6 +112,8 @@ export function App() {
           notes={visibleNotes}
           rankedRelationships={rankedRelationships}
           filter={relationshipFilter}
+          scrollLeft={scene.canvasScrollLeft}
+          scrollTop={scene.canvasScrollTop}
           onTraverse={traverseToRelated}
         />
       ) : null}

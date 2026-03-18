@@ -10,6 +10,9 @@ type RecallBandProps = {
   onSetLens: (lens: Lens) => void;
   onToggleQuickCapture: () => void;
   onWhereWasI: () => void;
+  onFocusSelectedNote: () => void;
+  onFocusSelectedCluster: () => void;
+  onResetView: () => void;
   onRevealQueryChange: (query: string) => void;
   onReveal: () => void;
   onRevealNext: () => void;
@@ -26,6 +29,9 @@ export function RecallBand({
   onSetLens,
   onToggleQuickCapture,
   onWhereWasI,
+  onFocusSelectedNote,
+  onFocusSelectedCluster,
+  onResetView,
   onRevealQueryChange,
   onReveal,
   onRevealNext,
@@ -67,6 +73,18 @@ export function RecallBand({
         </button>
         <button className="ghost-button" onClick={onRevealNext} disabled={revealMatchCount < 2}>
           ›
+        </button>
+      </div>
+
+      <div className="orientation-controls" aria-label="Canvas orientation helpers">
+        <button className="ghost-button recall-capture-toggle" onClick={onFocusSelectedNote}>
+          Focus note
+        </button>
+        <button className="ghost-button recall-capture-toggle" onClick={onFocusSelectedCluster}>
+          Focus cluster
+        </button>
+        <button className="ghost-button recall-capture-toggle" onClick={onResetView}>
+          Recenter
         </button>
       </div>
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getResetViewTarget, getSelectedClusterTarget, getNoteCenter, type CanvasCenter } from '../canvas/navigation';
 import { NoteCardModel, Relationship } from '../types';
 
 const HOVER_LINGER_MS = 650;
@@ -6,12 +7,9 @@ const AMBIENT_GLOW_MAX = 0.52;
 const AMBIENT_GLOW_FADE_IN_MS = 420;
 const AMBIENT_GLOW_FADE_OUT_MS = 280;
 const NEARBY_CONTEXT_DISTANCE_PX = 180;
-const NOTE_WIDTH = 270;
-const NOTE_HEIGHT = 170;
 const RECENT_CLOSE_CLEAR_MS = 2200;
 const PULSE_CLEAR_MS = 900;
 
-type CanvasCenter = { x: number; y: number };
 type RecenterTarget = { x: number; y: number; requestId: number };
 
 type UseAmbientGuidanceOptions = {
@@ -20,10 +18,6 @@ type UseAmbientGuidanceOptions = {
   relationships: Relationship[];
   allNotes: NoteCardModel[];
 };
-
-function getNoteCenter(note: { x: number; y: number }): CanvasCenter {
-  return { x: note.x + NOTE_WIDTH / 2, y: note.y + NOTE_HEIGHT / 2 };
-}
 
 export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships, allNotes }: UseAmbientGuidanceOptions) {
   const [recentlyClosedNoteId, setRecentlyClosedNoteId] = useState<string | null>(null);
@@ -50,6 +44,19 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
 
     return [...direct].filter((noteId) => noteId !== ambientSourceNoteId && visibleNoteIds.has(noteId));
   }, [ambientGlowLevel, ambientSourceNoteId, relationships, visibleNoteIds]);
+
+
+  const selectedContextNoteIds = useMemo(() => {
+    if (!lastActiveNoteId) return [];
+
+    const direct = new Set<string>();
+    for (const relationship of relationships) {
+      if (relationship.fromId === lastActiveNoteId && visibleNoteIds.has(relationship.toId)) direct.add(relationship.toId);
+      if (relationship.toId === lastActiveNoteId && visibleNoteIds.has(relationship.fromId)) direct.add(relationship.fromId);
+    }
+
+    return [...direct].filter((noteId) => noteId !== lastActiveNoteId);
+  }, [lastActiveNoteId, relationships, visibleNoteIds]);
 
   const animateAmbientGlow = useCallback((target: number) => {
     if (glowAnimationRef.current) {
@@ -184,25 +191,44 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
     setRecentlyClosedNoteId(id);
   }, []);
 
-  const onWhereWasI = useCallback(() => {
-    const primaryTargetId = [lastActiveNoteId, recentNoteId].find((id) => id && visibleNoteIds.has(id)) ?? null;
-    const targetNote = primaryTargetId ? visibleNotes.find((note) => note.id === primaryTargetId) ?? null : null;
-    const targetCenter = targetNote ? getNoteCenter(targetNote) : recentViewportCenter;
-
+  const recenterToTarget = useCallback((targetCenter: CanvasCenter | null, pulseNoteId?: string | null) => {
     if (!targetCenter) return;
 
     if (recentViewportCenter) {
       const distance = Math.hypot(targetCenter.x - recentViewportCenter.x, targetCenter.y - recentViewportCenter.y);
       if (distance <= NEARBY_CONTEXT_DISTANCE_PX) {
-        if (targetNote) setPulseNoteId(targetNote.id);
+        if (pulseNoteId) setPulseNoteId(pulseNoteId);
         return;
       }
     }
 
     setRecenterTarget({ x: targetCenter.x, y: targetCenter.y, requestId: Date.now() });
+    if (pulseNoteId) setPulseNoteId(pulseNoteId);
+  }, [recentViewportCenter]);
 
-    if (targetNote) setPulseNoteId(targetNote.id);
-  }, [lastActiveNoteId, recentNoteId, recentViewportCenter, visibleNoteIds, visibleNotes]);
+  const onWhereWasI = useCallback(() => {
+    const primaryTargetId = [lastActiveNoteId, recentNoteId].find((id) => id && visibleNoteIds.has(id)) ?? null;
+    const targetNote = primaryTargetId ? visibleNotes.find((note) => note.id === primaryTargetId) ?? null : null;
+    const targetCenter = targetNote ? getNoteCenter(targetNote) : recentViewportCenter;
+
+    recenterToTarget(targetCenter, targetNote?.id ?? null);
+  }, [lastActiveNoteId, recentNoteId, recentViewportCenter, recenterToTarget, visibleNoteIds, visibleNotes]);
+
+  const onFocusSelectedNote = useCallback(() => {
+    if (!lastActiveNoteId) return;
+    const targetNote = visibleNotes.find((note) => note.id === lastActiveNoteId);
+    recenterToTarget(targetNote ? getNoteCenter(targetNote) : null, targetNote?.id ?? null);
+  }, [lastActiveNoteId, recenterToTarget, visibleNotes]);
+
+  const onFocusSelectedCluster = useCallback(() => {
+    const clusterTarget = getSelectedClusterTarget(lastActiveNoteId, visibleNotes, selectedContextNoteIds);
+    recenterToTarget(clusterTarget, clusterTarget?.pulseNoteId ?? null);
+  }, [lastActiveNoteId, recenterToTarget, selectedContextNoteIds, visibleNotes]);
+
+  const onResetView = useCallback(() => {
+    const resetTarget = getResetViewTarget(visibleNotes);
+    recenterToTarget(resetTarget, resetTarget?.pulseNoteId ?? null);
+  }, [recenterToTarget, visibleNotes]);
 
   return {
     hoveredNoteId,
@@ -210,6 +236,7 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
     pulseNoteId,
     recenterTarget,
     ambientRelatedNoteIds,
+    selectedContextNoteIds,
     ambientGlowLevel,
     cancelHoverIntent,
     onHoverStart,
@@ -220,6 +247,9 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
     onActiveNoteClosed,
     onNoteArchived,
     onWhereWasI,
+    onFocusSelectedNote,
+    onFocusSelectedCluster,
+    onResetView,
     panToCenterIfFar
   };
 }

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { getCompactDisplayTitle } from '../noteText';
 import { NoteCardModel, Relationship, RelationshipType } from '../types';
 import { getRelationshipTargetNoteId } from '../relationshipLogic';
+import { getCanvasWorldBounds, NOTE_CARD_HEIGHT, NOTE_CARD_WIDTH } from '../canvas/world';
 
 type RankedRelationship = {
   relationship: Relationship;
@@ -13,6 +14,8 @@ type RelationshipWebProps = {
   notes: NoteCardModel[];
   rankedRelationships: RankedRelationship[];
   filter: 'all' | RelationshipType;
+  scrollLeft: number;
+  scrollTop: number;
   onTraverse: (targetNoteId: string, relationshipId: string) => void;
 };
 
@@ -22,8 +25,6 @@ type VisibleEdge = {
   score: number;
 };
 
-const NOTE_CARD_WIDTH = 270;
-const NOTE_CARD_HEIGHT = 124;
 const EDGE_TYPE_STYLES: Record<RelationshipType, { color: string }> = {
   related_concept: { color: 'rgba(113, 162, 255, 0.34)' },
   references: { color: 'rgba(177, 132, 255, 0.34)' }
@@ -34,8 +35,9 @@ function getEdgeLineStyle(relationship: Relationship) {
   return '8 8';
 }
 
-export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter, onTraverse }: RelationshipWebProps) {
+export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter, scrollLeft, scrollTop, onTraverse }: RelationshipWebProps) {
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
+  const worldBounds = useMemo(() => getCanvasWorldBounds(notes), [notes]);
 
   const visibleEdges = useMemo(() => {
     const filtered = rankedRelationships.filter(
@@ -58,17 +60,17 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
   }, [activeNote.id, filter, notesById, rankedRelationships]);
 
   const visibleTargets = visibleEdges.slice(0, 8);
-  const activeCenterX = activeNote.x + NOTE_CARD_WIDTH / 2;
-  const activeCenterY = activeNote.y + NOTE_CARD_HEIGHT / 2;
+  const activeCenterX = activeNote.x + NOTE_CARD_WIDTH / 2 + worldBounds.offsetX - scrollLeft;
+  const activeCenterY = activeNote.y + NOTE_CARD_HEIGHT / 2 + worldBounds.offsetY - scrollTop;
 
   return (
     <div className="relationship-web-layer">
-      <svg className="relationship-web" viewBox="0 0 1800 1100" preserveAspectRatio="none" aria-hidden="true">
+      <svg className="relationship-web" preserveAspectRatio="none" aria-hidden="true">
         {visibleTargets.map(({ relationship, target, score }) => {
           const edgeStyle = EDGE_TYPE_STYLES[relationship.type];
           const confidenceOpacity = Math.min(0.44, 0.18 + score * 0.2);
-          const targetCenterX = target.x + NOTE_CARD_WIDTH / 2;
-          const targetCenterY = target.y + NOTE_CARD_HEIGHT / 2;
+          const targetCenterX = target.x + NOTE_CARD_WIDTH / 2 + worldBounds.offsetX - scrollLeft;
+          const targetCenterY = target.y + NOTE_CARD_HEIGHT / 2 + worldBounds.offsetY - scrollTop;
           const controlOffset = Math.max(30, Math.abs(targetCenterX - activeCenterX) * 0.18);
           const path = `M ${activeCenterX} ${activeCenterY} C ${activeCenterX} ${activeCenterY + controlOffset}, ${targetCenterX} ${targetCenterY - controlOffset}, ${targetCenterX} ${targetCenterY}`;
 
@@ -94,7 +96,9 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
           title={relationship.explanation}
           data-type={relationship.type}
           data-explicitness={relationship.explicitness}
-          style={{ transform: `translate(${note.x + 95}px, ${note.y + 44}px)` }}
+          style={{
+            transform: `translate(${note.x + worldBounds.offsetX - scrollLeft + 95}px, ${note.y + worldBounds.offsetY - scrollTop + 44}px)`
+          }}
           onClick={() => onTraverse(note.id, relationship.id)}
         >
           {getCompactDisplayTitle(note, 36)}
