@@ -76,26 +76,3 @@ export function setNoteProjectsInScene(scene: SceneState, noteId: string, projec
     )
   };
 }
-
-export function setProjectRevealInScene(scene: SceneState, activeProjectId: string | null): SceneState {
-  const validProjectIds = new Set(scene.projects.map((project) => project.id));
-  const nextProjectId = activeProjectId && validProjectIds.has(activeProjectId) ? activeProjectId : null;
-
-  return {
-    ...scene,
-    projectReveal: {
-      ...scene.projectReveal,
-      activeProjectId: nextProjectId
-    }
-  };
-}
-
-export function setProjectRevealIsolationInScene(scene: SceneState, isolate: boolean): SceneState {
-  return {
-    ...scene,
-    projectReveal: {
-      ...scene.projectReveal,
-      isolate
-    }
-  };
-}

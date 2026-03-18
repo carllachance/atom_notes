@@ -16,7 +16,9 @@ const explicitRelationship: Relationship = {
   type: 'references',
   state: 'confirmed',
   explicitness: 'explicit',
+  directional: true,
   confidence: 1,
+  isInferred: false,
   explanation: 'Explicit reference',
   heuristicSupported: true,
   createdAt: 1,
@@ -26,8 +28,10 @@ const explicitRelationship: Relationship = {
 const inferredRelationship: Relationship = {
   ...explicitRelationship,
   id: 'rel-2',
-  type: 'related_concept',
+  type: 'related',
+  directional: false,
   explicitness: 'inferred',
+  isInferred: true,
   confidence: 0.62,
   explanation: 'Shared keyword'
 };
@@ -39,8 +43,8 @@ test('semantic relationship visuals map direct and inferred categories without r
   const direct = getSemanticRelationshipVisual(explicitRelationship, 0.9);
   const inferred = getSemanticRelationshipVisual(inferredRelationship, 0.9);
 
-  assert.equal(direct.label, 'Direct');
-  assert.equal(inferred.label, 'Context');
+  assert.equal(direct.label, 'Reference');
+  assert.equal(inferred.label, 'Related');
   assert.equal(direct.edge.dasharray, 'none');
   assert.equal(inferred.edge.dasharray, RELATIONSHIP_VISUAL_TOKENS.semantic.inferred.edge.dasharray);
   assert.ok(direct.edge.strokeWidth > inferred.edge.strokeWidth);

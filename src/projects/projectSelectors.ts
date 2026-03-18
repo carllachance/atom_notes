@@ -5,14 +5,6 @@ export type ProjectConnectorSegment = {
   to: { x: number; y: number };
 };
 
-export type ProjectRevealPresentation = {
-  activeProject: Project | null;
-  highlightedNoteIds: string[];
-  subordinateNoteIds: string[];
-  visibleNotes: NoteCardModel[];
-  connectorSegments: ProjectConnectorSegment[];
-};
-
 const NOTE_WIDTH = 270;
 const NOTE_HEIGHT = 124;
 
@@ -81,30 +73,4 @@ export function buildSparseProjectConnectorSegments(notes: NoteCardModel[]): Pro
   }
 
   return segments;
-}
-
-export function getProjectRevealPresentation(scene: SceneState, notes: NoteCardModel[]): ProjectRevealPresentation {
-  const activeProject = getProjectById(scene, scene.projectReveal.activeProjectId);
-  if (!activeProject) {
-    return {
-      activeProject: null,
-      highlightedNoteIds: [],
-      subordinateNoteIds: [],
-      visibleNotes: notes,
-      connectorSegments: []
-    };
-  }
-
-  const highlightedNotes = getNotesForProject(notes, activeProject.id);
-  const highlightedNoteIds = highlightedNotes.map((note) => note.id);
-  const highlightedIdSet = new Set(highlightedNoteIds);
-  const subordinateNoteIds = notes.filter((note) => !highlightedIdSet.has(note.id)).map((note) => note.id);
-
-  return {
-    activeProject,
-    highlightedNoteIds,
-    subordinateNoteIds,
-    visibleNotes: scene.projectReveal.isolate ? highlightedNotes : notes,
-    connectorSegments: buildSparseProjectConnectorSegments(highlightedNotes)
-  };
 }

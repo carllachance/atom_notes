@@ -30,20 +30,11 @@ type VisibleEdge = {
   score: number;
 };
 
-export function RelationshipWeb({
-  activeNote,
-  notes,
-  rankedRelationships,
-  filter,
-  canvasMetrics,
-  onTraverse
-}: RelationshipWebProps) {
+export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter, canvasMetrics, onTraverse }: RelationshipWebProps) {
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
 
   const visibleEdges = useMemo(() => {
-    const filtered = rankedRelationships.filter(
-      (item) => filter === 'all' || item.relationship.type === filter
-    );
+    const filtered = rankedRelationships.filter((item) => filter === 'all' || item.relationship.type === filter);
 
     return filtered
       .slice(0, 10)
@@ -51,11 +42,7 @@ export function RelationshipWeb({
         const targetId = getRelationshipTargetNoteId(item.relationship, activeNote.id);
         const target = notesById.get(targetId);
         if (!target) return null;
-        return {
-          relationship: item.relationship,
-          target,
-          score: item.score
-        } satisfies VisibleEdge;
+        return { relationship: item.relationship, target, score: item.score } satisfies VisibleEdge;
       })
       .filter((item): item is VisibleEdge => Boolean(item));
   }, [activeNote.id, filter, notesById, rankedRelationships]);
@@ -67,9 +54,13 @@ export function RelationshipWeb({
     <div className="relationship-web-layer">
       <div className="relationship-web-plane" style={getRelationshipWebPlaneStyle(canvasMetrics)}>
         <svg className="relationship-web" aria-hidden="true">
+          <defs>
+            <marker id="relationship-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M 0 0 L 8 4 L 0 8 z" fill="rgba(201, 213, 244, 0.62)" />
+            </marker>
+          </defs>
           {visibleTargets.map(({ relationship, target, score }) => {
             const visual = getSemanticRelationshipVisual(relationship, score, emphasis);
-
             return (
               <path
                 key={relationship.id}
@@ -82,6 +73,7 @@ export function RelationshipWeb({
                 strokeOpacity={visual.edge.opacity}
                 strokeDasharray={visual.edge.dasharray === 'none' ? undefined : visual.edge.dasharray}
                 strokeWidth={visual.edge.strokeWidth}
+                markerEnd={relationship.directional ? 'url(#relationship-arrow)' : undefined}
                 style={{ filter: `drop-shadow(0 0 ${visual.edge.blurRadius}px rgba(67, 90, 138, 0.08))` }}
               />
             );
@@ -107,9 +99,7 @@ export function RelationshipWeb({
               }}
               onClick={() => onTraverse(note.id, relationship.id)}
             >
-              <span className="related-node-kind" style={{ opacity: visual.node.labelOpacity }}>
-                {visual.label}
-              </span>
+              <span className="related-node-kind" style={{ opacity: visual.node.labelOpacity }}>{visual.label}</span>
               <span className="related-node-title">{getCompactDisplayTitle(note, 36)}</span>
             </button>
           );

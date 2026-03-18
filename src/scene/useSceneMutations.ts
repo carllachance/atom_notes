@@ -1,34 +1,29 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback } from 'react';
-import { createNote, now } from '../notes/noteModel';
-import {
-  createProjectAndAssignToNoteInScene,
-  setNoteProjectsInScene,
-  setProjectRevealInScene,
-  setProjectRevealIsolationInScene
-} from '../projects/projectActions';
-import { ProjectDraft } from '../projects/projectModel';
-import { refreshInferredRelationships } from '../relationshipLogic';
-import {
-  confirmRelationshipInScene,
-  createExplicitRelationshipInScene,
-  traverseToRelatedInScene
-} from '../relationships/relationshipActions';
 import {
   archiveNoteInScene,
   bringNoteToFrontInScene,
   closeActiveNoteInScene,
+  deleteNoteInScene,
   openNoteInScene,
+  setAIPanelPayload,
+  setAIPanelState,
   setCanvasScrollInScene,
+  setCaptureComposerState,
+  setFocusModeInScene,
   setLensInScene,
   toggleNoteFocusInScene,
   updateNoteInScene
 } from './sceneActions';
 import { Lens, RelationshipType, SceneState } from '../types';
+import { createExplicitRelationshipInScene, confirmRelationshipInScene, traverseToRelatedInScene } from '../relationships/relationshipActions';
+import { createProjectAndAssignToNoteInScene, setNoteProjectsInScene } from '../projects/projectActions';
+import { ProjectDraft } from '../projects/projectModel';
+import { createWorkspaceAndAssignToNoteInScene, setNoteWorkspaceInScene } from '../workspaces/workspaceActions';
+import { WorkspaceDraft } from '../workspaces/workspaceModel';
 
 type UseSceneMutationsOptions = {
   setScene: Dispatch<SetStateAction<SceneState>>;
-  highestZ: number;
   cancelHoverIntent: () => void;
   onActiveNoteClosed: (activeNoteId: string | null) => void;
   onNoteOpened: (id: string) => void;
@@ -39,7 +34,6 @@ type UseSceneMutationsOptions = {
 
 export function useSceneMutations({
   setScene,
-  highestZ,
   cancelHoverIntent,
   onActiveNoteClosed,
   onNoteOpened,
@@ -59,21 +53,35 @@ export function useSceneMutations({
     setScene((prev) => updateNoteInScene(prev, id, updates, trace));
   }, [setScene]);
 
-  const bringToFront = useCallback(
-    (id: string) => {
-      cancelHoverIntent();
-      setScene((prev) => bringNoteToFrontInScene(prev, id));
-    },
-    [cancelHoverIntent, setScene]
-  );
+  const deleteNote = useCallback((id: string) => {
+    setScene((prev) => deleteNoteInScene(prev, id));
+  }, [setScene]);
 
-  const setLens = useCallback(
-    (lens: Lens) => {
-      cancelHoverIntent();
-      setScene((prev) => setLensInScene(prev, lens));
-    },
-    [cancelHoverIntent, setScene]
-  );
+  const bringToFront = useCallback((id: string) => {
+    cancelHoverIntent();
+    setScene((prev) => bringNoteToFrontInScene(prev, id));
+  }, [cancelHoverIntent, setScene]);
+
+  const setLens = useCallback((lens: Lens) => {
+    cancelHoverIntent();
+    setScene((prev) => setLensInScene(prev, lens));
+  }, [cancelHoverIntent, setScene]);
+
+  const setFocusMode = useCallback((updates: Partial<SceneState['focusMode']>) => {
+    setScene((prev) => setFocusModeInScene(prev, updates));
+  }, [setScene]);
+
+  const setCaptureComposer = useCallback((updates: Partial<SceneState['captureComposer']>) => {
+    setScene((prev) => setCaptureComposerState(prev, updates));
+  }, [setScene]);
+
+  const setAIPanel = useCallback((updates: Partial<SceneState['aiPanel']>) => {
+    setScene((prev) => setAIPanelPayload(prev, updates));
+  }, [setScene]);
+
+  const setAIPanelVisibility = useCallback((state: SceneState['aiPanel']['state']) => {
+    setScene((prev) => setAIPanelState(prev, state));
+  }, [setScene]);
 
   const createExplicitRelationship = useCallback((fromId: string, toId: string, type: RelationshipType) => {
     setScene((prev) => createExplicitRelationshipInScene(prev, fromId, toId, type));
@@ -83,39 +91,26 @@ export function useSceneMutations({
     setScene((prev) => confirmRelationshipInScene(prev, relationshipId));
   }, [setScene]);
 
-  const traverseToRelated = useCallback(
-    (targetNoteId: string, relationshipId: string) => {
-      onNoteTraversed(targetNoteId);
-      setScene((prev) => traverseToRelatedInScene(prev, targetNoteId, relationshipId));
-    },
-    [onNoteTraversed, setScene]
-  );
-
-  const toggleQuickCapture = useCallback(() => {
-    setScene((prev) => ({ ...prev, quickCaptureOpen: !prev.quickCaptureOpen }));
-  }, [setScene]);
+  const traverseToRelated = useCallback((targetNoteId: string, relationshipId: string) => {
+    onNoteTraversed(targetNoteId);
+    setScene((prev) => traverseToRelatedInScene(prev, targetNoteId, relationshipId));
+  }, [onNoteTraversed, setScene]);
 
   const onCanvasScroll = useCallback((left: number, top: number) => {
     setScene((prev) => setCanvasScrollInScene(prev, left, top));
   }, [setScene]);
 
-  const onOpenNote = useCallback(
-    (id: string) => {
-      cancelHoverIntent();
-      onNoteOpened(id);
-      setScene((prev) => openNoteInScene(prev, id));
-      updateNote(id, {}, 'focused');
-    },
-    [cancelHoverIntent, onNoteOpened, setScene, updateNote]
-  );
+  const onOpenNote = useCallback((id: string) => {
+    cancelHoverIntent();
+    onNoteOpened(id);
+    setScene((prev) => openNoteInScene(prev, id));
+    updateNote(id, {}, 'focused');
+  }, [cancelHoverIntent, onNoteOpened, setScene, updateNote]);
 
-  const onArchiveNote = useCallback(
-    (id: string) => {
-      onNoteArchived(id);
-      setScene((prev) => archiveNoteInScene(prev, id));
-    },
-    [onNoteArchived, setScene]
-  );
+  const onArchiveNote = useCallback((id: string) => {
+    onNoteArchived(id);
+    setScene((prev) => archiveNoteInScene(prev, id));
+  }, [onNoteArchived, setScene]);
 
   const toggleNoteFocus = useCallback((id: string) => {
     setScene((prev) => toggleNoteFocusInScene(prev, id));
@@ -129,47 +124,34 @@ export function useSceneMutations({
     setScene((prev) => createProjectAndAssignToNoteInScene(prev, id, draft));
   }, [setScene]);
 
-  const setProjectReveal = useCallback((projectId: string | null) => {
-    cancelHoverIntent();
-    setScene((prev) => setProjectRevealInScene(prev, projectId));
-  }, [cancelHoverIntent, setScene]);
-
-  const setProjectRevealIsolation = useCallback((isolate: boolean) => {
-    setScene((prev) => setProjectRevealIsolationInScene(prev, isolate));
+  const setNoteWorkspace = useCallback((id: string, workspaceId: string | null) => {
+    setScene((prev) => setNoteWorkspaceInScene(prev, id, workspaceId));
   }, [setScene]);
 
-  const onCapture = useCallback(
-    (text: string) => {
-      setScene((prev) => {
-        const inheritedProjectIds = prev.projectReveal.activeProjectId ? [prev.projectReveal.activeProjectId] : [];
-        const notes = [...prev.notes, createNote(text, highestZ + 1, inheritedProjectIds)];
-        return {
-          ...prev,
-          notes,
-          relationships: refreshInferredRelationships(notes, prev.relationships, now())
-        };
-      });
-    },
-    [highestZ, setScene]
-  );
+  const createWorkspaceForNote = useCallback((id: string, draft: WorkspaceDraft) => {
+    setScene((prev) => createWorkspaceAndAssignToNoteInScene(prev, id, draft));
+  }, [setScene]);
 
   return {
     closeActiveNote,
     updateNote,
+    deleteNote,
     bringToFront,
     setLens,
+    setFocusMode,
+    setCaptureComposer,
+    setAIPanel,
+    setAIPanelVisibility,
     createExplicitRelationship,
     confirmRelationship,
     traverseToRelated,
-    toggleQuickCapture,
     onCanvasScroll,
     onOpenNote,
     onArchiveNote,
     toggleNoteFocus,
     setNoteProjects,
     createProjectForNote,
-    setProjectReveal,
-    setProjectRevealIsolation,
-    onCapture
+    setNoteWorkspace,
+    createWorkspaceForNote
   };
 }
