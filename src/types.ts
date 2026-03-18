@@ -1,8 +1,16 @@
 export type Lens = 'all' | 'focus' | 'archive';
 
 export type RelationshipType = 'related_concept' | 'references';
-export type RelationshipState = 'proposed' | 'confirmed';
+export type RelationshipState =
+  | 'proposed'
+  | 'confirmed'
+  | 'active'
+  | 'cooling'
+  | 'historical'
+  | 'superseded'
+  | 'rejected';
 export type RelationshipExplicitness = 'explicit' | 'inferred';
+export type RelationshipFilter = 'all' | RelationshipType | 'history';
 
 export type NoteCardModel = {
   id: string;
@@ -27,6 +35,7 @@ export type Relationship = {
   state: RelationshipState;
   explicitness: RelationshipExplicitness;
   confidence: number;
+  reinforcementScore: number;
   explanation: string;
   heuristicSupported: boolean;
   createdAt: number;

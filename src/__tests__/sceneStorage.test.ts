@@ -34,7 +34,7 @@ describe('sceneStorage load/save normalization', () => {
     });
   });
 
-  it('loads and normalizes persisted legacy scene data and saves with v2 key', () => {
+  it('loads and normalizes persisted legacy scene data and saves with v3 key', () => {
     const raw = JSON.stringify({
       notes: [{ id: 7, title: '  ', body: 'hello', stateCue: 'legacy' }],
       relationships: [{ fromId: '7', toId: '7', type: 'references' }],
@@ -46,7 +46,12 @@ describe('sceneStorage load/save normalization', () => {
 
     const loaded = loadScene();
     expect(loaded.notes[0]).toMatchObject({ id: '7', title: null, body: 'hello' });
-    expect(loaded.relationships[0]).toMatchObject({ fromId: '7', toId: '7', type: 'references' });
+    expect(loaded.relationships[0]).toMatchObject({
+      fromId: '7',
+      toId: '7',
+      type: 'references',
+      reinforcementScore: 0.4
+    });
     expect(loaded.lens).toBe('archive');
 
     const sceneToSave = loaded as SceneState;

@@ -1,5 +1,5 @@
 import { now } from '../notes/noteModel';
-import { refreshInferredRelationships, relationshipPairKey } from '../relationshipLogic';
+import { refreshInferredRelationships, reinforceRelationship, relationshipPairKey } from '../relationshipLogic';
 import { RelationshipType, SceneState } from '../types';
 
 export function createExplicitRelationshipInScene(
@@ -8,6 +8,7 @@ export function createExplicitRelationshipInScene(
   toId: string,
   type: RelationshipType
 ): SceneState {
+  const timestamp = now();
   const key = relationshipPairKey(fromId, toId, type);
   const existing = scene.relationships.find(
     (relationship) => relationshipPairKey(relationship.fromId, relationship.toId, relationship.type) === key
@@ -23,10 +24,11 @@ export function createExplicitRelationshipInScene(
     state: 'confirmed' as const,
     explicitness: 'explicit' as const,
     confidence: 1,
+    reinforcementScore: Math.max(existing?.reinforcementScore ?? 0, 0.78),
     explanation: 'Created by you in the modal.',
     heuristicSupported: true,
-    createdAt: existing?.createdAt ?? now(),
-    lastActiveAt: now()
+    createdAt: existing?.createdAt ?? timestamp,
+    lastActiveAt: timestamp
   };
 
   const relationships = scene.relationships
@@ -35,27 +37,31 @@ export function createExplicitRelationshipInScene(
 
   return {
     ...scene,
-    relationships: refreshInferredRelationships(scene.notes, relationships, now())
+    relationships: refreshInferredRelationships(scene.notes, relationships, timestamp)
   };
 }
 
 export function confirmRelationshipInScene(scene: SceneState, relationshipId: string): SceneState {
+  const timestamp = now();
+
   return {
     ...scene,
     relationships: scene.relationships.map((relationship) =>
       relationship.id === relationshipId
-        ? { ...relationship, state: 'confirmed', lastActiveAt: now(), heuristicSupported: true }
+        ? reinforceRelationship({ ...relationship, heuristicSupported: true }, timestamp, 'confirm')
         : relationship
     )
   };
 }
 
 export function traverseToRelatedInScene(scene: SceneState, targetNoteId: string, relationshipId: string): SceneState {
+  const timestamp = now();
+
   return {
     ...scene,
     activeNoteId: targetNoteId,
     relationships: scene.relationships.map((relationship) =>
-      relationship.id === relationshipId ? { ...relationship, lastActiveAt: now() } : relationship
+      relationship.id === relationshipId ? reinforceRelationship(relationship, timestamp, 'traverse') : relationship
     )
   };
 }

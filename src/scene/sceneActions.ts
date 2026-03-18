@@ -1,6 +1,6 @@
 import { now } from '../notes/noteModel';
 import { normalizeOptionalTitle } from '../noteText';
-import { refreshInferredRelationships } from '../relationshipLogic';
+import { refreshInferredRelationships, reinforceRelationship } from '../relationshipLogic';
 import { Lens, NoteCardModel, SceneState } from '../types';
 
 export function updateNoteInScene(
@@ -9,10 +9,12 @@ export function updateNoteInScene(
   updates: Partial<NoteCardModel>,
   trace?: string
 ): SceneState {
+  const timestamp = now();
   const normalizedUpdates =
     'title' in updates
       ? { ...updates, title: normalizeOptionalTitle((updates.title as string | null | undefined) ?? null) }
       : updates;
+  const hasContentUpdate = 'title' in normalizedUpdates || 'body' in normalizedUpdates;
 
   const notes = scene.notes.map((note) => {
     if (note.id !== id) return note;
@@ -20,14 +22,22 @@ export function updateNoteInScene(
       ...note,
       ...normalizedUpdates,
       trace: trace ?? normalizedUpdates.trace ?? note.trace,
-      updatedAt: now()
+      updatedAt: timestamp
     };
   });
 
   return {
     ...scene,
     notes,
-    relationships: refreshInferredRelationships(notes, scene.relationships, now())
+    relationships: refreshInferredRelationships(
+      notes,
+      scene.relationships.map((relationship) => {
+        if (!hasContentUpdate) return relationship;
+        if (relationship.fromId !== id && relationship.toId !== id) return relationship;
+        return reinforceRelationship(relationship, timestamp, 'edit');
+      }),
+      timestamp
+    )
   };
 }
 

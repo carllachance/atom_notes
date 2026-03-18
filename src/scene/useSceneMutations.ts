@@ -17,7 +17,7 @@ import {
   toggleNoteFocusInScene,
   updateNoteInScene
 } from './sceneActions';
-import { Lens, RelationshipType, SceneState } from '../types';
+import { Lens, RelationshipFilter, RelationshipType, SceneState } from '../types';
 
 type UseSceneMutationsOptions = {
   setScene: Dispatch<SetStateAction<SceneState>>;
@@ -27,7 +27,7 @@ type UseSceneMutationsOptions = {
   onNoteOpened: (id: string) => void;
   onNoteArchived: (id: string) => void;
   onNoteTraversed: (targetNoteId: string) => void;
-  setRelationshipFilter: (filter: 'all' | RelationshipType) => void;
+  setRelationshipFilter: (filter: RelationshipFilter) => void;
 };
 
 export function useSceneMutations({

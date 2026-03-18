@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
-import { getRankedRelationshipsForNote, getRelationshipTargetNoteId } from '../relationshipLogic';
+import {
+  getRankedRelationshipsForNote,
+  getRelationshipExplanation,
+  getRelationshipStateLabel,
+  getRelationshipTargetNoteId,
+  isHistoricalRelationship,
+  isRenderableRelationship
+} from '../relationshipLogic';
 import { loadScene, saveScene } from './sceneStorage';
 import { applyLens } from './lens';
-import { RelationshipType, SceneState } from '../types';
+import { RelationshipFilter, RelationshipType, SceneState } from '../types';
 import { useAmbientGuidance } from './useAmbientGuidance';
 import { useRevealController } from './useRevealController';
 import { useSceneMutations } from './useSceneMutations';
@@ -13,7 +20,7 @@ const CTRL_DOUBLE_TAP_MS = 320;
 
 export function useSceneController() {
   const [scene, setScene] = useState<SceneState>(loadScene);
-  const [relationshipFilter, setRelationshipFilter] = useState<'all' | RelationshipType>('all');
+  const [relationshipFilter, setRelationshipFilter] = useState<RelationshipFilter>('all');
   const [, setTraceClock] = useState(0);
 
   const activeNote = useMemo(
@@ -35,22 +42,29 @@ export function useSceneController() {
 
   const relationshipTotals = useMemo(
     () => ({
-      related: activeRelationships.filter((relationship) => relationship.type === 'related_concept').length,
-      references: activeRelationships.filter((relationship) => relationship.type === 'references').length
+      related: activeRelationships.filter(
+        (relationship) => relationship.type === 'related_concept' && !isHistoricalRelationship(relationship)
+      ).length,
+      references: activeRelationships.filter(
+        (relationship) => relationship.type === 'references' && !isHistoricalRelationship(relationship)
+      ).length,
+      history: activeRelationships.filter((relationship) => isHistoricalRelationship(relationship)).length
     }),
     [activeRelationships]
   );
 
   const rankedRelationships = useMemo(() => {
     if (!activeNote) return [];
-    return getRankedRelationshipsForNote(activeNote.id, scene);
-  }, [activeNote, scene]);
+    return getRankedRelationshipsForNote(activeNote.id, scene, relationshipFilter);
+  }, [activeNote, relationshipFilter, scene]);
 
   const relationshipPanelItems = useMemo(() => {
     if (!activeNote) return [];
     const notesById = new Map(scene.notes.map((note) => [note.id, note]));
 
-    return activeRelationships.map((relationship) => {
+    return activeRelationships
+      .filter((relationship) => isRenderableRelationship(relationship, relationshipFilter))
+      .map((relationship) => {
       const targetId = getRelationshipTargetNoteId(relationship, activeNote.id);
       return {
         id: relationship.id,
@@ -61,11 +75,13 @@ export function useSceneController() {
         type: relationship.type,
         explicitness: relationship.explicitness,
         state: relationship.state,
-        explanation: relationship.explanation,
+        explanation: getRelationshipExplanation(relationship),
+        stateLabel: getRelationshipStateLabel(relationship),
         heuristicSupported: relationship.heuristicSupported
       };
-    });
-  }, [activeNote, activeRelationships, scene.notes]);
+      })
+      .sort((a, b) => a.targetTitle.localeCompare(b.targetTitle));
+  }, [activeNote, activeRelationships, relationshipFilter, scene.notes]);
 
   const ambient = useAmbientGuidance({
     visibleNotes,

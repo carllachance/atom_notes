@@ -2,7 +2,7 @@ import { createNote, normalizeNote, now } from '../notes/noteModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import { Relationship, SceneState } from '../types';
 
-export const SCENE_KEY = 'atom-notes.scene.v2';
+export const SCENE_KEY = 'atom-notes.scene.v3';
 
 export function normalizeRelationship(raw: Partial<Relationship>): Relationship | null {
   if (!raw.fromId || !raw.toId) return null;
@@ -12,9 +12,18 @@ export function normalizeRelationship(raw: Partial<Relationship>): Relationship 
     fromId: String(raw.fromId),
     toId: String(raw.toId),
     type: raw.type === 'references' ? 'references' : 'related_concept',
-    state: raw.state === 'confirmed' ? 'confirmed' : 'proposed',
+    state:
+      raw.state === 'confirmed' ||
+      raw.state === 'active' ||
+      raw.state === 'cooling' ||
+      raw.state === 'historical' ||
+      raw.state === 'superseded' ||
+      raw.state === 'rejected'
+        ? raw.state
+        : 'proposed',
     explicitness: raw.explicitness === 'explicit' ? 'explicit' : 'inferred',
     confidence: Number(raw.confidence ?? 0.5),
+    reinforcementScore: Math.min(1, Math.max(0, Number(raw.reinforcementScore ?? 0.4))),
     explanation: String(raw.explanation ?? ''),
     heuristicSupported: raw.heuristicSupported !== false,
     createdAt: Number(raw.createdAt ?? now()),
@@ -34,7 +43,10 @@ export function loadScene(): SceneState {
     canvasScrollTop: 0
   };
 
-  const raw = localStorage.getItem(SCENE_KEY) ?? localStorage.getItem('atom-notes.scene.v1');
+  const raw =
+    localStorage.getItem(SCENE_KEY) ??
+    localStorage.getItem('atom-notes.scene.v2') ??
+    localStorage.getItem('atom-notes.scene.v1');
   if (!raw) return fallback;
 
   try {

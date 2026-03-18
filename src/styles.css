@@ -371,6 +371,7 @@ button {
 
 .relationship-strip {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -393,6 +394,10 @@ button {
 
 .relationship-strip button.active {
   background: rgba(66, 88, 132, 0.32);
+}
+
+.relationship-strip button:nth-child(3) span {
+  background: rgba(130, 145, 171, 0.18);
 }
 
 .body-mode-switch {
@@ -437,6 +442,11 @@ button {
   background: rgba(11, 17, 29, 0.24);
   display: grid;
   gap: 2px;
+}
+
+.relation-main[data-state='historical'],
+.relation-main[data-state='superseded'] {
+  opacity: 0.76;
 }
 
 .relation-title {
@@ -516,6 +526,11 @@ button {
   stroke-width: 1.95;
 }
 
+.relationship-edge[data-state='historical'],
+.relationship-edge[data-state='superseded'] {
+  filter: none;
+}
+
 
 .related-node {
   position: absolute;
@@ -535,6 +550,12 @@ button {
 
 .related-node[data-explicitness='explicit'] {
   border-color: rgba(154, 177, 232, 0.34);
+}
+
+.related-node[data-state='historical'],
+.related-node[data-state='superseded'] {
+  opacity: 0.62;
+  background: rgba(15, 21, 32, 0.38);
 }
 
 .expanded-note-header {

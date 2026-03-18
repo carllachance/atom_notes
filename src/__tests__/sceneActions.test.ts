@@ -16,7 +16,22 @@ function makeScene(): SceneState {
     notes: [
       { id: 'n1', title: null, body: 'Body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false }
     ],
-    relationships: [],
+    relationships: [
+      {
+        id: 'rel-1',
+        fromId: 'n1',
+        toId: 'n1',
+        type: 'related_concept',
+        state: 'confirmed',
+        explicitness: 'explicit',
+        confidence: 1,
+        reinforcementScore: 0.5,
+        explanation: 'Created by you.',
+        heuristicSupported: true,
+        createdAt: 1,
+        lastActiveAt: 1
+      }
+    ],
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
@@ -31,6 +46,8 @@ describe('sceneActions behavior contracts', () => {
     vi.spyOn(Date, 'now').mockReturnValue(999);
     const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated' }, 'refined');
     expect(next.notes[0]).toMatchObject({ title: null, body: 'updated', trace: 'refined', updatedAt: 999 });
+    expect(next.relationships[0]).toMatchObject({ state: 'active', lastActiveAt: 999 });
+    expect(next.relationships[0].reinforcementScore).toBeGreaterThan(0.5);
   });
 
   it('handles open/close/archive/restore and canvas scroll semantics', () => {

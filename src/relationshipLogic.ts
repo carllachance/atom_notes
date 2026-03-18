@@ -1,4 +1,4 @@
-import { NoteCardModel, Relationship, RelationshipType, SceneState } from './types';
+import { NoteCardModel, Relationship, RelationshipFilter, RelationshipState, RelationshipType, SceneState } from './types';
 
 const STOP_WORDS = new Set([
   'the',
@@ -18,8 +18,16 @@ const STOP_WORDS = new Set([
 const KEYWORD_MIN_LENGTH = 4;
 const INFERRED_CONFIDENCE_BASE = 0.45;
 const STALE_CONFIRMED_INFERRED_PENALTY = 0.86;
+const ACTIVE_WINDOW_DAYS = 3;
+const COOLING_WINDOW_DAYS = 10;
+const HISTORICAL_WINDOW_DAYS = 28;
+const ACTIVE_REINFORCEMENT_THRESHOLD = 0.72;
+const REINFORCEMENT_INCREMENT = 0.18;
+const REINFORCEMENT_DECAY_PER_DAY = 0.012;
+const MIN_REINFORCEMENT = 0.18;
+const MAX_VISIBLE_RELATIONSHIPS = 10;
 
-type RankedRelationship = {
+export type RankedRelationship = {
   relationship: Relationship;
   score: number;
 };
@@ -53,8 +61,19 @@ function hashId(value: string) {
 }
 
 function dedupePriority(relationship: Relationship) {
-  const explicitnessRank = relationship.explicitness === 'explicit' ? 3 : 1;
-  const stateRank = relationship.state === 'confirmed' ? 2 : 1;
+  const explicitnessRank = relationship.explicitness === 'explicit' ? 4 : 1;
+  const stateRank =
+    relationship.state === 'active'
+      ? 5
+      : relationship.state === 'confirmed'
+        ? 4
+        : relationship.state === 'cooling'
+          ? 3
+          : relationship.state === 'historical'
+            ? 2
+            : relationship.state === 'rejected'
+              ? 0
+              : 1;
   const supportRank = relationship.heuristicSupported ? 1 : 0;
   return explicitnessRank * 100 + stateRank * 10 + supportRank;
 }
@@ -85,6 +104,50 @@ function dedupeRelationships(relationships: Relationship[]) {
   return Array.from(byKey.values());
 }
 
+function normalizeReinforcementScore(score: number, daysSinceActive: number) {
+  const decayed = score - daysSinceActive * REINFORCEMENT_DECAY_PER_DAY;
+  return Math.min(1, Math.max(MIN_REINFORCEMENT, decayed));
+}
+
+function deriveLifecycleState(
+  relationship: Relationship,
+  nowTs: number,
+  reinforcementScore = relationship.reinforcementScore
+): RelationshipState {
+  if (relationship.state === 'rejected' || relationship.state === 'superseded') return relationship.state;
+
+  const daysSinceActive = Math.max(0, (nowTs - relationship.lastActiveAt) / (1000 * 60 * 60 * 24));
+
+  if (relationship.explicitness === 'inferred' && relationship.state === 'proposed') {
+    if (daysSinceActive >= COOLING_WINDOW_DAYS) return 'cooling';
+    return 'proposed';
+  }
+
+  if (daysSinceActive <= ACTIVE_WINDOW_DAYS || reinforcementScore >= ACTIVE_REINFORCEMENT_THRESHOLD) {
+    return 'active';
+  }
+
+  if (daysSinceActive <= COOLING_WINDOW_DAYS) {
+    return relationship.state === 'historical' ? 'historical' : 'cooling';
+  }
+
+  if (daysSinceActive <= HISTORICAL_WINDOW_DAYS) {
+    return relationship.state === 'confirmed' && relationship.explicitness === 'explicit' ? 'cooling' : 'historical';
+  }
+
+  return 'historical';
+}
+
+function syncRelationshipLifecycle(relationship: Relationship, nowTs: number): Relationship {
+  const daysSinceActive = Math.max(0, (nowTs - relationship.lastActiveAt) / (1000 * 60 * 60 * 24));
+  const reinforcementScore = normalizeReinforcementScore(relationship.reinforcementScore, daysSinceActive);
+  return {
+    ...relationship,
+    reinforcementScore,
+    state: deriveLifecycleState(relationship, nowTs, reinforcementScore)
+  };
+}
+
 function collectInferenceCandidates(notes: NoteCardModel[], nowTs: number): Relationship[] {
   const inferred: Relationship[] = [];
 
@@ -107,6 +170,7 @@ function collectInferenceCandidates(notes: NoteCardModel[], nowTs: number): Rela
           state: 'proposed',
           explicitness: 'inferred',
           confidence: Math.min(0.95, 0.6 + sharedUrls.length * 0.15),
+          reinforcementScore: 0.4,
           explanation: `Both notes include the same URL: ${sharedUrls[0]}`,
           heuristicSupported: true,
           createdAt: nowTs,
@@ -129,6 +193,7 @@ function collectInferenceCandidates(notes: NoteCardModel[], nowTs: number): Rela
         state: 'proposed',
         explicitness: 'inferred',
         confidence: Math.min(0.9, INFERRED_CONFIDENCE_BASE + sharedKeywords.length * 0.12),
+        reinforcementScore: 0.38,
         explanation: `Shared keywords: ${sharedKeywords.join(', ')}`,
         heuristicSupported: true,
         createdAt: nowTs,
@@ -141,7 +206,7 @@ function collectInferenceCandidates(notes: NoteCardModel[], nowTs: number): Rela
 }
 
 export function refreshInferredRelationships(notes: NoteCardModel[], relationships: Relationship[], nowTs: number) {
-  const normalizedExisting = dedupeRelationships(relationships);
+  const normalizedExisting = dedupeRelationships(relationships).map((relationship) => syncRelationshipLifecycle(relationship, nowTs));
   const inferredCandidates = collectInferenceCandidates(notes, nowTs);
   const candidateIds = new Set(inferredCandidates.map((relationship) => relationship.id));
   const existingById = new Map(normalizedExisting.map((relationship) => [relationship.id, relationship]));
@@ -154,75 +219,97 @@ export function refreshInferredRelationships(notes: NoteCardModel[], relationshi
     .filter(
       (relationship) =>
         relationship.explicitness === 'inferred' &&
-        relationship.state === 'confirmed' &&
+        relationship.state !== 'rejected' &&
+        relationship.state !== 'superseded' &&
+        relationship.state !== 'proposed' &&
         !candidateIds.has(relationship.id)
     )
-    .map((relationship) => ({ ...relationship, heuristicSupported: false }));
+    .map((relationship) =>
+      syncRelationshipLifecycle(
+        {
+          ...relationship,
+          heuristicSupported: false
+        },
+        nowTs
+      )
+    );
 
   const mergedInferred = inferredCandidates.map((candidate) => {
     const existing = existingById.get(candidate.id);
     if (!existing) return candidate;
 
-    return {
-      ...candidate,
-      state: existing.state,
-      createdAt: existing.createdAt,
-      lastActiveAt: existing.lastActiveAt,
-      heuristicSupported: true
-    };
+    return syncRelationshipLifecycle(
+      {
+        ...candidate,
+        state: existing.state,
+        reinforcementScore: existing.reinforcementScore,
+        createdAt: existing.createdAt,
+        lastActiveAt: existing.lastActiveAt,
+        heuristicSupported: true
+      },
+      nowTs
+    );
   });
 
-  return dedupeRelationships([...persisted, ...staleConfirmedInferred, ...mergedInferred]);
+  return dedupeRelationships([...persisted, ...staleConfirmedInferred, ...mergedInferred]).map((relationship) =>
+    syncRelationshipLifecycle(relationship, nowTs)
+  );
 }
 
 function scoreRelationship(relationship: Relationship, nowTs: number) {
   const explicitnessBoost = relationship.explicitness === 'explicit' ? 1.2 : 0.8;
   const typeWeight = relationship.type === 'references' ? 1.05 : 1;
-  const stateWeight = relationship.state === 'confirmed' ? 1 : 0.78;
+  const stateWeight =
+    relationship.state === 'active'
+      ? 1.12
+      : relationship.state === 'confirmed'
+        ? 1
+        : relationship.state === 'cooling'
+          ? 0.82
+          : relationship.state === 'historical'
+            ? 0.52
+            : 0.7;
   const stalePenalty =
-    relationship.explicitness === 'inferred' && relationship.state === 'confirmed' && !relationship.heuristicSupported
+    relationship.explicitness === 'inferred' && relationship.state !== 'proposed' && !relationship.heuristicSupported
       ? STALE_CONFIRMED_INFERRED_PENALTY
       : 1;
   const daysSinceActive = Math.max(0, (nowTs - relationship.lastActiveAt) / (1000 * 60 * 60 * 24));
   const recencyWeight = 1 / (1 + daysSinceActive * 0.25);
+  const reinforcementWeight = 0.86 + relationship.reinforcementScore * 0.28;
 
-  return explicitnessBoost * typeWeight * stateWeight * stalePenalty * recencyWeight * relationship.confidence;
+  return explicitnessBoost * typeWeight * stateWeight * stalePenalty * recencyWeight * reinforcementWeight * relationship.confidence;
 }
 
-function isStaleConfirmedInferred(relationship: Relationship) {
-  return relationship.explicitness === 'inferred' && relationship.state === 'confirmed' && !relationship.heuristicSupported;
+export function isHistoricalRelationship(relationship: Relationship) {
+  return relationship.state === 'historical' || relationship.state === 'superseded';
 }
 
-export function getRankedRelationshipsForNote(noteId: string, scene: SceneState): RankedRelationship[] {
+export function isRenderableRelationship(relationship: Relationship, filter: RelationshipFilter) {
+  if (relationship.state === 'rejected') return false;
+  if (filter === 'history') return isHistoricalRelationship(relationship);
+  if (filter === 'all') return !isHistoricalRelationship(relationship);
+  return relationship.type === filter && !isHistoricalRelationship(relationship);
+}
+
+export function getRankedRelationshipsForNote(noteId: string, scene: SceneState, filter: RelationshipFilter = 'all'): RankedRelationship[] {
   const nowTs = Date.now();
   const notesById = new Map(scene.notes.map((note) => [note.id, note]));
   const connected = dedupeRelationships(
     scene.relationships.filter((relationship) => {
       if (relationship.fromId !== noteId && relationship.toId !== noteId) return false;
+      if (!isRenderableRelationship(relationship, filter)) return false;
       const targetId = relationship.fromId === noteId ? relationship.toId : relationship.fromId;
       return !notesById.get(targetId)?.archived;
     })
   );
 
-  const ranked = connected
+  return connected
     .map((relationship) => ({ relationship, score: scoreRelationship(relationship, nowTs) }))
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return a.relationship.id.localeCompare(b.relationship.id);
-    });
-
-  const topTen = ranked.slice(0, 10);
-  const hasStaleInTopTen = topTen.some((item) => isStaleConfirmedInferred(item.relationship));
-
-  if (hasStaleInTopTen) return topTen;
-
-  const staleCandidate = ranked.find((item) => isStaleConfirmedInferred(item.relationship));
-  if (!staleCandidate) return topTen;
-  if (topTen.some((item) => item.relationship.id === staleCandidate.relationship.id)) return topTen;
-  if (topTen.length === 0) return [staleCandidate];
-  if (topTen.length < 10) return [...topTen, staleCandidate];
-
-  return [...topTen.slice(0, 9), staleCandidate];
+    })
+    .slice(0, MAX_VISIBLE_RELATIONSHIPS);
 }
 
 export function getRelationshipTargetNoteId(relationship: Relationship, currentNoteId: string) {
@@ -233,4 +320,45 @@ export function getRelationshipExplanation(relationship: Relationship) {
   if (relationship.explicitness !== 'inferred') return relationship.explanation;
   if (relationship.heuristicSupported) return relationship.explanation;
   return `${relationship.explanation} (no longer supported by current heuristic)`;
+}
+
+export function getRelationshipStateLabel(relationship: Relationship) {
+  if (relationship.state === 'active') return 'Active now';
+  if (relationship.state === 'cooling') return 'Cooling';
+  if (relationship.state === 'historical') return 'Historical';
+  if (relationship.state === 'confirmed') return 'Confirmed';
+  if (relationship.state === 'proposed') return 'Proposed';
+  if (relationship.state === 'superseded') return 'Superseded';
+  return 'Rejected';
+}
+
+export function reinforceRelationship(
+  relationship: Relationship,
+  nowTs: number,
+  mode: 'confirm' | 'traverse' | 'edit' = 'traverse'
+): Relationship {
+  const boost = mode === 'confirm' ? REINFORCEMENT_INCREMENT + 0.1 : mode === 'edit' ? REINFORCEMENT_INCREMENT * 0.75 : REINFORCEMENT_INCREMENT;
+  const nextBaseState: RelationshipState =
+    mode === 'confirm' && relationship.state === 'proposed'
+      ? 'confirmed'
+      : relationship.state === 'historical'
+        ? 'active'
+        : relationship.state;
+
+  const reinforced: Relationship = syncRelationshipLifecycle(
+    {
+      ...relationship,
+      state: nextBaseState,
+      heuristicSupported: relationship.explicitness === 'explicit' ? true : relationship.heuristicSupported,
+      reinforcementScore: Math.min(1, relationship.reinforcementScore + boost),
+      lastActiveAt: nowTs
+    },
+    nowTs
+  );
+
+  if (mode === 'confirm' && relationship.state === 'proposed') {
+    return { ...reinforced, state: 'confirmed' };
+  }
+
+  return reinforced;
 }

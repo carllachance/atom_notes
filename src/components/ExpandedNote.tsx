@@ -1,7 +1,7 @@
 import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
 import { getCompactDisplayTitle } from '../noteText';
-import { NoteCardModel, RelationshipType } from '../types';
+import { NoteCardModel, RelationshipFilter, RelationshipState, RelationshipType } from '../types';
 
 type VisibleRelationship = {
   id: string;
@@ -9,7 +9,8 @@ type VisibleRelationship = {
   targetTitle: string;
   type: RelationshipType;
   explicitness: 'explicit' | 'inferred';
-  state: 'proposed' | 'confirmed';
+  state: RelationshipState;
+  stateLabel: string;
   explanation: string;
   heuristicSupported: boolean;
 };
@@ -18,9 +19,9 @@ type ExpandedNoteProps = {
   note: NoteCardModel | null;
   notes: NoteCardModel[];
   relationships: VisibleRelationship[];
-  relationshipTotals: { related: number; references: number };
-  activeFilter: 'all' | RelationshipType;
-  onSetFilter: (filter: 'all' | RelationshipType) => void;
+  relationshipTotals: { related: number; references: number; history: number };
+  activeFilter: RelationshipFilter;
+  onSetFilter: (filter: RelationshipFilter) => void;
   onClose: () => void;
   onArchive: (id: string) => void;
   onChange: (id: string, updates: Partial<NoteCardModel>) => void;
@@ -39,6 +40,10 @@ type BodyMode = 'read' | 'edit';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function getRelationshipTypeLabel(type: RelationshipType) {
+  return type === 'references' ? 'Source' : 'Related';
 }
 
 export function ExpandedNote({
@@ -145,6 +150,14 @@ export function ExpandedNote({
           >
             References <span>{relationshipTotals.references}</span>
           </button>
+          <button
+            className={activeFilter === 'history' ? 'active' : ''}
+            onMouseEnter={() => onSetFilter('history')}
+            onMouseLeave={() => onSetFilter('all')}
+            onClick={() => onSetFilter(activeFilter === 'history' ? 'all' : 'history')}
+          >
+            History <span>{relationshipTotals.history}</span>
+          </button>
         </div>
 
         <input
@@ -186,10 +199,14 @@ export function ExpandedNote({
           {relationships.length ? (
             relationships.map((relationship) => (
               <div key={relationship.id} className="relation-row">
-                <button className="relation-main" onClick={() => onOpenRelated(relationship.targetId, relationship.id)}>
+                <button
+                  className="relation-main"
+                  data-state={relationship.state}
+                  onClick={() => onOpenRelated(relationship.targetId, relationship.id)}
+                >
                   <span className="relation-title">{relationship.targetTitle}</span>
                   <small>
-                    {relationship.type === 'references' ? 'Reference' : 'Related'} ·{' '}
+                    {getRelationshipTypeLabel(relationship.type)} · {relationship.stateLabel} ·{' '}
                     {relationship.explicitness === 'inferred' ? relationship.explanation : 'Explicit link'}
                   </small>
                 </button>
@@ -201,7 +218,13 @@ export function ExpandedNote({
               </div>
             ))
           ) : (
-            <p className="relations-empty">No relationships yet.</p>
+            <p className="relations-empty">
+              {activeFilter === 'history'
+                ? 'No historical relationships yet.'
+                : relationshipTotals.history > 0
+                  ? 'Current relationships stay in view here. Open History to inspect older links.'
+                  : 'No relationships yet.'}
+            </p>
           )}
         </section>
 
@@ -221,7 +244,7 @@ export function ExpandedNote({
               </select>
               <select value={linkType} onChange={(event) => setLinkType(event.target.value as RelationshipType)}>
                 <option value="related_concept">Related</option>
-                <option value="references">References</option>
+                <option value="references">Source</option>
               </select>
               <button
                 onClick={() => {

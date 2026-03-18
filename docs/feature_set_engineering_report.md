@@ -1,22 +1,18 @@
 # 1. Executive Summary
 
 ## What was implemented
-- A local-first single-user note canvas with draggable note cards (`SpatialCanvas`, `NoteCard`) and a basic note modal (`ExpandedNote`).
+- A local-first single-user note canvas with draggable note cards (`SpatialCanvas`, `NoteCard`) and a note modal (`ExpandedNote`) backed by lifecycle-aware relationship state.
 - Basic note lifecycle actions: create (capture), edit, focus/open, archive, and restore.
-- Persisted scene state in `localStorage` under `atom-notes.scene.v1`.
+- Persisted scene state in `localStorage`, including relationship lifecycle state and reinforcement metadata.
 - A minimal recency/trace visual system (`trace.ts`) that changes labels and card rendering bias based on recent activity.
+- A faint local relationship web behind the modal with ranked first-degree links, historical suppression in the default view, and an explicit history mode.
 
 ## What is partially implemented
-- Modal foreground behavior exists, but only a light dim layer; no relationship web behind the modal.
-- Time awareness exists only as recency-based visual bias and text labels, not as relationship lifecycle/ranking logic.
+- Time awareness now exists for relationship lifecycle/ranking, but intent-aware surfacing and second-degree rendering are still absent.
 - Spatial memory is partially preserved through persisted note positions and canvas scroll offsets.
 
 ## What was not implemented
-- No relationship graph model/entity.
-- No relationship lifecycle state machine (`proposed`, `confirmed`, `active`, etc.).
-- No explicit/inferred distinction for links.
-- No explainability pipeline for inferred links.
-- No graph ranking, intent-aware surfacing, uncertainty handling, epistemic modes, lenses, or review workflow.
+- No intent-aware surfacing, uncertainty handling, epistemic modes, or review workflow.
 - No collaboration/multi-user layer.
 
 ## Biggest architectural decisions made

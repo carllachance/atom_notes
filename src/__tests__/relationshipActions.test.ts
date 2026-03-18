@@ -29,6 +29,7 @@ describe('relationshipActions invariants', () => {
 
     const scene1 = createExplicitRelationshipInScene(baseScene(), 'a', 'b', 'references');
     expect(scene1.relationships.some((r) => r.id === 'rel-1' && r.explicitness === 'explicit')).toBe(true);
+    expect(scene1.relationships[0]).toMatchObject({ state: 'active', reinforcementScore: 0.78 });
 
     const scene2 = createExplicitRelationshipInScene(scene1, 'a', 'b', 'references');
     expect(scene2).toBe(scene1);
@@ -47,6 +48,7 @@ describe('relationshipActions invariants', () => {
           state: 'proposed' as const,
           explicitness: 'inferred' as const,
           confidence: 0.5,
+          reinforcementScore: 0.4,
           explanation: 'Shared keyword',
           heuristicSupported: false,
           createdAt: 10,
@@ -56,10 +58,15 @@ describe('relationshipActions invariants', () => {
     };
 
     const confirmed = confirmRelationshipInScene(scene, 'rel-x');
-    expect(confirmed.relationships[0]).toMatchObject({ state: 'confirmed', heuristicSupported: true, lastActiveAt: 200 });
+    expect(confirmed.relationships[0]).toMatchObject({
+      state: 'confirmed',
+      heuristicSupported: true,
+      lastActiveAt: 200
+    });
+    expect(confirmed.relationships[0].reinforcementScore).toBeGreaterThan(0.4);
 
     const traversed = traverseToRelatedInScene(confirmed, 'b', 'rel-x');
     expect(traversed.activeNoteId).toBe('b');
-    expect(traversed.relationships[0].lastActiveAt).toBe(200);
+    expect(traversed.relationships[0]).toMatchObject({ state: 'active', lastActiveAt: 200 });
   });
 });
