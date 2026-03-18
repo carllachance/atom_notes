@@ -10,16 +10,18 @@ import type { SceneState } from '../types';
 function baseScene(): SceneState {
   return {
     notes: [
-      { id: 'a', title: null, body: 'A', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false },
-      { id: 'b', title: null, body: 'B', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 1, updatedAt: 1, archived: false }
+      { id: 'a', title: null, body: 'A', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, projectIds: [] },
+      { id: 'b', title: null, body: 'B', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 1, updatedAt: 1, archived: false, projectIds: [] }
     ],
     relationships: [],
+    projects: [],
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
     lens: 'all',
     canvasScrollLeft: 0,
-    canvasScrollTop: 0
+    canvasScrollTop: 0,
+    projectReveal: { activeProjectId: null, isolate: false }
   };
 }
 

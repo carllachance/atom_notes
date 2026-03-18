@@ -15,27 +15,43 @@ import type { SceneState } from '../types';
 function makeScene(): SceneState {
   return {
     notes: [
-      { id: 'n1', title: null, body: 'Body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false }
+      {
+        id: 'n1',
+        title: null,
+        body: 'Body',
+        anchors: [],
+        trace: 'idle',
+        x: 0,
+        y: 0,
+        z: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        archived: false,
+        projectIds: []
+      }
     ],
     relationships: [],
+    projects: [],
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
     lens: 'all',
     canvasScrollLeft: 0,
-    canvasScrollTop: 0
+    canvasScrollTop: 0,
+    projectReveal: { activeProjectId: null, isolate: false }
   };
 }
 
-test('sceneActions updates note content with normalized title and trace', (t: any) => {
+test('sceneActions updates note content with normalized title, trace, and project ids', (t: any) => {
   t.mock.method(Date, 'now', () => 999);
-  const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated' }, 'refined');
+  const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated', projectIds: ['p1', 'p1'] }, 'refined');
   assert.deepEqual(next.notes[0], {
     ...makeScene().notes[0],
     title: null,
     body: 'updated',
     trace: 'refined',
-    updatedAt: 999
+    updatedAt: 999,
+    projectIds: ['p1']
   });
 });
 

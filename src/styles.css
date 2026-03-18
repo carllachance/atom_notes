@@ -42,9 +42,10 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px 12px;
   padding: 6px 8px;
-  border-radius: 999px;
+  border-radius: 18px;
   border: 1px solid rgba(62, 76, 108, 0.2);
   background: rgba(10, 15, 26, 0.3);
   backdrop-filter: blur(4px);
@@ -81,7 +82,8 @@ textarea {
 }
 
 
-.reveal-controls {
+.reveal-controls,
+.project-reveal-controls {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -100,6 +102,26 @@ textarea {
 .reveal-controls button {
   padding: 2px 8px;
   font-size: 0.72rem;
+}
+
+.project-reveal-label {
+  font-size: 0.72rem;
+  color: #9badd4;
+}
+
+.project-reveal-controls select {
+  max-width: 220px;
+  border-radius: 999px;
+  border: 1px solid rgba(66, 86, 124, 0.3);
+  background: rgba(10, 15, 26, 0.45);
+  color: #cfdaf4;
+  padding: 3px 10px;
+  font-size: 0.74rem;
+}
+
+.project-reveal-controls .ghost-button.active {
+  background: rgba(74, 97, 143, 0.26);
+  color: #deebff;
 }
 
 .view-stack {
@@ -148,6 +170,21 @@ textarea {
   height: 1100px;
 }
 
+.project-grouping-overlay {
+  position: absolute;
+  inset: 0;
+  width: 1800px;
+  height: 1100px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.project-grouping-link {
+  fill: none;
+  stroke: color-mix(in srgb, var(--project-accent) 36%, rgba(179, 197, 236, 0.16));
+  stroke-linecap: round;
+}
+
 .note-card {
   position: absolute;
   width: 270px;
@@ -155,6 +192,7 @@ textarea {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  gap: 2px;
   border-radius: 16px;
   border: 1px solid rgba(121, 145, 189, 0.1);
   background: linear-gradient(160deg, rgba(37, 51, 77, 0.48), rgba(14, 21, 34, 0.42));
@@ -212,6 +250,30 @@ textarea {
 
 .note-card[data-visual-state='archived'] {
   opacity: 0.58;
+}
+
+.note-card[data-project-state='member'] {
+  border-color: color-mix(in srgb, var(--project-accent) 40%, rgba(187, 207, 248, 0.2));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--project-accent) 18%, rgba(37, 51, 77, 0.48)), rgba(14, 21, 34, 0.44));
+  box-shadow: 0 12px 28px rgba(2, 4, 9, 0.14), 0 0 0 1px color-mix(in srgb, var(--project-accent) 24%, transparent), 0 0 calc(28px * var(--project-glow-strength, 0)) color-mix(in srgb, var(--project-accent) 18%, transparent);
+}
+
+.note-card[data-project-state='subordinate'] {
+  box-shadow: 0 8px 18px rgba(2, 4, 9, 0.09);
+  border-color: rgba(121, 145, 189, 0.08);
+}
+
+.project-badge {
+  align-self: flex-start;
+  margin-bottom: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--project-accent) 18%, rgba(11, 17, 30, 0.76));
+  border: 1px solid color-mix(in srgb, var(--project-accent) 30%, rgba(121, 145, 189, 0.18));
+  color: #f0f5ff;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 @keyframes ambient-note-pulse {
@@ -295,6 +357,107 @@ textarea {
   background: rgba(10, 15, 26, 0.74);
   color: #dfe7fb;
   padding: 8px;
+}
+
+.expanded-note-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.note-project-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.project-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--project-accent) 12%, rgba(17, 24, 37, 0.86));
+  border-color: color-mix(in srgb, var(--project-accent) 34%, rgba(66, 86, 124, 0.32));
+  color: #dce6ff;
+  font-size: 0.68rem;
+}
+
+.project-pill.active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--project-accent) 34%, transparent);
+}
+
+.project-membership {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(69, 87, 118, 0.18);
+  background: rgba(11, 17, 29, 0.24);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.section-head strong {
+  font-size: 0.76rem;
+  color: #dce7ff;
+}
+
+.project-membership-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.project-membership-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--project-accent) 22%, rgba(88, 108, 145, 0.18));
+  background: color-mix(in srgb, var(--project-accent) 8%, rgba(11, 17, 29, 0.24));
+}
+
+.project-membership-row span {
+  display: grid;
+}
+
+.project-membership-row strong {
+  font-size: 0.72rem;
+}
+
+.project-membership-row small {
+  color: #93a7d0;
+  font-size: 0.68rem;
+}
+
+.project-compose-card {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.project-compose-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.2fr auto;
+  gap: 6px;
+}
+
+.project-compose-card textarea {
+  min-height: 74px;
+  resize: vertical;
+  margin-bottom: 0;
+}
+
+.project-compose-grid input[type='color'] {
+  min-width: 52px;
+  padding: 4px;
 }
 
 .expanded-note-shell {
@@ -522,34 +685,48 @@ button {
 .relationship-edge {
   fill: none;
   stroke-linecap: round;
-  stroke-width: 1.7;
-  filter: drop-shadow(0 0 6px rgba(67, 90, 138, 0.08));
-  transition: stroke-opacity 180ms ease;
+  transition: stroke-opacity 180ms ease, stroke-width 180ms ease;
 }
 
-.relationship-edge[data-explicitness='explicit'] {
-  stroke-width: 1.95;
+.relationship-edge[data-relationship-category='direct'] {
+  stroke-linejoin: round;
 }
 
+.relationship-edge[data-relationship-category='inferred'] {
+  stroke-linecap: butt;
+}
 
 .related-node {
   position: absolute;
   pointer-events: auto;
-  border-radius: 999px;
-  border: 1px solid rgba(118, 138, 188, 0.24);
-  background: rgba(17, 25, 39, 0.5);
+  display: grid;
+  gap: 2px;
+  align-items: start;
+  border-radius: 12px;
+  border-width: 1px;
   color: rgba(201, 214, 243, 0.9);
   font-size: 0.68rem;
-  padding: 4px 8px;
+  padding: 5px 9px;
   max-width: 180px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: left;
   box-shadow: 0 6px 16px rgba(2, 4, 9, 0.1);
 }
 
-.related-node[data-explicitness='explicit'] {
-  border-color: rgba(154, 177, 232, 0.34);
+.related-node-kind {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(165, 183, 223, 0.92);
+}
+
+.related-node-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.related-node[data-relationship-category='inferred'] .related-node-title {
+  color: rgba(193, 205, 230, 0.82);
 }
 
 .expanded-note-header {

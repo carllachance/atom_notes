@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { ProjectRevealPresentation } from '../projects/projectSelectors';
+import { getProjectGroupingVisual } from '../relationships/relationshipVisuals';
 import { NoteCardModel } from '../types';
 import { CanvasViewportMetrics } from './relationshipWebGeometry';
 import { NoteCard } from './NoteCard';
@@ -22,6 +24,7 @@ type SpatialCanvasProps = {
   pulseNoteId: string | null;
   ambientGlowLevel: number;
   recenterTarget: RecenterTarget | null;
+  projectReveal: ProjectRevealPresentation;
   onScroll: (left: number, top: number) => void;
   onViewportCenterChange: (x: number, y: number) => void;
   onMetricsChange: (metrics: CanvasViewportMetrics) => void;
@@ -56,6 +59,7 @@ export function SpatialCanvas({
   pulseNoteId,
   ambientGlowLevel,
   recenterTarget,
+  projectReveal,
   onScroll,
   onViewportCenterChange,
   onMetricsChange,
@@ -69,6 +73,9 @@ export function SpatialCanvas({
   const canvasRef = useRef<HTMLElement | null>(null);
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
   const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
+  const projectHighlightIdsSet = useMemo(() => new Set(projectReveal.highlightedNoteIds), [projectReveal.highlightedNoteIds]);
+  const projectSubordinateIdsSet = useMemo(() => new Set(projectReveal.subordinateNoteIds), [projectReveal.subordinateNoteIds]);
+  const projectVisual = getProjectGroupingVisual();
 
   const emitViewportCenter = () => {
     const node = canvasRef.current;
@@ -151,6 +158,7 @@ export function SpatialCanvas({
     <section
       ref={canvasRef}
       className="spatial-canvas"
+      data-project-reveal={projectReveal.activeProject ? 'active' : 'idle'}
       onPointerMove={(event) => {
         if (!dragState.current) return;
 
@@ -171,6 +179,25 @@ export function SpatialCanvas({
       }}
     >
       <div className="canvas-plane">
+        {projectReveal.activeProject ? (
+          <svg className="project-grouping-overlay" aria-hidden="true">
+            {projectReveal.connectorSegments.map((segment, index) => (
+              <path
+                key={`${segment.from.x}-${segment.from.y}-${segment.to.x}-${segment.to.y}-${index}`}
+                className="project-grouping-link"
+                data-relationship-category="project"
+                d={`M ${segment.from.x} ${segment.from.y} Q ${(segment.from.x + segment.to.x) / 2} ${(segment.from.y + segment.to.y) / 2 - 28} ${segment.to.x} ${segment.to.y}`}
+                style={{
+                  ['--project-accent' as string]: projectReveal.activeProject?.color ?? '#7aa2f7',
+                  strokeWidth: projectVisual.connector.strokeWidth,
+                  opacity: projectVisual.connector.opacity,
+                  filter: `blur(${projectVisual.connector.blurRadius}px)`,
+                  strokeDasharray: projectVisual.connector.dasharray === 'none' ? undefined : projectVisual.connector.dasharray
+                }}
+              />
+            ))}
+          </svg>
+        ) : null}
         {notes.map((note) => (
           <NoteCard
             key={note.id}
@@ -183,6 +210,11 @@ export function SpatialCanvas({
             revealActive={revealActiveNoteId === note.id}
             isActive={activeNoteId === note.id}
             isHovered={hoveredNoteId === note.id}
+            projectState={
+              projectHighlightIdsSet.has(note.id) ? 'member' : projectSubordinateIdsSet.has(note.id) ? 'subordinate' : 'none'
+            }
+            activeProjectLabel={projectHighlightIdsSet.has(note.id) ? projectReveal.activeProject?.key ?? null : null}
+            activeProjectColor={projectReveal.activeProject?.color ?? null}
             onPointerEnter={() => onHoverStart(note.id)}
             onPointerLeave={() => onHoverEnd(note.id)}
             onPointerDown={(event) => {

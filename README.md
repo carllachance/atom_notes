@@ -195,26 +195,32 @@ Calm by default → clarity over visual noise
 
 What Exists Today
 
-The current build focuses on the core interaction model and foundational behaviors:
+The current build now includes the core interaction model plus a finished Project layer between notes and the broader workspace:
 
 Note creation with mixed content (text, links, lightweight structure)
 
 Local-first desktop experience (Tauri-based)
 
-Basic relationship modeling between notes
+Relationship modeling between notes with explainable inferred links
 
 Graph-aware ranking of connected notes
 
 Time-aware handling of relevance (active vs stale relationships)
 
-Embedded AI per note (context stays scoped to the note)
+Project entities with stable IDs and display metadata
+
+Many-to-many note/project membership with persisted storage for existing and new notes
+
+Project reveal mode that highlights a project family without turning the canvas into all-to-all graph noise
+
+Project editing inside the note modal and project-aware capture when a project is actively revealed
 
 Simplified capture flow (fast entry, minimal friction)
 
 Deterministic graph curation (bounded, stable results)
 
 
-The emphasis so far has been on getting the core primitives right: notes, relationships, and how they surface.
+The emphasis remains on getting the core primitives right: notes, projects, relationships, and how they surface calmly.
 
 
 ---
@@ -223,13 +229,15 @@ What Is In Progress
 
 These areas are actively being refined:
 
-Graph clarity (making relationships feel obvious, not technical)
+Graph clarity (making semantic relationships and project grouping feel immediately distinct)
 
-Ranking logic (what surfaces first and why)
+Ranking logic (what surfaces first and why, including stronger project-aware prioritization)
 
-UI simplification (reducing cognitive load and visual noise)
+UI simplification (reducing cognitive load and visual noise as project controls mature)
 
 Language consistency (making the system self-explanatory)
+
+Deeper project workflows (project dashboards, project-level review flows, and stronger provenance tooling)
 
 
 

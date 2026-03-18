@@ -13,8 +13,11 @@ export function App() {
   const {
     scene,
     activeNote,
+    activeNoteProjects,
     visibleNotes,
     archivedNotes,
+    projects,
+    projectReveal,
     hoveredNoteId,
     relationshipFilter,
     recentlyClosedNoteId,
@@ -37,6 +40,10 @@ export function App() {
     confirmRelationship,
     traverseToRelated,
     toggleNoteFocus,
+    setNoteProjects,
+    createProjectForNote,
+    setProjectReveal,
+    setProjectRevealIsolation,
     toggleQuickCapture,
     onCanvasScroll,
     onViewportCenterChange,
@@ -59,11 +66,16 @@ export function App() {
         archivedCount={archivedNotes.length}
         quickCaptureOpen={scene.quickCaptureOpen}
         lens={scene.lens}
-        onSetLens={setLens}
-        onToggleQuickCapture={toggleQuickCapture}
-        onWhereWasI={onWhereWasI}
+        projects={projects}
+        activeProjectId={projectReveal.activeProject?.id ?? null}
+        projectIsolate={scene.projectReveal.isolate}
         revealQuery={revealState.query}
         revealMatchCount={visibleRevealMatchIds.length}
+        onSetLens={setLens}
+        onSetProjectReveal={setProjectReveal}
+        onSetProjectIsolation={setProjectRevealIsolation}
+        onToggleQuickCapture={toggleQuickCapture}
+        onWhereWasI={onWhereWasI}
         onRevealQueryChange={onRevealQueryChange}
         onReveal={onReveal}
         onRevealPrev={onRevealPrev}
@@ -85,6 +97,7 @@ export function App() {
             ambientGlowLevel={ambientGlowLevel}
             pulseNoteId={pulseNoteId}
             recenterTarget={recenterTarget}
+            projectReveal={projectReveal}
             onScroll={onCanvasScroll}
             onViewportCenterChange={onViewportCenterChange}
             onMetricsChange={setCanvasMetrics}
@@ -117,9 +130,12 @@ export function App() {
       <ExpandedNote
         note={activeNote}
         notes={scene.notes}
+        projects={projects}
+        noteProjects={activeNoteProjects}
         relationships={relationshipPanelItems}
         relationshipTotals={relationshipTotals}
         activeFilter={relationshipFilter}
+        activeProjectRevealId={projectReveal.activeProject?.id ?? null}
         onSetFilter={setRelationshipFilter}
         onClose={closeActiveNote}
         onChange={(id, updates) => {
@@ -131,6 +147,9 @@ export function App() {
         onCreateExplicitLink={createExplicitRelationship}
         onConfirmRelationship={confirmRelationship}
         onToggleFocus={toggleNoteFocus}
+        onSetProjectIds={setNoteProjects}
+        onCreateProject={createProjectForNote}
+        onRevealProject={setProjectReveal}
       />
     </ThinkingSurface>
   );
