@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { ProjectRevealPresentation } from '../projects/projectSelectors';
 import { NoteCardModel } from '../types';
 import { NoteCard } from './NoteCard';
+import { ProjectRevealLayer } from './ProjectRevealLayer';
 
 type RecenterTarget = {
   x: number;
@@ -21,6 +23,7 @@ type SpatialCanvasProps = {
   pulseNoteId: string | null;
   ambientGlowLevel: number;
   recenterTarget: RecenterTarget | null;
+  projectReveal: ProjectRevealPresentation;
   onScroll: (left: number, top: number) => void;
   onViewportCenterChange: (x: number, y: number) => void;
   onDrag: (id: string, x: number, y: number) => void;
@@ -54,6 +57,7 @@ export function SpatialCanvas({
   pulseNoteId,
   ambientGlowLevel,
   recenterTarget,
+  projectReveal,
   onScroll,
   onViewportCenterChange,
   onDrag,
@@ -66,6 +70,7 @@ export function SpatialCanvas({
   const canvasRef = useRef<HTMLElement | null>(null);
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
   const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
+  const projectMemberIds = useMemo(() => new Set(projectReveal.memberNoteIds), [projectReveal.memberNoteIds]);
 
   const emitViewportCenter = () => {
     const node = canvasRef.current;
@@ -107,6 +112,7 @@ export function SpatialCanvas({
     <section
       ref={canvasRef}
       className="spatial-canvas"
+      data-project-reveal={projectReveal.project ? 'active' : 'idle'}
       onPointerMove={(event) => {
         if (!dragState.current) return;
 
@@ -127,40 +133,48 @@ export function SpatialCanvas({
       }}
     >
       <div className="canvas-plane">
-        {notes.map((note) => (
-          <NoteCard
-            key={note.id}
-            note={note}
-            recentlyClosed={recentlyClosedNoteId === note.id}
-            ambientRelated={relatedGlowIdsSet.has(note.id)}
-            ambientPulse={pulseNoteId === note.id}
-            ambientGlowLevel={ambientGlowLevel}
-            revealMatched={revealMatchedIdsSet.has(note.id)}
-            revealActive={revealActiveNoteId === note.id}
-            isActive={activeNoteId === note.id}
-            isHovered={hoveredNoteId === note.id}
-            onPointerEnter={() => onHoverStart(note.id)}
-            onPointerLeave={() => onHoverEnd(note.id)}
-            onPointerDown={(event) => {
-              onHoverEnd(note.id);
-              const rect = event.currentTarget.getBoundingClientRect();
-              dragState.current = {
-                id: note.id,
-                dx: event.clientX - rect.left,
-                dy: event.clientY - rect.top,
-                startX: event.clientX,
-                startY: event.clientY,
-                moved: false
-              };
-              onBringToFront(note.id);
-              event.currentTarget.setPointerCapture(event.pointerId);
-            }}
-            onPointerUp={() => {
-              if (!dragState.current || dragState.current.id !== note.id) return;
-              if (!dragState.current.moved) onOpen(note.id);
-            }}
-          />
-        ))}
+        <ProjectRevealLayer project={projectReveal.project} notes={projectReveal.memberNotes} />
+        {notes.map((note) => {
+          const isProjectMember = projectMemberIds.has(note.id);
+          const projectState = projectReveal.project ? (isProjectMember ? 'member' : 'subdued') : 'idle';
+          return (
+            <NoteCard
+              key={note.id}
+              note={note}
+              recentlyClosed={recentlyClosedNoteId === note.id}
+              ambientRelated={relatedGlowIdsSet.has(note.id)}
+              ambientPulse={pulseNoteId === note.id}
+              ambientGlowLevel={ambientGlowLevel}
+              revealMatched={revealMatchedIdsSet.has(note.id)}
+              revealActive={revealActiveNoteId === note.id}
+              isActive={activeNoteId === note.id}
+              isHovered={hoveredNoteId === note.id}
+              projectState={projectState}
+              projectAccentColor={projectReveal.project?.color ?? null}
+              projectLabel={isProjectMember && projectReveal.project ? `${projectReveal.project.name} project` : null}
+              onPointerEnter={() => onHoverStart(note.id)}
+              onPointerLeave={() => onHoverEnd(note.id)}
+              onPointerDown={(event) => {
+                onHoverEnd(note.id);
+                const rect = event.currentTarget.getBoundingClientRect();
+                dragState.current = {
+                  id: note.id,
+                  dx: event.clientX - rect.left,
+                  dy: event.clientY - rect.top,
+                  startX: event.clientX,
+                  startY: event.clientY,
+                  moved: false
+                };
+                onBringToFront(note.id);
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerUp={() => {
+                if (!dragState.current || dragState.current.id !== note.id) return;
+                if (!dragState.current.moved) onOpen(note.id);
+              }}
+            />
+          );
+        })}
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from '../test/vitest';
 import {
   archiveNoteInScene,
   closeActiveNoteInScene,
@@ -14,9 +14,24 @@ import { SceneState } from '../types';
 function makeScene(): SceneState {
   return {
     notes: [
-      { id: 'n1', title: null, body: 'Body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false }
+      {
+        id: 'n1',
+        title: null,
+        body: 'Body',
+        anchors: [],
+        trace: 'idle',
+        x: 0,
+        y: 0,
+        z: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        archived: false,
+        projectIds: []
+      }
     ],
     relationships: [],
+    projects: [],
+    projectReveal: { activeProjectId: null },
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
@@ -29,8 +44,8 @@ function makeScene(): SceneState {
 describe('sceneActions behavior contracts', () => {
   it('updates note content with normalized title and trace', () => {
     vi.spyOn(Date, 'now').mockReturnValue(999);
-    const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated' }, 'refined');
-    expect(next.notes[0]).toMatchObject({ title: null, body: 'updated', trace: 'refined', updatedAt: 999 });
+    const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated', projectIds: ['p2', 'p1'] }, 'refined');
+    expect(next.notes[0]).toMatchObject({ title: null, body: 'updated', trace: 'refined', updatedAt: 999, projectIds: ['p1', 'p2'] });
   });
 
   it('handles open/close/archive/restore and canvas scroll semantics', () => {
@@ -51,7 +66,6 @@ describe('sceneActions behavior contracts', () => {
 
     expect(setCanvasScrollInScene(restored, 0, 0)).toBe(restored);
     expect(setCanvasScrollInScene(restored, 8, 9)).toMatchObject({ canvasScrollLeft: 8, canvasScrollTop: 9 });
-
 
     const focusedLens = setLensInScene(restored, 'focus');
     expect(focusedLens.lens).toBe('focus');

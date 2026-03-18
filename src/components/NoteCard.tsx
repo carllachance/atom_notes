@@ -13,6 +13,9 @@ type NoteCardProps = {
   revealActive: boolean;
   isActive: boolean;
   isHovered: boolean;
+  projectState: 'member' | 'subdued' | 'idle';
+  projectAccentColor: string | null;
+  projectLabel: string | null;
   onPointerDown: (event: PointerEvent<HTMLElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLElement>) => void;
   onPointerEnter: () => void;
@@ -30,10 +33,13 @@ function getVisualState(
     revealMatched: boolean;
     ambientRelated: boolean;
     isHovered: boolean;
+    projectState: 'member' | 'subdued' | 'idle';
   }
 ) {
   if (note.archived) return 'archived';
   if (flags.isActive) return 'active';
+  if (flags.projectState === 'member') return 'project-member';
+  if (flags.projectState === 'subdued') return 'project-subdued';
   if (flags.revealActive) return 'reveal-active';
   if (flags.ambientPulse) return 'pulse';
   if (flags.recentlyClosed) return 'recent';
@@ -54,6 +60,9 @@ export function NoteCard({
   revealActive,
   isActive,
   isHovered,
+  projectState,
+  projectAccentColor,
+  projectLabel,
   onPointerDown,
   onPointerUp,
   onPointerEnter,
@@ -70,8 +79,11 @@ export function NoteCard({
     recentlyClosed,
     revealMatched,
     ambientRelated,
-    isHovered
+    isHovered,
+    projectState
   });
+
+  const displayOpacity = projectState === 'subdued' ? bias.opacity * 0.72 : bias.opacity;
 
   return (
     <article
@@ -83,12 +95,15 @@ export function NoteCard({
       data-trace={note.trace}
       data-focus={note.inFocus ? 'true' : 'false'}
       data-visual-state={visualState}
+      data-project-state={projectState}
+      title={projectLabel ? `${displayTitle} · ${projectLabel}` : displayTitle}
       style={{
         transform: `translate(${note.x}px, ${note.y - bias.lift}px) scale(${bias.scale})`,
         zIndex: note.z,
-        opacity: bias.opacity,
+        opacity: displayOpacity,
         filter: `blur(${bias.blur}px)`,
-        ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0'
+        ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0',
+        ['--project-accent' as string]: projectAccentColor ?? 'rgba(137, 168, 255, 0.34)'
       }}
     >
       <h3 title={displayTitle}>{displayTitle}</h3>

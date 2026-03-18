@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from '../test/vitest';
 import { loadScene, saveScene, SCENE_KEY } from '../scene/sceneStorage';
 import { SceneState } from '../types';
 
@@ -30,13 +30,16 @@ describe('sceneStorage load/save normalization', () => {
     expect(scene.notes[0]).toMatchObject({
       id: 'uuid-1',
       body: 'Welcome to Atom Notes\nDrag this card around.',
-      trace: 'captured'
+      trace: 'captured',
+      projectIds: []
     });
+    expect(scene.projects).toEqual([]);
+    expect(scene.projectReveal).toEqual({ activeProjectId: null });
   });
 
   it('loads and normalizes persisted legacy scene data and saves with v2 key', () => {
     const raw = JSON.stringify({
-      notes: [{ id: 7, title: '  ', body: 'hello', stateCue: 'legacy' }],
+      notes: [{ id: 7, title: '  ', body: 'hello', stateCue: 'legacy', projectIds: ['sld'] }],
       relationships: [{ fromId: '7', toId: '7', type: 'references' }],
       activeNoteId: '7',
       quickCaptureOpen: true,
@@ -45,8 +48,9 @@ describe('sceneStorage load/save normalization', () => {
     localStorage.setItem('atom-notes.scene.v1', raw);
 
     const loaded = loadScene();
-    expect(loaded.notes[0]).toMatchObject({ id: '7', title: null, body: 'hello' });
-    expect(loaded.relationships[0]).toMatchObject({ fromId: '7', toId: '7', type: 'references' });
+    expect(loaded.notes[0]).toMatchObject({ id: '7', title: null, body: 'hello', projectIds: ['sld'] });
+    expect(loaded.projects[0]).toMatchObject({ id: 'sld', name: 'sld' });
+    expect(loaded.relationships).toEqual([]);
     expect(loaded.lens).toBe('archive');
 
     const sceneToSave = loaded as SceneState;
@@ -54,5 +58,6 @@ describe('sceneStorage load/save normalization', () => {
     const persisted = JSON.parse(localStorage.getItem(SCENE_KEY) as string) as SceneState;
     expect(persisted.activeNoteId).toBe(loaded.activeNoteId);
     expect(persisted.notes[0].id).toBe('7');
+    expect(persisted.projects[0].id).toBe('sld');
   });
 });

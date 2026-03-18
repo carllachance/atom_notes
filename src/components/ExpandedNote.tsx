@@ -1,7 +1,7 @@
 import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
 import { getCompactDisplayTitle } from '../noteText';
-import { NoteCardModel, RelationshipType } from '../types';
+import { NoteCardModel, ProjectModel, RelationshipType } from '../types';
 
 type VisibleRelationship = {
   id: string;
@@ -17,6 +17,9 @@ type VisibleRelationship = {
 type ExpandedNoteProps = {
   note: NoteCardModel | null;
   notes: NoteCardModel[];
+  projects: ProjectModel[];
+  noteProjects: ProjectModel[];
+  activeProjectId: string | null;
   relationships: VisibleRelationship[];
   relationshipTotals: { related: number; references: number };
   activeFilter: 'all' | RelationshipType;
@@ -28,6 +31,9 @@ type ExpandedNoteProps = {
   onCreateExplicitLink: (fromId: string, toId: string, type: RelationshipType) => void;
   onConfirmRelationship: (relationshipId: string) => void;
   onToggleFocus: (id: string) => void;
+  onToggleProjectMembership: (noteId: string, projectId: string) => void;
+  onCreateProjectForNote: (noteId: string, name: string, color?: string) => void;
+  onRevealProject: (projectId: string | null) => void;
 };
 
 type DragState = {
@@ -44,6 +50,9 @@ function clamp(value: number, min: number, max: number): number {
 export function ExpandedNote({
   note,
   notes,
+  projects,
+  noteProjects,
+  activeProjectId,
   relationships,
   relationshipTotals,
   activeFilter,
@@ -54,11 +63,17 @@ export function ExpandedNote({
   onOpenRelated,
   onCreateExplicitLink,
   onConfirmRelationship,
-  onToggleFocus
+  onToggleFocus,
+  onToggleProjectMembership,
+  onCreateProjectForNote,
+  onRevealProject
 }: ExpandedNoteProps) {
   const [linkTargetId, setLinkTargetId] = useState('');
   const [linkType, setLinkType] = useState<RelationshipType>('related_concept');
   const [showLinkComposer, setShowLinkComposer] = useState(false);
+  const [showProjectEditor, setShowProjectEditor] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectColor, setNewProjectColor] = useState('#89a8ff');
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [bodyMode, setBodyMode] = useState<BodyMode>('read');
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -74,7 +89,10 @@ export function ExpandedNote({
     setDragState(null);
     setBodyMode('read');
     setShowLinkComposer(false);
+    setShowProjectEditor(false);
     setLinkTargetId('');
+    setNewProjectName('');
+    setNewProjectColor('#89a8ff');
   }, [note?.id]);
 
   useEffect(() => {
@@ -117,7 +135,7 @@ export function ExpandedNote({
           className="expanded-note-header"
           onPointerDown={(event: PointerEvent<HTMLElement>) => {
             const target = event.target as HTMLElement;
-            if (target.closest('button')) return;
+            if (target.closest('button, input, select, label')) return;
             event.preventDefault();
             setDragState({ dx: event.clientX - position.x, dy: event.clientY - position.y });
           }}
@@ -146,6 +164,82 @@ export function ExpandedNote({
             References <span>{relationshipTotals.references}</span>
           </button>
         </div>
+
+        <section className="project-membership-panel" aria-label="Projects">
+          <div className="project-membership-head">
+            <strong>Projects</strong>
+            <button className="ghost-button" onClick={() => setShowProjectEditor((open) => !open)}>
+              {showProjectEditor ? 'Close project tools' : 'Edit projects'}
+            </button>
+          </div>
+
+          <div className="project-chip-row">
+            {noteProjects.length ? (
+              noteProjects.map((project) => (
+                <button
+                  key={project.id}
+                  className={project.id === activeProjectId ? 'project-chip active' : 'project-chip'}
+                  style={{ ['--project-accent' as string]: project.color }}
+                  onClick={() => onRevealProject(project.id === activeProjectId ? null : project.id)}
+                >
+                  {project.name}
+                </button>
+              ))
+            ) : (
+              <p className="project-empty">This note is not assigned to a project yet.</p>
+            )}
+          </div>
+
+          {showProjectEditor ? (
+            <div className="project-editor">
+              <div className="project-membership-list">
+                {projects.length ? (
+                  projects.map((project) => {
+                    const checked = note.projectIds.includes(project.id);
+                    return (
+                      <label key={project.id} className={checked ? 'project-option checked' : 'project-option'}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => onToggleProjectMembership(note.id, project.id)}
+                        />
+                        <span className="project-swatch" style={{ background: project.color }} />
+                        <span>{project.name}</span>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <p className="project-empty">Create a project to establish the middle layer between note and workspace.</p>
+                )}
+              </div>
+
+              <div className="project-create-row">
+                <input
+                  aria-label="New project name"
+                  placeholder="Create project…"
+                  value={newProjectName}
+                  onChange={(event) => setNewProjectName(event.target.value)}
+                />
+                <input
+                  aria-label="Project color"
+                  className="project-color-input"
+                  type="color"
+                  value={newProjectColor}
+                  onChange={(event) => setNewProjectColor(event.target.value)}
+                />
+                <button
+                  onClick={() => {
+                    if (!newProjectName.trim()) return;
+                    onCreateProjectForNote(note.id, newProjectName, newProjectColor);
+                    setNewProjectName('');
+                  }}
+                >
+                  Add project
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
 
         <input
           aria-label="Note title"

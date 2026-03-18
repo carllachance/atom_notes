@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback } from 'react';
 import { createNote, now } from '../notes/noteModel';
+import { createProjectAndAssignToNoteInScene, setProjectRevealInScene, toggleNoteProjectMembershipInScene } from '../projects/projectActions';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import {
   confirmRelationshipInScene,
@@ -48,9 +49,12 @@ export function useSceneMutations({
     });
   }, [onActiveNoteClosed, setRelationshipFilter, setScene]);
 
-  const updateNote = useCallback((id: string, updates: Parameters<typeof updateNoteInScene>[2], trace?: string) => {
-    setScene((prev) => updateNoteInScene(prev, id, updates, trace));
-  }, [setScene]);
+  const updateNote = useCallback(
+    (id: string, updates: Parameters<typeof updateNoteInScene>[2], trace?: string) => {
+      setScene((prev) => updateNoteInScene(prev, id, updates, trace));
+    },
+    [setScene]
+  );
 
   const bringToFront = useCallback(
     (id: string) => {
@@ -68,13 +72,27 @@ export function useSceneMutations({
     [cancelHoverIntent, setScene]
   );
 
-  const createExplicitRelationship = useCallback((fromId: string, toId: string, type: RelationshipType) => {
-    setScene((prev) => createExplicitRelationshipInScene(prev, fromId, toId, type));
-  }, [setScene]);
+  const setProjectReveal = useCallback(
+    (projectId: string | null) => {
+      cancelHoverIntent();
+      setScene((prev) => setProjectRevealInScene(prev, projectId));
+    },
+    [cancelHoverIntent, setScene]
+  );
 
-  const confirmRelationship = useCallback((relationshipId: string) => {
-    setScene((prev) => confirmRelationshipInScene(prev, relationshipId));
-  }, [setScene]);
+  const createExplicitRelationship = useCallback(
+    (fromId: string, toId: string, type: RelationshipType) => {
+      setScene((prev) => createExplicitRelationshipInScene(prev, fromId, toId, type));
+    },
+    [setScene]
+  );
+
+  const confirmRelationship = useCallback(
+    (relationshipId: string) => {
+      setScene((prev) => confirmRelationshipInScene(prev, relationshipId));
+    },
+    [setScene]
+  );
 
   const traverseToRelated = useCallback(
     (targetNoteId: string, relationshipId: string) => {
@@ -88,9 +106,12 @@ export function useSceneMutations({
     setScene((prev) => ({ ...prev, quickCaptureOpen: !prev.quickCaptureOpen }));
   }, [setScene]);
 
-  const onCanvasScroll = useCallback((left: number, top: number) => {
-    setScene((prev) => setCanvasScrollInScene(prev, left, top));
-  }, [setScene]);
+  const onCanvasScroll = useCallback(
+    (left: number, top: number) => {
+      setScene((prev) => setCanvasScrollInScene(prev, left, top));
+    },
+    [setScene]
+  );
 
   const onOpenNote = useCallback(
     (id: string) => {
@@ -110,14 +131,32 @@ export function useSceneMutations({
     [onNoteArchived, setScene]
   );
 
-  const toggleNoteFocus = useCallback((id: string) => {
-    setScene((prev) => toggleNoteFocusInScene(prev, id));
-  }, [setScene]);
+  const toggleNoteFocus = useCallback(
+    (id: string) => {
+      setScene((prev) => toggleNoteFocusInScene(prev, id));
+    },
+    [setScene]
+  );
+
+  const toggleProjectMembership = useCallback(
+    (noteId: string, projectId: string) => {
+      setScene((prev) => toggleNoteProjectMembershipInScene(prev, noteId, projectId));
+    },
+    [setScene]
+  );
+
+  const createProjectForNote = useCallback(
+    (noteId: string, name: string, color?: string) => {
+      setScene((prev) => createProjectAndAssignToNoteInScene(prev, noteId, { name, color }));
+    },
+    [setScene]
+  );
 
   const onCapture = useCallback(
     (text: string) => {
       setScene((prev) => {
-        const notes = [...prev.notes, createNote(text, highestZ + 1)];
+        const projectIds = prev.projectReveal.activeProjectId ? [prev.projectReveal.activeProjectId] : [];
+        const notes = [...prev.notes, createNote(text, highestZ + 1, projectIds)];
         return {
           ...prev,
           notes,
@@ -133,6 +172,7 @@ export function useSceneMutations({
     updateNote,
     bringToFront,
     setLens,
+    setProjectReveal,
     createExplicitRelationship,
     confirmRelationship,
     traverseToRelated,
@@ -141,6 +181,8 @@ export function useSceneMutations({
     onOpenNote,
     onArchiveNote,
     toggleNoteFocus,
+    toggleProjectMembership,
+    createProjectForNote,
     onCapture
   };
 }

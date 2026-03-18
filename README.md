@@ -195,15 +195,21 @@ Calm by default → clarity over visual noise
 
 What Exists Today
 
-The current build focuses on the core interaction model and foundational behaviors:
+The current build now includes the core middle layer between loose notes and the broader workspace:
 
 Note creation with mixed content (text, links, lightweight structure)
 
 Local-first desktop experience (Tauri-based)
 
+Project as a first-class entity with stable IDs and display metadata
+
+Many-to-many note/project membership with persistence for legacy and new notes
+
+Project reveal mode that highlights a shared grouping without turning the canvas into graph spaghetti
+
 Basic relationship modeling between notes
 
-Graph-aware ranking of connected notes
+Graph-aware ranking of connected notes, including gentle same-project preference
 
 Time-aware handling of relevance (active vs stale relationships)
 
@@ -214,7 +220,7 @@ Simplified capture flow (fast entry, minimal friction)
 Deterministic graph curation (bounded, stable results)
 
 
-The emphasis so far has been on getting the core primitives right: notes, relationships, and how they surface.
+The emphasis so far has been on getting the core primitives right: notes, projects, relationships, and how they surface with restraint.
 
 
 ---
@@ -223,11 +229,13 @@ What Is In Progress
 
 These areas are actively being refined:
 
+Project workflows beyond membership editing (templates, roles, and richer project-level views)
+
 Graph clarity (making relationships feel obvious, not technical)
 
 Ranking logic (what surfaces first and why)
 
-UI simplification (reducing cognitive load and visual noise)
+UI simplification (reducing cognitive load and visual noise as projects and relationships coexist)
 
 Language consistency (making the system self-explanatory)
 

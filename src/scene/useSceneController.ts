@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
+import { getProjectRevealPresentation, getProjectsForNote, getProjectSummaries } from '../projects/projectSelectors';
 import { getRankedRelationshipsForNote, getRelationshipTargetNoteId } from '../relationshipLogic';
 import { loadScene, saveScene } from './sceneStorage';
 import { applyLens } from './lens';
@@ -66,6 +67,10 @@ export function useSceneController() {
       };
     });
   }, [activeNote, activeRelationships, scene.notes]);
+
+  const projectSummaries = useMemo(() => getProjectSummaries(scene), [scene]);
+  const noteProjects = useMemo(() => getProjectsForNote(activeNote, scene.projects), [activeNote, scene.projects]);
+  const projectReveal = useMemo(() => getProjectRevealPresentation(scene, visibleNotes), [scene, visibleNotes]);
 
   const ambient = useAmbientGuidance({
     visibleNotes,
@@ -140,6 +145,10 @@ export function useSceneController() {
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    projectSummaries,
+    noteProjects,
+    activeProjectId: scene.projectReveal.activeProjectId,
+    projectReveal,
     ambientRelatedNoteIds: ambient.ambientRelatedNoteIds,
     ambientGlowLevel: ambient.ambientGlowLevel,
     pulseNoteId: ambient.pulseNoteId,
@@ -152,10 +161,13 @@ export function useSceneController() {
     updateNote: mutations.updateNote,
     bringToFront: mutations.bringToFront,
     setLens: mutations.setLens,
+    setProjectReveal: mutations.setProjectReveal,
     createExplicitRelationship: mutations.createExplicitRelationship,
     confirmRelationship: mutations.confirmRelationship,
     traverseToRelated: mutations.traverseToRelated,
     toggleNoteFocus: mutations.toggleNoteFocus,
+    toggleProjectMembership: mutations.toggleProjectMembership,
+    createProjectForNote: mutations.createProjectForNote,
     toggleQuickCapture: mutations.toggleQuickCapture,
     onCanvasScroll: mutations.onCanvasScroll,
     onViewportCenterChange: ambient.onViewportCenterChange,

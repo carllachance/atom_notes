@@ -18,6 +18,7 @@ const STOP_WORDS = new Set([
 const KEYWORD_MIN_LENGTH = 4;
 const INFERRED_CONFIDENCE_BASE = 0.45;
 const STALE_CONFIRMED_INFERRED_PENALTY = 0.86;
+const SAME_PROJECT_BOOST = 1.08;
 
 type RankedRelationship = {
   relationship: Relationship;
@@ -175,7 +176,12 @@ export function refreshInferredRelationships(notes: NoteCardModel[], relationshi
   return dedupeRelationships([...persisted, ...staleConfirmedInferred, ...mergedInferred]);
 }
 
-function scoreRelationship(relationship: Relationship, nowTs: number) {
+function shareProject(a: NoteCardModel | undefined, b: NoteCardModel | undefined) {
+  if (!a || !b) return false;
+  return a.projectIds.some((projectId) => b.projectIds.includes(projectId));
+}
+
+function scoreRelationship(relationship: Relationship, nowTs: number, source: NoteCardModel | undefined, target: NoteCardModel | undefined) {
   const explicitnessBoost = relationship.explicitness === 'explicit' ? 1.2 : 0.8;
   const typeWeight = relationship.type === 'references' ? 1.05 : 1;
   const stateWeight = relationship.state === 'confirmed' ? 1 : 0.78;
@@ -185,8 +191,9 @@ function scoreRelationship(relationship: Relationship, nowTs: number) {
       : 1;
   const daysSinceActive = Math.max(0, (nowTs - relationship.lastActiveAt) / (1000 * 60 * 60 * 24));
   const recencyWeight = 1 / (1 + daysSinceActive * 0.25);
+  const projectWeight = shareProject(source, target) ? SAME_PROJECT_BOOST : 1;
 
-  return explicitnessBoost * typeWeight * stateWeight * stalePenalty * recencyWeight * relationship.confidence;
+  return explicitnessBoost * typeWeight * stateWeight * stalePenalty * recencyWeight * relationship.confidence * projectWeight;
 }
 
 function isStaleConfirmedInferred(relationship: Relationship) {
@@ -196,6 +203,7 @@ function isStaleConfirmedInferred(relationship: Relationship) {
 export function getRankedRelationshipsForNote(noteId: string, scene: SceneState): RankedRelationship[] {
   const nowTs = Date.now();
   const notesById = new Map(scene.notes.map((note) => [note.id, note]));
+  const source = notesById.get(noteId);
   const connected = dedupeRelationships(
     scene.relationships.filter((relationship) => {
       if (relationship.fromId !== noteId && relationship.toId !== noteId) return false;
@@ -205,7 +213,13 @@ export function getRankedRelationshipsForNote(noteId: string, scene: SceneState)
   );
 
   const ranked = connected
-    .map((relationship) => ({ relationship, score: scoreRelationship(relationship, nowTs) }))
+    .map((relationship) => {
+      const targetId = relationship.fromId === noteId ? relationship.toId : relationship.fromId;
+      return {
+        relationship,
+        score: scoreRelationship(relationship, nowTs, source, notesById.get(targetId))
+      };
+    })
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return a.relationship.id.localeCompare(b.relationship.id);

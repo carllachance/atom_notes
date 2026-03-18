@@ -18,6 +18,10 @@ export function App() {
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    projectSummaries,
+    noteProjects,
+    activeProjectId,
+    projectReveal,
     ambientRelatedNoteIds,
     ambientGlowLevel,
     pulseNoteId,
@@ -30,10 +34,13 @@ export function App() {
     updateNote,
     bringToFront,
     setLens,
+    setProjectReveal,
     createExplicitRelationship,
     confirmRelationship,
     traverseToRelated,
     toggleNoteFocus,
+    toggleProjectMembership,
+    createProjectForNote,
     toggleQuickCapture,
     onCanvasScroll,
     onViewportCenterChange,
@@ -56,7 +63,10 @@ export function App() {
         archivedCount={archivedNotes.length}
         quickCaptureOpen={scene.quickCaptureOpen}
         lens={scene.lens}
+        projects={projectSummaries}
+        activeProjectId={activeProjectId}
         onSetLens={setLens}
+        onSetProjectReveal={setProjectReveal}
         onToggleQuickCapture={toggleQuickCapture}
         onWhereWasI={onWhereWasI}
         revealQuery={revealState.query}
@@ -82,6 +92,7 @@ export function App() {
             ambientGlowLevel={ambientGlowLevel}
             pulseNoteId={pulseNoteId}
             recenterTarget={recenterTarget}
+            projectReveal={projectReveal}
             onScroll={onCanvasScroll}
             onViewportCenterChange={onViewportCenterChange}
             onDrag={(id, x, y) => updateNote(id, { x, y }, 'moved')}
@@ -112,13 +123,16 @@ export function App() {
       <ExpandedNote
         note={activeNote}
         notes={scene.notes}
+        projects={scene.projects}
+        noteProjects={noteProjects}
+        activeProjectId={activeProjectId}
         relationships={relationshipPanelItems}
         relationshipTotals={relationshipTotals}
         activeFilter={relationshipFilter}
         onSetFilter={setRelationshipFilter}
         onClose={closeActiveNote}
         onChange={(id, updates) => {
-          const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
+          const trace = 'title' in updates || 'body' in updates || 'projectIds' in updates ? 'refined' : 'idle';
           updateNote(id, updates, trace);
         }}
         onArchive={onArchiveNote}
@@ -126,6 +140,9 @@ export function App() {
         onCreateExplicitLink={createExplicitRelationship}
         onConfirmRelationship={confirmRelationship}
         onToggleFocus={toggleNoteFocus}
+        onToggleProjectMembership={toggleProjectMembership}
+        onCreateProjectForNote={createProjectForNote}
+        onRevealProject={setProjectReveal}
       />
     </ThinkingSurface>
   );

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from '../test/vitest';
 import { createNote, normalizeNote } from '../notes/noteModel';
 
 describe('noteModel', () => {
@@ -20,7 +20,8 @@ describe('noteModel', () => {
       createdAt: 1_700_000_000_000,
       updatedAt: 1_700_000_000_000,
       archived: false,
-      inFocus: false
+      inFocus: false,
+      projectIds: []
     });
   });
 
@@ -37,7 +38,8 @@ describe('noteModel', () => {
         x: '8' as unknown as number,
         y: undefined,
         z: undefined,
-        archived: 0 as unknown as boolean
+        archived: 0 as unknown as boolean,
+        projectIds: ['p2', 'p1', 'p2']
       },
       4
     );
@@ -54,7 +56,8 @@ describe('noteModel', () => {
       createdAt: 1234,
       updatedAt: 1234,
       archived: false,
-      inFocus: false
+      inFocus: false,
+      projectIds: ['p1', 'p2']
     });
   });
 });

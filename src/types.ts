@@ -4,6 +4,20 @@ export type RelationshipType = 'related_concept' | 'references';
 export type RelationshipState = 'proposed' | 'confirmed';
 export type RelationshipExplicitness = 'explicit' | 'inferred';
 
+export type ProjectModel = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  color: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ProjectRevealState = {
+  activeProjectId: string | null;
+};
+
 export type NoteCardModel = {
   id: string;
   title: string | null;
@@ -17,6 +31,7 @@ export type NoteCardModel = {
   updatedAt: number;
   archived: boolean;
   inFocus?: boolean;
+  projectIds: string[];
 };
 
 export type Relationship = {
@@ -36,6 +51,8 @@ export type Relationship = {
 export type SceneState = {
   notes: NoteCardModel[];
   relationships: Relationship[];
+  projects: ProjectModel[];
+  projectReveal: ProjectRevealState;
   activeNoteId: string | null;
   quickCaptureOpen: boolean;
   lastCtrlTapTs: number;

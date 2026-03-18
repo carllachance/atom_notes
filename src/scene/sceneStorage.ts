@@ -1,6 +1,7 @@
 import { createNote, normalizeNote, now } from '../notes/noteModel';
+import { normalizeProject } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
-import { Relationship, SceneState } from '../types';
+import { ProjectModel, Relationship, SceneState } from '../types';
 
 export const SCENE_KEY = 'atom-notes.scene.v2';
 
@@ -22,10 +23,28 @@ export function normalizeRelationship(raw: Partial<Relationship>): Relationship 
   };
 }
 
+function collectProjectMembershipProjects(notes: ReturnType<typeof normalizeNote>[], rawProjects: ProjectModel[]) {
+  const projects = [...rawProjects];
+  const knownIds = new Set(projects.map((project) => project.id));
+
+  notes.forEach((note) => {
+    note.projectIds.forEach((projectId) => {
+      if (knownIds.has(projectId)) return;
+      const inferredProject = normalizeProject({ id: projectId, name: projectId }, projects.length);
+      projects.push(inferredProject);
+      knownIds.add(projectId);
+    });
+  });
+
+  return projects;
+}
+
 export function loadScene(): SceneState {
   const fallback: SceneState = {
     notes: [createNote('Welcome to Atom Notes\nDrag this card around.', 1)],
     relationships: [],
+    projects: [],
+    projectReveal: { activeProjectId: null },
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
@@ -43,6 +62,11 @@ export function loadScene(): SceneState {
       ? parsed.notes.map((note, i) => normalizeNote(note, i))
       : fallback.notes;
 
+    const normalizedProjectsBase = Array.isArray(parsed.projects)
+      ? parsed.projects.map((project, index) => normalizeProject(project, index))
+      : [];
+    const normalizedProjects = collectProjectMembershipProjects(normalizedNotes, normalizedProjectsBase);
+
     const normalizedRelationships = Array.isArray(parsed.relationships)
       ? parsed.relationships.map((item) => normalizeRelationship(item)).filter(Boolean)
       : [];
@@ -57,10 +81,17 @@ export function loadScene(): SceneState {
       typeof parsed.activeNoteId === 'string' && normalizedNotes.some((note) => note.id === parsed.activeNoteId)
         ? parsed.activeNoteId
         : null;
+    const activeProjectId =
+      typeof parsed.projectReveal?.activeProjectId === 'string' &&
+      normalizedProjects.some((project) => project.id === parsed.projectReveal?.activeProjectId)
+        ? parsed.projectReveal.activeProjectId
+        : null;
 
     return {
       notes: normalizedNotes,
       relationships: refreshInferredRelationships(normalizedNotes, normalizedRelationships as Relationship[], now()),
+      projects: normalizedProjects,
+      projectReveal: { activeProjectId },
       activeNoteId,
       quickCaptureOpen: Boolean(parsed.quickCaptureOpen),
       lastCtrlTapTs: Number(parsed.lastCtrlTapTs ?? 0),
