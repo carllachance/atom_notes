@@ -44,6 +44,7 @@ test('relationshipActions confirms and traverses relationships deterministically
   assert.deepEqual(confirmed.relationships[0], { ...scene.relationships[0], state: 'confirmed', heuristicSupported: true, isInferred: true, lastActiveAt: 200 });
   const traversed = traverseToRelatedInScene(confirmed, 'b', 'rel-x');
   assert.equal(traversed.activeNoteId, 'b');
+  assert.equal(traversed.aiPanel.state, 'open');
   assert.equal(traversed.relationships[0].lastActiveAt, 200);
 });
 

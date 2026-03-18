@@ -159,6 +159,7 @@ export function App() {
           onRun={runInsights}
           onOpenReference={openAIReference}
           pendingAction={pendingAction}
+          noteIsOpen={Boolean(activeNote)}
           onPreviewAction={setPendingAction}
           onConfirmAction={confirmPendingAction}
           onCancelAction={cancelPendingAction}
@@ -213,6 +214,8 @@ export function App() {
         onCreateWorkspace={createWorkspaceForNote}
         onSetProjectLens={(projectId) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' })}
         onSetWorkspaceLens={(workspaceId) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' })}
+        onHoverRelatedNote={onHoverStart}
+        onClearRelatedHover={onHoverEnd}
       />
     </ThinkingSurface>
   );

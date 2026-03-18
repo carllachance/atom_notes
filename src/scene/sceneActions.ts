@@ -68,7 +68,7 @@ export function setCanvasScrollInScene(scene: SceneState, left: number, top: num
 }
 
 export function openNoteInScene(scene: SceneState, id: string): SceneState {
-  return { ...scene, activeNoteId: id };
+  return { ...scene, activeNoteId: id, aiPanel: { ...scene.aiPanel, state: 'open' } };
 }
 
 export function closeActiveNoteInScene(scene: SceneState): SceneState {
