@@ -159,11 +159,20 @@ export type InsightsResponse = {
   actions?: ActionSuggestion[];
 };
 
+export type AITranscriptEntry = {
+  id: string;
+  role: 'user' | 'assistant';
+  mode: AIInteractionMode;
+  content: string;
+  createdAt: number;
+};
+
 export type AIPanelViewState = {
   state: AIPanelState;
   mode: AIInteractionMode;
   query: string;
   response: InsightsResponse | null;
+  transcript: AITranscriptEntry[];
   loading: boolean;
 };
 

@@ -18,7 +18,7 @@ function makeScene(): SceneState {
     quickCaptureOpen: false,
     captureComposer: { open: false, draft: '', lastCreatedNoteId: null },
     focusMode: { highlight: true, isolate: false },
-    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, loading: false },
+    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, transcript: [], loading: false },
     lastCtrlTapTs: 0,
     lens: { kind: 'universe' },
     canvasScrollLeft: 0,

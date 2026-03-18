@@ -3,13 +3,27 @@ export type InlineToken =
   | { type: 'code'; value: string }
   | { type: 'link'; value: string; href: string };
 
+export type MarkdownListItem = {
+  tokens: InlineToken[];
+  checked: boolean | null;
+  lineIndex: number;
+};
+
 export type MarkdownBlock =
   | { type: 'heading'; level: number; tokens: InlineToken[] }
   | { type: 'paragraph'; tokens: InlineToken[] }
   | { type: 'blockquote'; lines: InlineToken[][] }
-  | { type: 'unordered_list'; items: { tokens: InlineToken[]; checked: boolean | null }[] }
-  | { type: 'ordered_list'; items: { tokens: InlineToken[]; checked: boolean | null }[] }
+  | { type: 'unordered_list'; items: MarkdownListItem[] }
+  | { type: 'ordered_list'; items: MarkdownListItem[] }
   | { type: 'code_block'; language: string; code: string };
+
+const TASK_PATTERN = /^\[( |x|X)\](?:\s+(.*))?$/;
+const PLAIN_TASK_LINE_PATTERN = /^\s*\[( |x|X)\](?:\s+.*)?$/;
+const TASK_TOGGLE_PATTERNS = [
+  /^(\s*\[)( |x|X)(\].*)$/,
+  /^(\s*[-*+]\s+\[)( |x|X)(\].*)$/,
+  /^(\s*\d+\.\s+\[)( |x|X)(\].*)$/
+];
 
 function parseInlineTokens(input: string): InlineToken[] {
   const tokens: InlineToken[] = [];
@@ -51,19 +65,34 @@ function parseInlineTokens(input: string): InlineToken[] {
 }
 
 function startsSpecialBlock(line: string): boolean {
-  return /^(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+|```)/.test(line);
+  return /^(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+|```)/.test(line) || PLAIN_TASK_LINE_PATTERN.test(line);
 }
 
-function parseListItem(content: string) {
-  const checkbox = content.match(/^\[( |x|X)\]\s+(.*)$/);
+function parseListItem(content: string, lineIndex: number): MarkdownListItem {
+  const checkbox = content.match(TASK_PATTERN);
   if (!checkbox) {
-    return { checked: null as boolean | null, tokens: parseInlineTokens(content.trim()) };
+    return { checked: null as boolean | null, tokens: parseInlineTokens(content.trim()), lineIndex };
   }
 
   return {
     checked: checkbox[1].toLowerCase() === 'x',
-    tokens: parseInlineTokens(checkbox[2].trim())
+    tokens: parseInlineTokens((checkbox[2] ?? '').trim()),
+    lineIndex
   };
+}
+
+export function toggleMarkdownCheckbox(source: string, lineIndex: number, checked: boolean): string {
+  const lines = source.replace(/\r\n/g, '\n').split('\n');
+  const line = lines[lineIndex];
+  if (line == null) return source;
+
+  for (const pattern of TASK_TOGGLE_PATTERNS) {
+    if (!pattern.test(line)) continue;
+    lines[lineIndex] = line.replace(pattern, `$1${checked ? 'x' : ' '}$3`);
+    return lines.join('\n');
+  }
+
+  return source;
 }
 
 export function parseMarkdownProjection(source: string): MarkdownBlock[] {
@@ -107,10 +136,10 @@ export function parseMarkdownProjection(source: string): MarkdownBlock[] {
     }
 
     if (/^[-*+]\s+/.test(line)) {
-      const items: { tokens: InlineToken[]; checked: boolean | null }[] = [];
+      const items: MarkdownListItem[] = [];
       let cursor = i;
       while (cursor < lines.length && /^[-*+]\s+/.test(lines[cursor])) {
-        items.push(parseListItem(lines[cursor].replace(/^[-*+]\s+/, '')));
+        items.push(parseListItem(lines[cursor].replace(/^[-*+]\s+/, ''), cursor));
         cursor += 1;
       }
       blocks.push({ type: 'unordered_list', items });
@@ -119,13 +148,25 @@ export function parseMarkdownProjection(source: string): MarkdownBlock[] {
     }
 
     if (/^\d+\.\s+/.test(line)) {
-      const items: { tokens: InlineToken[]; checked: boolean | null }[] = [];
+      const items: MarkdownListItem[] = [];
       let cursor = i;
       while (cursor < lines.length && /^\d+\.\s+/.test(lines[cursor])) {
-        items.push(parseListItem(lines[cursor].replace(/^\d+\.\s+/, '')));
+        items.push(parseListItem(lines[cursor].replace(/^\d+\.\s+/, ''), cursor));
         cursor += 1;
       }
       blocks.push({ type: 'ordered_list', items });
+      i = cursor - 1;
+      continue;
+    }
+
+    if (PLAIN_TASK_LINE_PATTERN.test(line)) {
+      const items: MarkdownListItem[] = [];
+      let cursor = i;
+      while (cursor < lines.length && PLAIN_TASK_LINE_PATTERN.test(lines[cursor])) {
+        items.push(parseListItem(lines[cursor].trimStart(), cursor));
+        cursor += 1;
+      }
+      blocks.push({ type: 'unordered_list', items });
       i = cursor - 1;
       continue;
     }
