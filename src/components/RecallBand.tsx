@@ -14,7 +14,6 @@ type RecallBandProps = {
   onSetLens: (lens: Lens) => void;
   onSetFocusMode: (updates: Partial<FocusMode>) => void;
   onOpenComposer: () => void;
-  onWhereWasI: () => void;
   onRevealQueryChange: (query: string) => void;
   onReveal: () => void;
   onRevealNext: () => void;
@@ -59,7 +58,6 @@ export function RecallBand({
   onSetLens,
   onSetFocusMode,
   onOpenComposer,
-  onWhereWasI,
   onRevealQueryChange,
   onReveal,
   onRevealNext,
@@ -141,7 +139,6 @@ export function RecallBand({
         <button className="ghost-button" onClick={onRevealNext} disabled={revealMatchCount < 2}>›</button>
       </div>
 
-      <button className="ghost-button recall-capture-toggle" onClick={onWhereWasI}>Where was I?</button>
       {demoLinks.map((link) => (
         <a key={link.href} className="ghost-button recall-capture-toggle recall-demo-link" href={link.href}>
           {link.label}

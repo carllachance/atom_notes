@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ThinkingGlyph } from './ThinkingGlyph';
 import { INSIGHTS_RAIL_MODES, getNextInsightsRailState } from '../detailSurface/detailSurfaceModel';
 import { getInsightTimelineForNote } from '../insights/insightTimeline';
 import { ActionSuggestion, AIInteractionMode, AIPanelViewState, InsightTimelineEntry, InsightsResponse, NoteCardModel, Project, Workspace } from '../types';
@@ -133,13 +134,13 @@ export function AIPanel({
     <aside className="ai-panel" data-state={panel.state} data-note-active={noteIsOpen ? 'true' : 'false'}>
       <div className="ai-rail">
         <button
-          className="ai-panel-toggle"
+          className={`ai-panel-toggle ai-panel-toggle--thinking ${panel.state === 'hidden' ? '' : 'active'}`.trim()}
           onClick={() => onStateChange(getNextInsightsRailState(panel.state))}
-          aria-label={panel.state === 'hidden' ? 'Expand thinking layer' : 'Collapse thinking layer'}
-          title={panel.state === 'hidden' ? 'Expand thinking layer' : 'Collapse thinking layer'}
+          aria-label={panel.state === 'hidden' ? 'Open Thinking' : 'Close Thinking'}
+          title={panel.state === 'hidden' ? 'Open Thinking' : 'Close Thinking'}
         >
-          <span aria-hidden="true">{panel.state === 'hidden' ? '←' : '→'}</span>
-          <span className="ai-panel-toggle-label">Thinking layer</span>
+          <ThinkingGlyph className="thinking-glyph" />
+          <span className="ai-panel-toggle-label">Thinking</span>
         </button>
 
         <nav className="ai-mode-switch" aria-label="AI mode">
@@ -160,9 +161,10 @@ export function AIPanel({
 
       {isExpanded ? (
         <div className="ai-panel-body">
-          <header className="ai-panel-header ai-panel-header--context">
+          <div className="ai-panel-scroll">
+            <header className="ai-panel-header ai-panel-header--context">
             <div className="ai-context-headline">
-              <strong>Thinking layer</strong>
+              <strong>Thinking</strong>
               <small>{streaming ? 'Streaming grounded response…' : 'Graph-aware, note-aware, and action-oriented.'}</small>
             </div>
             <div className="ai-context-pills">
@@ -281,7 +283,7 @@ export function AIPanel({
             {panel.transcript.length ? panel.transcript.map((entry) => (
               <section key={entry.id} className={`ai-message ai-message--${entry.role}`}>
                 <div className="ai-message-meta">
-                  <span>{entry.role === 'user' ? 'You' : `Thinking layer · ${composerLabel(entry.mode)}`}</span>
+                  <span>{entry.role === 'user' ? 'You' : `Thinking · ${composerLabel(entry.mode)}`}</span>
                 </div>
                 <p>{entry.content}</p>
               </section>
@@ -375,8 +377,9 @@ export function AIPanel({
               ) : null}
             </div>
           ) : null}
+          </div>
 
-          <form className="ai-chat-shell ai-chat-shell--sticky" onSubmit={handleSubmit}>
+          <form className="ai-chat-shell" onSubmit={handleSubmit}>
             <label className="ai-query-label" htmlFor="ai-query-input">What do you need from the current graph?</label>
             <div className="ai-query-row">
               <input
