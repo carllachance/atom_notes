@@ -70,21 +70,6 @@ export function useSceneController() {
     return scene.relationships.filter((relationship) => relationship.fromId === activeNote.id || relationship.toId === activeNote.id);
   }, [activeNote, scene.relationships]);
 
-  const relationshipTotals = useMemo(() => {
-    const totals: Record<RelationshipType, number> = {
-      related: 0,
-      references: 0,
-      depends_on: 0,
-      supports: 0,
-      contradicts: 0,
-      part_of: 0,
-      leads_to: 0,
-      derived_from: 0
-    };
-    for (const relationship of activeRelationships) totals[relationship.type] += 1;
-    return totals;
-  }, [activeRelationships]);
-
   const liveRankedRelationships = useMemo(() => (activeNote ? getRankedRelationshipsForNote(activeNote.id, scene) : []), [activeNote, scene]);
   const stableRankedRelationshipsRef = useRef(liveRankedRelationships);
   if (!scene.isDragging) {
@@ -122,6 +107,20 @@ export function useSceneController() {
   );
 
   const ambient = useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships: scene.relationships, allNotes: scene.notes });
+
+  const recallCue = useMemo(() => {
+    if (activeNote || !ambient.recallNoteId) return null;
+    const note = scene.notes.find((candidate) => candidate.id === ambient.recallNoteId);
+    if (!note || note.archived) return null;
+    const noteVisibleInScope = visibleNoteIds.has(note.id);
+    return {
+      noteId: note.id,
+      noteTitle: getCompactDisplayTitle(note, 42),
+      suggestedNextStep: noteVisibleInScope
+        ? 'Re-open this note and continue from its last place in the canvas.'
+        : 'Re-open this note and return to the thread you were in.'
+    };
+  }, [activeNote, ambient.recallNoteId, scene.notes, visibleNoteIds]);
 
   const mutations = useSceneMutations({
     setScene,
@@ -257,6 +256,17 @@ export function useSceneController() {
     if (targetNote) ambient.panToCenterIfFar(getNoteCenter(targetNote));
     setActiveRevealMatchIndex(nextIndex);
   }, [activeRevealMatchIndex, ambient, visibleNotes, visibleRevealMatchIds]);
+
+  const advanceRecallCue = useCallback(() => {
+    if (!recallCue) return;
+    mutations.onOpenNote(recallCue.noteId);
+    setHighlightedNoteIds([recallCue.noteId]);
+    ambient.clearRecallCue();
+  }, [ambient, mutations, recallCue]);
+
+  const clearRecallCue = useCallback(() => {
+    ambient.clearRecallCue();
+  }, [ambient]);
 
   const onCaptureDraftChange = useCallback((draft: string) => {
     mutations.setCaptureComposer({ open: true, draft });
@@ -502,9 +512,9 @@ export function useSceneController() {
     inspectedRelationship,
     canUndoRelationshipEdit: Boolean(lastRelationshipEdit),
     recentlyClosedNoteId: ambient.recentlyClosedNoteId,
+    recallCue,
     rankedRelationships,
     relationshipPanelItems,
-    relationshipTotals,
     activeInsightTimeline: activeNote ? (scene.insightTimeline ?? []).filter((entry) => entry.noteId === activeNote.id) : [],
     streamingResponse,
     isStreamingResponse,
@@ -547,6 +557,8 @@ export function useSceneController() {
     onHoverStart: ambient.onHoverStart,
     onHoverEnd: ambient.onHoverEnd,
     onWhereWasI: ambient.onWhereWasI,
+    onAdvanceRecallCue: advanceRecallCue,
+    onClearRecallCue: clearRecallCue,
     onRevealQueryChange,
     onReveal,
     onRevealNext: () => stepReveal(1),

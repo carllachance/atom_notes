@@ -33,6 +33,7 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
   const [pulseNoteId, setPulseNoteId] = useState<string | null>(null);
   const [lastActiveNoteId, setLastActiveNoteId] = useState<string | null>(null);
   const [recentNoteId, setRecentNoteId] = useState<string | null>(null);
+  const [recallNoteId, setRecallNoteId] = useState<string | null>(null);
   const [recentViewportCenter, setRecentViewportCenter] = useState<CanvasCenter | null>(null);
   const [recenterTarget, setRecenterTarget] = useState<RecenterTarget | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
@@ -158,8 +159,12 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
   const onNoteOpened = useCallback(
     (id: string) => {
       setRecentlyClosedNoteId(null);
-      if (lastActiveNoteId && lastActiveNoteId !== id) setRecentNoteId(lastActiveNoteId);
+      if (lastActiveNoteId && lastActiveNoteId !== id) {
+        setRecentNoteId(lastActiveNoteId);
+        setRecallNoteId(lastActiveNoteId);
+      }
       setLastActiveNoteId(id);
+      setRecallNoteId((current) => (current === id ? null : current));
       const targetNote = allNotes.find((note) => note.id === id);
       if (targetNote) {
         setRecentViewportCenter(getNoteCenter(targetNote));
@@ -170,18 +175,25 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
 
   const onNoteTraversed = useCallback(
     (targetNoteId: string) => {
-      if (lastActiveNoteId) setRecentNoteId(lastActiveNoteId);
+      if (lastActiveNoteId) {
+        setRecentNoteId(lastActiveNoteId);
+        setRecallNoteId(lastActiveNoteId);
+      }
       setLastActiveNoteId(targetNoteId);
     },
     [lastActiveNoteId]
   );
 
   const onActiveNoteClosed = useCallback((activeNoteId: string | null) => {
-    if (activeNoteId) setRecentlyClosedNoteId(activeNoteId);
+    if (activeNoteId) {
+      setRecentlyClosedNoteId(activeNoteId);
+      setRecallNoteId(activeNoteId);
+    }
   }, []);
 
   const onNoteArchived = useCallback((id: string) => {
     setRecentlyClosedNoteId(id);
+    setRecallNoteId((current) => (current === id ? null : current));
   }, []);
 
   const onWhereWasI = useCallback(() => {
@@ -204,11 +216,16 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
     if (targetNote) setPulseNoteId(targetNote.id);
   }, [lastActiveNoteId, recentNoteId, recentViewportCenter, visibleNoteIds, visibleNotes]);
 
+  const clearRecallCue = useCallback(() => {
+    setRecallNoteId(null);
+  }, []);
+
   return {
     hoveredNoteId,
     recentlyClosedNoteId,
     pulseNoteId,
     recenterTarget,
+    recallNoteId,
     ambientRelatedNoteIds,
     ambientGlowLevel,
     cancelHoverIntent,
@@ -220,6 +237,7 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
     onActiveNoteClosed,
     onNoteArchived,
     onWhereWasI,
+    clearRecallCue,
     panToCenterIfFar
   };
 }

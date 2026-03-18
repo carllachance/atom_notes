@@ -12,7 +12,9 @@ export type LensNotePresentation = {
   surfaced: boolean;
   revealed: boolean;
   projectState: LensProjectState;
+  projectAccent: string | null;
   workspaceState: LensWorkspaceState;
+  workspaceLabel: string;
   contextLabel: string | null;
 };
 
@@ -226,11 +228,11 @@ function makeContextLabel(
   if ((lens.kind === 'workspace' || lens.kind === 'reveal') && activeWorkspace) {
     if (note.workspaceId === activeWorkspace.id) return `${activeWorkspace.key} scope`;
     if (note.workspaceId) return `Surfaced from ${workspacesById.get(note.workspaceId)?.key ?? 'another workspace'}`;
-    return 'No workspace yet';
+    return 'No workspace assigned';
   }
 
   if (lens.kind === 'reveal' && isSupporting) return 'Surfaced by relationships';
-  if (!note.workspaceId) return 'No workspace yet';
+  if (!note.workspaceId) return null;
   return null;
 }
 
@@ -248,6 +250,7 @@ export function getLensPresentation(scene: SceneState): LensPresentation {
     lens.kind === 'workspace' || lens.kind === 'reveal' ? getWorkspaceById(scene, lens.workspaceId ?? null) : null;
   const noteMetaById: Record<string, LensNotePresentation> = {};
   const workspacesById = new Map(scene.workspaces.map((workspace) => [workspace.id, workspace]));
+  const projectsById = new Map(scene.projects.map((project) => [project.id, project]));
 
   for (const note of visibleNotes) {
     const isPrimary = primaryIds.has(note.id);
@@ -268,13 +271,26 @@ export function getLensPresentation(scene: SceneState): LensPresentation {
       : note.workspaceId
         ? 'none'
         : 'orphan';
+    const primaryProject = note.projectIds.map((projectId) => projectsById.get(projectId)).find(Boolean) ?? null;
+    const projectAccent = activeProject && note.projectIds.includes(activeProject.id)
+      ? activeProject.color
+      : primaryProject?.color ?? null;
+
+    const workspaceLabel = note.workspaceId
+      ? (() => {
+          const workspace = workspacesById.get(note.workspaceId);
+          return workspace ? `${workspace.key} · ${workspace.name}` : 'Workspace assigned';
+        })()
+      : 'No workspace assigned';
 
     noteMetaById[note.id] = {
       emphasis: isPrimary ? 'primary' : isSupporting ? 'supporting' : 'context',
       surfaced: isSupporting,
       revealed: revealMatchIds.includes(note.id),
       projectState,
+      projectAccent,
       workspaceState,
+      workspaceLabel,
       contextLabel: makeContextLabel(note, lens, activeProject, activeWorkspace, workspacesById, isSupporting)
     };
   }

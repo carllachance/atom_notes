@@ -3,6 +3,7 @@ import { AIPanel } from './components/AIPanel';
 import { CaptureComposer } from './components/CaptureComposer';
 import { ExpandedNote } from './components/ExpandedNote';
 import { RecallBand } from './components/RecallBand';
+import { RecallPrompt } from './components/RecallPrompt';
 import { RelationshipWeb } from './components/RelationshipWeb';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
@@ -31,9 +32,9 @@ export function App() {
     inspectedRelationship,
     canUndoRelationshipEdit,
     recentlyClosedNoteId,
+    recallCue,
     rankedRelationships,
     relationshipPanelItems,
-    relationshipTotals,
     activeInsightTimeline,
     streamingResponse,
     isStreamingResponse,
@@ -74,6 +75,8 @@ export function App() {
     onHoverStart,
     onHoverEnd,
     onWhereWasI,
+    onAdvanceRecallCue,
+    onClearRecallCue,
     onRevealQueryChange,
     onReveal,
     onRevealNext,
@@ -87,6 +90,12 @@ export function App() {
     confirmPendingAction,
     cancelPendingAction
   } = useSceneController();
+  const hasFreshInsights = Boolean(
+    activeNote && (
+      isStreamingResponse ||
+      activeInsightTimeline.some((entry) => Date.now() - entry.createdAt < 1000 * 60 * 60)
+    )
+  );
 
   return (
     <ThinkingSurface>
@@ -111,6 +120,15 @@ export function App() {
         onRevealNext={onRevealNext}
         demoLinks={demoLinks}
       />
+
+      {recallCue ? (
+        <RecallPrompt
+          noteTitle={recallCue.noteTitle}
+          suggestedNextStep={recallCue.suggestedNextStep}
+          onAdvance={onAdvanceRecallCue}
+          onClear={onClearRecallCue}
+        />
+      ) : null}
 
       <section className="workspace-shell">
         <section className="view-stack" data-lens={scene.lens.kind}>
@@ -176,7 +194,7 @@ export function App() {
       </section>
 
       {activeNote ? <div className="canvas-dim" /> : null}
-      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} onInspectRelationship={inspectRelationship} /> : null}
+      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} /> : null}
 
       <CaptureComposer
         isOpen={scene.captureComposer.open}
@@ -198,12 +216,12 @@ export function App() {
         relationships={relationshipPanelItems}
         inspectedRelationship={inspectedRelationship}
         canUndoRelationshipEdit={canUndoRelationshipEdit}
-        relationshipTotals={relationshipTotals}
-        activeFilter={relationshipFilter}
         activeProjectRevealId={lensPresentation.activeProject?.id ?? null}
         activeWorkspaceLensId={lensPresentation.activeWorkspace?.id ?? null}
-        onSetFilter={setRelationshipFilter}
+        thinkingActive={scene.aiPanel.state !== 'hidden'}
+        hasFreshInsights={hasFreshInsights}
         onClose={closeActiveNote}
+        onThinkAboutNote={() => setAIPanelVisibility('open')}
         onChange={(id, updates) => {
           const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
           updateNote(id, updates, trace);
