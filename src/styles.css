@@ -2568,18 +2568,257 @@ button {
   border-left-color: rgba(114, 167, 255, 0.48);
 }
 
-.markdown-checkbox-row input[type='checkbox'] {
-  accent-color: var(--accent-green);
+.expanded-note {
+  background:
+    linear-gradient(180deg, rgba(52, 61, 74, 0.96) 0%, rgba(31, 37, 46, 0.96) 100%);
+  border: 1px solid rgba(148, 164, 196, 0.12);
+}
+
+.expanded-note-main {
+  display: grid;
+  gap: 12px;
+}
+
+.expanded-note-sidebar {
+  opacity: 0.92;
+}
+
+.note-title-field,
+.note-body-field,
+.note-body-surface .markdown-projection,
+.note-body-surface .markdown-empty {
+  --note-editor-border: rgba(148, 164, 196, 0.14);
+  --note-editor-hover: rgba(114, 167, 255, 0.12);
+  --note-editor-focus: rgba(171, 124, 255, 0.16);
+  --note-read-surface:
+    linear-gradient(180deg, rgba(52, 61, 74, 0.3) 0%, rgba(29, 35, 43, 0.24) 100%);
+}
+
+.note-title-field {
+  padding: 8px 4px 6px;
+  border-radius: 16px;
+  font-size: 1.42rem;
+  line-height: 1.2;
+  font-weight: 640;
+  color: #f7f9ff;
+}
+
+.note-title-field:hover,
+.note-body-surface:hover .note-body-field,
+.note-body-surface:hover .markdown-projection,
+.note-body-surface:hover .markdown-empty {
+  border-color: var(--note-editor-border);
+  background: var(--note-read-surface);
+}
+
+.note-title-field:focus,
+.note-body-field:focus {
+  border-color: rgba(171, 124, 255, 0.26);
+  background: linear-gradient(180deg, rgba(171, 124, 255, 0.06), rgba(114, 167, 255, 0.05));
+  box-shadow: 0 0 0 4px rgba(171, 124, 255, 0.08);
+}
+
+.body-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  margin: 0 0 2px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 164, 196, 0.12);
+  background: rgba(40, 47, 58, 0.6);
+}
+
+.body-mode-switch button {
+  min-width: 70px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(203, 213, 231, 0.78);
+}
+
+.body-mode-switch button.active {
+  border-color: rgba(114, 167, 255, 0.28);
+  background: linear-gradient(180deg, rgba(114, 167, 255, 0.16), rgba(171, 124, 255, 0.14));
+  color: #f5f8ff;
+}
+
+.note-body-surface {
+  border-radius: 24px;
+}
+
+.note-body-surface[data-mode='read'] .markdown-projection,
+.note-body-surface[data-mode='read'] .markdown-empty {
+  border-color: rgba(114, 167, 255, 0.14);
+  background: linear-gradient(180deg, rgba(57, 68, 84, 0.28), rgba(30, 36, 45, 0.18));
+}
+
+.note-body-surface[data-mode='edit'] .note-body-field {
+  border-color: rgba(148, 164, 196, 0.1);
+  background: linear-gradient(180deg, rgba(46, 54, 67, 0.22), rgba(31, 37, 46, 0.16));
+  color: #e4ebf9;
+}
+
+.note-body-field {
+  min-height: 60vh;
+  padding: 22px 24px;
+  line-height: 1.72;
+  font-size: 1rem;
+}
+
+.note-body-surface .markdown-projection,
+.note-body-surface .markdown-empty {
+  min-height: 60vh;
+  padding: 24px 26px;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  color: #f2f6ff;
+}
+
+.markdown-empty {
+  color: rgba(203, 213, 231, 0.72);
+}
+
+.markdown-projection {
+  font-size: 1rem;
+}
+
+.markdown-projection :is(h1, h2, h3, h4) {
+  color: #f7f9ff;
+  letter-spacing: -0.01em;
+}
+
+.markdown-projection h1 {
+  font-size: 1.58rem;
+  line-height: 1.16;
+}
+
+.markdown-projection h2 {
+  font-size: 1.28rem;
+  line-height: 1.22;
+}
+
+.markdown-projection h3,
+.markdown-projection h4 {
+  font-size: 1.04rem;
+  line-height: 1.28;
+}
+
+.markdown-projection p {
+  margin: 0 0 15px;
+  color: #edf3ff;
+  line-height: 1.82;
+}
+
+.markdown-projection ul,
+.markdown-projection ol {
+  margin: 0 0 16px;
+  padding-left: 1.5rem;
+}
+
+.markdown-projection li {
+  margin: 0 0 10px;
+  color: #dde7f8;
+  line-height: 1.76;
 }
 
 .markdown-projection li[data-has-checkbox='true'] {
+  list-style: none;
+  margin-left: -24px;
   color: var(--text-primary-strong);
 }
 
-.markdown-projection li[data-has-checkbox='true']:has(input:checked) span {
-  color: #c6dfd2;
+.markdown-checkbox-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 4px 0;
+  text-align: left;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
 }
 
-.markdown-projection li[data-has-checkbox='true']:has(input:checked) {
-  opacity: 0.96;
+.markdown-checkbox-row--interactive {
+  cursor: pointer;
+}
+
+.markdown-checkbox-row--interactive:hover,
+.markdown-checkbox-row--interactive:focus-visible {
+  background: linear-gradient(90deg, rgba(95, 211, 154, 0.08), rgba(114, 167, 255, 0.04));
+}
+
+.markdown-checkbox-row--interactive:focus-visible {
+  outline: 1px solid rgba(95, 211, 154, 0.4);
+  outline-offset: 2px;
+}
+
+.markdown-checkbox-indicator {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.28rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 0.34rem;
+  border: 1px solid rgba(114, 167, 255, 0.42);
+  background: linear-gradient(180deg, rgba(60, 70, 86, 0.9), rgba(40, 47, 58, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: transparent;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.markdown-checkbox-indicator-mark {
+  font-size: 0.76rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.markdown-checkbox-row[aria-checked='true'] .markdown-checkbox-indicator {
+  border-color: rgba(95, 211, 154, 0.74);
+  background: linear-gradient(180deg, rgba(95, 211, 154, 0.26), rgba(67, 166, 121, 0.4));
+  box-shadow: 0 0 0 3px rgba(95, 211, 154, 0.12);
+  color: #effff7;
+}
+
+.markdown-checkbox-copy {
+  min-width: 0;
+  color: #eaf1ff;
+}
+
+.markdown-checkbox-row[aria-checked='true'] .markdown-checkbox-copy {
+  color: #d5efe3;
+}
+
+.markdown-checkbox-row[aria-checked='true'] .markdown-checkbox-copy :is(code, a, strong, em),
+.markdown-checkbox-row[aria-checked='true'] .markdown-checkbox-copy {
+  text-decoration-color: rgba(95, 211, 154, 0.38);
+}
+
+.markdown-checkbox-row[aria-checked='true'] .markdown-checkbox-copy {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.markdown-projection a {
+  color: #8eb7ff;
+  text-underline-offset: 0.18em;
+  text-decoration-color: rgba(114, 167, 255, 0.42);
+}
+
+.markdown-projection a:hover {
+  color: #bfd5ff;
+}
+
+.markdown-projection blockquote {
+  margin: 0 0 18px;
+  padding: 6px 0 6px 16px;
+  border-left-color: rgba(171, 124, 255, 0.42);
+  color: #d8e2f6;
+  background: linear-gradient(90deg, rgba(171, 124, 255, 0.08), transparent 72%);
 }
