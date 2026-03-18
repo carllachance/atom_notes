@@ -16,31 +16,86 @@ type RelationshipWebProps = {
   onTraverse: (targetNoteId: string, relationshipId: string) => void;
 };
 
-export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter: _filter, onTraverse }: RelationshipWebProps) {
+type VisibleEdge = {
+  relationship: Relationship;
+  target: NoteCardModel;
+  score: number;
+};
+
+const NOTE_CARD_WIDTH = 270;
+const NOTE_CARD_HEIGHT = 124;
+const EDGE_TYPE_STYLES: Record<RelationshipType, { color: string }> = {
+  related_concept: { color: 'rgba(113, 162, 255, 0.34)' },
+  references: { color: 'rgba(177, 132, 255, 0.34)' }
+};
+
+function getEdgeLineStyle(relationship: Relationship) {
+  if (relationship.explicitness === 'explicit') return undefined;
+  return '8 8';
+}
+
+export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter, onTraverse }: RelationshipWebProps) {
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
 
-  const visibleEdges = rankedRelationships.slice(0, 10);
-  const dedupedTargetIds = Array.from(
-    new Set(visibleEdges.map((item) => getRelationshipTargetNoteId(item.relationship, activeNote.id)))
-  ).slice(0, 8);
+  const visibleEdges = useMemo(() => {
+    const filtered = rankedRelationships.filter(
+      (item) => filter === 'all' || item.relationship.type === filter
+    );
 
-  const visibleTargets = dedupedTargetIds
-    .map((id) => notesById.get(id))
-    .filter((note): note is NoteCardModel => Boolean(note));
+    return filtered
+      .slice(0, 10)
+      .map((item) => {
+        const targetId = getRelationshipTargetNoteId(item.relationship, activeNote.id);
+        const target = notesById.get(targetId);
+        if (!target) return null;
+        return {
+          relationship: item.relationship,
+          target,
+          score: item.score
+        } satisfies VisibleEdge;
+      })
+      .filter((item): item is VisibleEdge => Boolean(item));
+  }, [activeNote.id, filter, notesById, rankedRelationships]);
+
+  const visibleTargets = visibleEdges.slice(0, 8);
+  const activeCenterX = activeNote.x + NOTE_CARD_WIDTH / 2;
+  const activeCenterY = activeNote.y + NOTE_CARD_HEIGHT / 2;
 
   return (
     <div className="relationship-web-layer">
-      {visibleTargets.map((note) => (
+      <svg className="relationship-web" viewBox="0 0 1800 1100" preserveAspectRatio="none" aria-hidden="true">
+        {visibleTargets.map(({ relationship, target, score }) => {
+          const edgeStyle = EDGE_TYPE_STYLES[relationship.type];
+          const confidenceOpacity = Math.min(0.44, 0.18 + score * 0.2);
+          const targetCenterX = target.x + NOTE_CARD_WIDTH / 2;
+          const targetCenterY = target.y + NOTE_CARD_HEIGHT / 2;
+          const controlOffset = Math.max(30, Math.abs(targetCenterX - activeCenterX) * 0.18);
+          const path = `M ${activeCenterX} ${activeCenterY} C ${activeCenterX} ${activeCenterY + controlOffset}, ${targetCenterX} ${targetCenterY - controlOffset}, ${targetCenterX} ${targetCenterY}`;
+
+          return (
+            <path
+              key={relationship.id}
+              d={path}
+              className="relationship-edge"
+              data-type={relationship.type}
+              data-explicitness={relationship.explicitness}
+              stroke={edgeStyle.color}
+              strokeOpacity={confidenceOpacity}
+              strokeDasharray={getEdgeLineStyle(relationship)}
+            />
+          );
+        })}
+      </svg>
+
+      {visibleTargets.map(({ target: note, relationship }) => (
         <button
           key={note.id}
           className="related-node"
+          title={relationship.explanation}
+          data-type={relationship.type}
+          data-explicitness={relationship.explicitness}
           style={{ transform: `translate(${note.x + 95}px, ${note.y + 44}px)` }}
-          onClick={() => {
-            const relationship = visibleEdges.find(
-              (item) => getRelationshipTargetNoteId(item.relationship, activeNote.id) === note.id
-            );
-            if (relationship) onTraverse(note.id, relationship.relationship.id);
-          }}
+          onClick={() => onTraverse(note.id, relationship.id)}
         >
           {getCompactDisplayTitle(note, 36)}
         </button>
