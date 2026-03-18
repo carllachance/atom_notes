@@ -73,3 +73,27 @@ test('inlineLinking returns up to three proactive suggestions using text and con
   assert.deepEqual(suggestions.map((entry) => entry.targetId), ['a', 'b', 'c']);
   assert.equal(suggestions[0].type, 'depends_on');
 });
+
+test('inlineLinking returns human-readable proactive suggestion reasons', () => {
+  const source = note('source', 'Release handoff', 'Need approvals and sequencing for launch.');
+  source.workspaceId = 'w1';
+  source.projectIds = ['p1'];
+  source.anchors = ['release'];
+
+  const sameProjectSuggestions = getProactiveLinkSuggestions({
+    source,
+    notes: [
+      source,
+      { ...note('a', 'Decision log', 'Sequencing approvals for launch gates.'), workspaceId: 'w1', projectIds: ['p1'] }
+    ]
+  });
+  const sharedTagSuggestions = getProactiveLinkSuggestions({
+    source,
+    notes: [
+      source,
+      { ...note('b', 'Operations checklist', 'Release sequencing for launch execution.'), anchors: ['release'] }
+    ]
+  });
+  assert.equal(sameProjectSuggestions[0]?.reason, 'Same project and overlapping language.');
+  assert.equal(sharedTagSuggestions[0]?.reason, 'Shared tags.');
+});

@@ -17,6 +17,10 @@ type ClusterSimulationState = Record<string, ClusterStateNode>;
 
 type Vector = { x: number; y: number };
 
+type ClusterInteractionState = {
+  forceScaleById?: Record<string, number>;
+};
+
 type ClusterForces = {
   connectedAttraction: number;
   unconnectedRepulsion: number;
@@ -84,18 +88,23 @@ export function stepClusterState(
   notes: ClusterLayoutNode[],
   relationships: Relationship[],
   previous: ClusterSimulationState,
-  overrides: Partial<ClusterForces> = {}
+  overrides: Partial<ClusterForces> = {},
+  interaction: ClusterInteractionState = {}
 ): ClusterSimulationState {
   const forces = { ...DEFAULT_CLUSTER_FORCES, ...overrides };
+  const forceScaleById = interaction.forceScaleById ?? {};
   const state = syncClusterState(notes, previous);
   const connectedPairs = buildConnectionIndex(notes, relationships);
   const impulseById = new Map<string, Vector>();
+  const forceScaleFor = (id: string) => Math.max(0, Math.min(1, forceScaleById[id] ?? 1));
 
   for (const note of notes) {
     const current = state[note.id];
+    const forceScale = forceScaleFor(note.id);
+    const anchorStrength = forces.anchorStrength * (1.55 - forceScale * 0.35);
     impulseById.set(note.id, {
-      x: (current.anchorX - current.x) * forces.anchorStrength,
-      y: (current.anchorY - current.y) * forces.anchorStrength
+      x: (current.anchorX - current.x) * anchorStrength,
+      y: (current.anchorY - current.y) * anchorStrength
     });
   }
 
@@ -114,18 +123,21 @@ export function stepClusterState(
       const currentImpulse = impulseById.get(currentNote.id)!;
       const otherImpulse = impulseById.get(otherNote.id)!;
       const connected = connectedPairs.has(pairKey(currentNote.id, otherNote.id));
+      const interactionScale = Math.min(forceScaleFor(currentNote.id), forceScaleFor(otherNote.id));
+
+      if (interactionScale <= 0) continue;
 
       if (connected) {
         const attractionDistance = Math.min(forces.attractionDistance, Math.max(140, distance({ x: current.anchorX, y: current.anchorY }, { x: other.anchorX, y: other.anchorY }) * 0.9));
         if (dist > attractionDistance) {
-          const attraction = (dist - attractionDistance) * forces.connectedAttraction;
+          const attraction = (dist - attractionDistance) * forces.connectedAttraction * interactionScale;
           currentImpulse.x += nx * attraction;
           currentImpulse.y += ny * attraction;
           otherImpulse.x -= nx * attraction;
           otherImpulse.y -= ny * attraction;
         }
       } else if (dist < forces.repulsionDistance) {
-        const repulsion = ((forces.repulsionDistance - dist) / forces.repulsionDistance) * forces.unconnectedRepulsion;
+        const repulsion = ((forces.repulsionDistance - dist) / forces.repulsionDistance) * forces.unconnectedRepulsion * interactionScale;
         currentImpulse.x -= nx * repulsion;
         currentImpulse.y -= ny * repulsion;
         otherImpulse.x += nx * repulsion;
@@ -138,13 +150,28 @@ export function stepClusterState(
 
   for (const note of notes) {
     const current = state[note.id];
+    const forceScale = forceScaleFor(note.id);
+
+    if (forceScale <= 0) {
+      next[note.id] = {
+        anchorX: current.anchorX,
+        anchorY: current.anchorY,
+        x: current.anchorX,
+        y: current.anchorY,
+        vx: 0,
+        vy: 0
+      };
+      continue;
+    }
+
     const impulse = impulseById.get(note.id)!;
     let vx = (current.vx + impulse.x) * forces.damping;
     let vy = (current.vy + impulse.y) * forces.damping;
+    const maxSpeed = forces.maxSpeed * (0.35 + forceScale * 0.65);
     const speed = Math.hypot(vx, vy);
 
-    if (speed > forces.maxSpeed) {
-      const speedScale = forces.maxSpeed / speed;
+    if (speed > maxSpeed) {
+      const speedScale = maxSpeed / speed;
       vx *= speedScale;
       vy *= speedScale;
     }
@@ -154,9 +181,10 @@ export function stepClusterState(
     const offsetX = x - current.anchorX;
     const offsetY = y - current.anchorY;
     const offset = Math.hypot(offsetX, offsetY);
+    const maxOffset = Math.max(6, forces.maxOffset * (0.4 + forceScale * 0.6));
 
-    if (offset > forces.maxOffset) {
-      const offsetScale = forces.maxOffset / offset;
+    if (offset > maxOffset) {
+      const offsetScale = maxOffset / offset;
       x = current.anchorX + offsetX * offsetScale;
       y = current.anchorY + offsetY * offsetScale;
       vx *= 0.42;
@@ -239,7 +267,12 @@ export function buildClusteredProjectConnectorSegments(notes: ClusterLayoutNode[
   return segments;
 }
 
-export function useSubtleCanvasClustering(notes: NoteCardModel[], relationships: Relationship[], paused: boolean) {
+export function useSubtleCanvasClustering(
+  notes: NoteCardModel[],
+  relationships: Relationship[],
+  paused: boolean,
+  interaction: ClusterInteractionState = {}
+) {
   const simulationRef = useRef<ClusterSimulationState>({});
   const frameRef = useRef<number | null>(null);
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>(() =>
@@ -259,7 +292,7 @@ export function useSubtleCanvasClustering(notes: NoteCardModel[], relationships:
     let active = true;
     const tick = () => {
       if (!active) return;
-      simulationRef.current = stepClusterState(noteInputs, relationships, simulationRef.current);
+      simulationRef.current = stepClusterState(noteInputs, relationships, simulationRef.current, {}, interaction);
       setPositions(getClusteredPositions(noteInputs, simulationRef.current));
       if (!isClusterStateSettled(simulationRef.current)) {
         frameRef.current = window.requestAnimationFrame(tick);
@@ -277,7 +310,7 @@ export function useSubtleCanvasClustering(notes: NoteCardModel[], relationships:
         frameRef.current = null;
       }
     };
-  }, [paused, noteInputs, relationships]);
+  }, [interaction, paused, noteInputs, relationships]);
 
   return positions;
 }
