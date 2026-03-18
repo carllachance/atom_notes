@@ -47,8 +47,19 @@ export function getCompactDisplayTitle(
   return truncate(getDisplayTitle(note), maxLength);
 }
 
-export function getSummaryPreview(note: Pick<NoteCardModel, 'body'>, maxLength = 120): string {
-  const bodyText = normalizeInlineText(note.body);
+function getBodyPreviewSeed(note: Pick<NoteCardModel, 'title' | 'body'>): string {
+  const lines = note.body
+    .split('\n')
+    .map((line) => normalizeInlineText(line))
+    .filter(Boolean);
+
+  if (lines.length === 0) return '';
+  if (hasExplicitTitle(note) || lines.length === 1) return lines.join(' ');
+  return lines.slice(1).join(' ') || lines[0];
+}
+
+export function getSummaryPreview(note: Pick<NoteCardModel, 'title' | 'body'>, maxLength = 120): string {
+  const bodyText = getBodyPreviewSeed(note);
   if (!bodyText) return 'No summary yet.';
   return truncate(bodyText, maxLength);
 }

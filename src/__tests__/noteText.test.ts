@@ -13,7 +13,9 @@ describe('noteText contract helpers', () => {
 
   it('provides compact title and summary preview consistently', () => {
     expect(getCompactDisplayTitle({ title: null, body: 'This is long body title seed' }, 8)).toBe('This is…');
-    expect(getSummaryPreview({ body: '   alpha    beta    gamma   ' }, 10)).toBe('alpha bet…');
-    expect(getSummaryPreview({ body: '   ' })).toBe('No summary yet.');
+    expect(getSummaryPreview({ title: null, body: '   alpha    beta    gamma   ' }, 10)).toBe('alpha bet…');
+    expect(getSummaryPreview({ title: null, body: 'Heading\nDeeper context line\nSecond detail' }, 24)).toBe('Deeper context line…');
+    expect(getSummaryPreview({ title: 'Explicit', body: 'Heading\nDeeper context line' }, 24)).toBe('Heading Deeper context…');
+    expect(getSummaryPreview({ title: null, body: '   ' })).toBe('No summary yet.');
   });
 });

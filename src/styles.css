@@ -1,5 +1,16 @@
 :root {
   font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+  --note-title-font-size: 0.97rem;
+  --note-title-line-height: 1.28;
+  --note-title-weight: 600;
+  --note-title-tracking: 0.01em;
+  --note-body-font-size: 0.79rem;
+  --note-body-line-height: 1.48;
+  --note-body-color: #b5c5e5;
+  --note-body-strong-color: #c8d5f0;
+  --note-trace-font-size: 0.73rem;
+  --note-hover-border: rgba(170, 192, 241, 0.34);
+  --note-hover-glow: rgba(83, 118, 196, 0.24);
   color: #dde4f6;
   background: #090d16;
 }
@@ -142,19 +153,21 @@ textarea {
   width: 270px;
   border-radius: 16px;
   border: 1px solid rgba(121, 145, 189, 0.1);
-  background: linear-gradient(160deg, rgba(35, 48, 72, 0.38), rgba(14, 21, 34, 0.35));
+  background: linear-gradient(160deg, rgba(37, 51, 77, 0.48), rgba(14, 21, 34, 0.42));
   color: #dce5fa;
-  padding: 11px;
+  padding: 12px 12px 11px;
   cursor: grab;
   user-select: none;
   box-shadow: 0 10px 24px rgba(2, 4, 9, 0.12);
-  backdrop-filter: blur(5px);
-  transition: opacity 160ms ease, box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease, filter 180ms ease;
+  backdrop-filter: blur(6px);
+  transition: opacity 160ms ease, box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease, filter 180ms ease, background 180ms ease;
 }
 
 
 .note-card[data-visual-state='hover'] {
-  border-color: rgba(131, 152, 197, 0.2);
+  border-color: var(--note-hover-border);
+  background: linear-gradient(160deg, rgba(41, 57, 87, 0.58), rgba(16, 24, 39, 0.52));
+  box-shadow: 0 14px 34px rgba(4, 8, 18, 0.22), 0 0 0 1px rgba(182, 203, 247, 0.05), 0 0 28px var(--note-hover-glow);
 }
 
 .note-card[data-visual-state='focus'] {
@@ -188,8 +201,9 @@ textarea {
 }
 
 .note-card[data-visual-state='active'] {
-  border-color: rgba(167, 188, 234, 0.42);
-  box-shadow: 0 14px 34px rgba(44, 66, 110, 0.24);
+  border-color: rgba(187, 207, 248, 0.48);
+  background: linear-gradient(160deg, rgba(49, 67, 103, 0.62), rgba(18, 28, 46, 0.58));
+  box-shadow: 0 18px 40px rgba(44, 66, 110, 0.28), 0 0 34px rgba(96, 129, 207, 0.18);
 }
 
 .note-card[data-visual-state='archived'] {
@@ -207,31 +221,35 @@ textarea {
 
 .note-card h3 {
   margin: 0;
-  font-size: 0.93rem;
-  font-weight: 560;
+  font-size: var(--note-title-font-size);
+  font-weight: var(--note-title-weight);
+  line-height: var(--note-title-line-height);
+  letter-spacing: var(--note-title-tracking);
+  color: #edf3ff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .note-card .summary-preview {
-  margin: 6px 0 7px;
-  font-size: 0.74rem;
-  color: #a8b8da;
-  line-height: 1.32;
+  margin: 7px 0 8px;
+  font-size: var(--note-body-font-size);
+  color: var(--note-body-color);
+  line-height: var(--note-body-line-height);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  opacity: 0.88;
+  opacity: 0.94;
 }
 
 
 .note-card .trace {
-  margin: 7px 0 6px;
-  color: #a6b2d0;
-  font-size: 0.76rem;
-  opacity: 0.78;
+  margin: 8px 0 5px;
+  color: rgba(200, 212, 241, 0.74);
+  font-size: var(--note-trace-font-size);
+  line-height: 1.35;
+  opacity: 0.76;
 }
 
 .note-card .state-cue {
@@ -486,6 +504,19 @@ button {
   height: 100%;
 }
 
+.relationship-edge {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 1.7;
+  filter: drop-shadow(0 0 6px rgba(67, 90, 138, 0.08));
+  transition: stroke-opacity 180ms ease;
+}
+
+.relationship-edge[data-explicitness='explicit'] {
+  stroke-width: 1.95;
+}
+
+
 .related-node {
   position: absolute;
   pointer-events: auto;
@@ -499,6 +530,11 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  box-shadow: 0 6px 16px rgba(2, 4, 9, 0.1);
+}
+
+.related-node[data-explicitness='explicit'] {
+  border-color: rgba(154, 177, 232, 0.34);
 }
 
 .expanded-note-header {
