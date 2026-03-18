@@ -1,6 +1,6 @@
-Atomic Notes (atom_notes)
+# Atomic Notes (atom_notes)
 
-From complexity to clarity.
+### From complexity to clarity.
 
 Atomic Notes is a local-first workspace where ideas don’t sit in folders—they connect, evolve, and surface themselves when they matter.
 
@@ -193,19 +193,79 @@ Calm by default → clarity over visual noise
 
 ---
 
-Current Status
+What Exists Today
 
-Active build.
+The current build focuses on the core interaction model and foundational behaviors:
 
-Recent focus areas:
+Note creation with mixed content (text, links, lightweight structure)
 
-Graph clarity and ranking
+Local-first desktop experience (Tauri-based)
 
-Reducing capture friction
+Basic relationship modeling between notes
 
-Simplifying UI language and interaction
+Graph-aware ranking of connected notes
 
-Making relationships feel intuitive, not technical
+Time-aware handling of relevance (active vs stale relationships)
+
+Embedded AI per note (context stays scoped to the note)
+
+Simplified capture flow (fast entry, minimal friction)
+
+Deterministic graph curation (bounded, stable results)
+
+
+The emphasis so far has been on getting the core primitives right: notes, relationships, and how they surface.
+
+
+---
+
+What Is In Progress
+
+These areas are actively being refined:
+
+Graph clarity (making relationships feel obvious, not technical)
+
+Ranking logic (what surfaces first and why)
+
+UI simplification (reducing cognitive load and visual noise)
+
+Language consistency (making the system self-explanatory)
+
+
+
+---
+
+What Is Next (Near-Term)
+
+Query-first entry (start with intent instead of navigation)
+
+Improved visual graph exploration
+
+Relationship editing and inspection tools
+
+Better ingestion for links and structured content
+
+Stronger AI-assisted relationship suggestions
+
+
+
+---
+
+Future Direction
+
+Longer-term direction for the system:
+
+Document ingestion pipeline (docx, PDF, web → atomic notes)
+
+Automated atomization and relationship extraction
+
+Time-based insight layer (drift, resurfacing, decay)
+
+Multi-agent workflows for analysis and enrichment
+
+Domain-specific workspaces (e.g., regulations, procedures)
+
+Large-scale graph exploration without losing clarity
 
 
 
