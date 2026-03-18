@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { archiveNoteInScene, closeActiveNoteInScene, openNoteInScene, restoreNoteInScene, setCanvasScrollInScene, setCaptureComposerState, setFocusModeInScene, setLensInScene, toggleNoteFocusInScene, updateNoteInScene } from '../scene/sceneActions';
+import { archiveNoteInScene, closeActiveNoteInScene, openNoteInScene, restoreNoteInScene, setCanvasScrollInScene, setCaptureComposerState, setFocusModeInScene, setIsDraggingInScene, setLensInScene, toggleNoteFocusInScene, updateNoteInScene } from '../scene/sceneActions';
 import type { SceneState } from '../types';
 
 function makeScene(): SceneState {
@@ -9,6 +9,7 @@ function makeScene(): SceneState {
     relationships: [],
     projects: [],
     workspaces: [],
+    isDragging: false,
     activeNoteId: null,
     quickCaptureOpen: false,
     captureComposer: { open: false, draft: '', lastCreatedNoteId: null },
@@ -37,6 +38,8 @@ test('sceneActions handle open, close, archive, restore, focus, and composer sem
   assert.deepEqual(restored.lens, { kind: 'universe' });
   assert.equal(setCanvasScrollInScene(restored, 0, 0), restored);
   assert.deepEqual(setCanvasScrollInScene(restored, 8, 9), { ...restored, canvasScrollLeft: 8, canvasScrollTop: 9 });
+  assert.equal(setIsDraggingInScene(restored, false), restored);
+  assert.equal(setIsDraggingInScene(restored, true).isDragging, true);
   assert.deepEqual(setLensInScene(restored, { kind: 'workspace', workspaceId: 'ws-1', mode: 'context' }).lens, { kind: 'workspace', workspaceId: 'ws-1', mode: 'context' });
   const focused = toggleNoteFocusInScene(restored, 'n1');
   assert.equal(focused.notes[0].isFocus, true);

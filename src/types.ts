@@ -172,6 +172,7 @@ export type SceneState = {
   relationships: Relationship[];
   projects: Project[];
   workspaces: Workspace[];
+  isDragging: boolean;
   activeNoteId: string | null;
   quickCaptureOpen: boolean;
   captureComposer: CaptureComposerState;

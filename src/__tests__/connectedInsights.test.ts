@@ -14,6 +14,7 @@ function makeScene(): SceneState {
     ],
     projects: [{ id: 'p1', key: 'SLD', name: 'Ship Launch', color: '#7aa2f7', description: '', createdAt: 1, updatedAt: 1 }],
     workspaces: [{ id: 'w1', key: 'OPS', name: 'Operations', color: '#5fbf97', description: '', createdAt: 1, updatedAt: 1 }],
+    isDragging: false,
     activeNoteId: 'a',
     quickCaptureOpen: false,
     captureComposer: { open: false, draft: '', lastCreatedNoteId: null },

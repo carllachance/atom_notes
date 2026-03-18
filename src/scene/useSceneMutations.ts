@@ -6,6 +6,7 @@ import {
   closeActiveNoteInScene,
   deleteNoteInScene,
   openNoteInScene,
+  setIsDraggingInScene,
   setAIPanelPayload,
   setAIPanelState,
   setCanvasScrollInScene,
@@ -65,6 +66,11 @@ export function useSceneMutations({
   const setLens = useCallback((lens: Lens) => {
     cancelHoverIntent();
     setScene((prev) => setLensInScene(prev, lens));
+  }, [cancelHoverIntent, setScene]);
+
+  const setIsDragging = useCallback((isDragging: boolean) => {
+    if (isDragging) cancelHoverIntent();
+    setScene((prev) => setIsDraggingInScene(prev, isDragging));
   }, [cancelHoverIntent, setScene]);
 
   const setFocusMode = useCallback((updates: Partial<SceneState['focusMode']>) => {
@@ -145,6 +151,7 @@ export function useSceneMutations({
     updateNote,
     deleteNote,
     bringToFront,
+    setIsDragging,
     setLens,
     setFocusMode,
     setCaptureComposer,
