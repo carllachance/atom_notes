@@ -107,6 +107,7 @@ export function traverseToRelatedInScene(scene: SceneState, targetNoteId: string
   return {
     ...scene,
     activeNoteId: targetNoteId,
+    aiPanel: { ...scene.aiPanel, state: 'open' },
     relationships: scene.relationships.map((relationship) =>
       relationship.id === relationshipId ? { ...relationship, lastActiveAt: now() } : relationship
     )

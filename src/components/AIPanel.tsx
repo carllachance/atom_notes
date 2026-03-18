@@ -14,6 +14,7 @@ type AIPanelProps = {
   onRun: () => void;
   onOpenReference: (noteId: string) => void;
   pendingAction: ActionSuggestion | null;
+  noteIsOpen: boolean;
   onPreviewAction: (action: ActionSuggestion) => void;
   onConfirmAction: () => void;
   onCancelAction: () => void;
@@ -51,6 +52,7 @@ export function AIPanel({
   onRun,
   onOpenReference,
   pendingAction,
+  noteIsOpen,
   onPreviewAction,
   onConfirmAction,
   onCancelAction
@@ -66,7 +68,7 @@ export function AIPanel({
   };
 
   return (
-    <aside className="ai-panel" data-state={panel.state}>
+    <aside className="ai-panel" data-state={panel.state} data-note-active={noteIsOpen ? 'true' : 'false'}>
       <div className="ai-rail">
         <button
           className="ai-panel-toggle"
@@ -100,13 +102,13 @@ export function AIPanel({
             <div>
               <strong>Insights</strong>
               <small>
-                {selectedNote ? `Selected: ${selectedNote.title ?? 'Untitled'}` : 'No note selected'} · {visibleNotesCount} visible · {activeProject?.key ?? 'All projects'}
+                {selectedNote ? `Current note: ${selectedNote.title ?? 'Untitled'}` : 'No note selected'} · {visibleNotesCount} visible · {activeProject?.key ?? 'All projects'}
               </small>
             </div>
           </header>
 
           <form className="ai-chat-shell" onSubmit={handleSubmit}>
-            <label className="ai-query-label" htmlFor="ai-query-input">Chat with the current note context</label>
+            <label className="ai-query-label" htmlFor="ai-query-input">{selectedNote ? 'Chat with the current note' : 'Chat with the current canvas context'}</label>
             <div className="ai-query-row">
               <input
                 id="ai-query-input"

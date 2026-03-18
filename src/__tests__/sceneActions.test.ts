@@ -31,6 +31,7 @@ test('sceneActions updates note content with normalized title, trace, project id
 test('sceneActions handle open, close, archive, restore, focus, and composer semantics', () => {
   const opened = openNoteInScene(makeScene(), 'n1');
   assert.equal(opened.activeNoteId, 'n1');
+  assert.equal(opened.aiPanel.state, 'open');
   assert.equal(closeActiveNoteInScene(opened).activeNoteId, null);
   const archived = archiveNoteInScene(opened, 'n1');
   assert.deepEqual(archived.lens, { kind: 'archive' });
