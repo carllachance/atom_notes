@@ -37,6 +37,14 @@ function describeFocusState(focusMode: FocusMode, focusCount: number) {
   return `${focusCount} Focus notes remain tagged, but without extra canvas emphasis.`;
 }
 
+function CaptureIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 3.4v9.2M3.4 8h9.2" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.35" />
+    </svg>
+  );
+}
+
 export function RecallBand({
   count,
   archivedCount,
@@ -139,7 +147,9 @@ export function RecallBand({
           {link.label}
         </a>
       ))}
-      <button className="ghost-button recall-capture-toggle" onClick={onOpenComposer}>Capture</button>
+      <button className="ghost-button recall-capture-toggle recall-capture-toggle--icon" onClick={onOpenComposer} aria-label="Capture note" title="Capture note">
+        <CaptureIcon />
+      </button>
     </header>
   );
 }

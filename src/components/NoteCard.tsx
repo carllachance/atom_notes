@@ -54,7 +54,8 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recent
   const summaryPreview = getSummaryPreview(note, 82);
   const visualState = getVisualState(note, focusHighlightEnabled, { isActive, revealActive, ambientPulse, ambientGlowLevel, recentlyClosed, revealMatched, ambientRelated, isHovered });
   const emphasisScale = meta?.emphasis === 'supporting' ? 0.985 : 1;
-  const emphasisOpacity = meta?.emphasis === 'supporting' ? 0.82 : 1;
+  const emphasisOpacity = meta?.emphasis === 'supporting' ? 0.84 : 1;
+  const dragScale = isDirectlyDragging ? 1.02 : isDragging ? 1.008 : 1;
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
   const resolvedPosition = position ?? { x: note.x, y: note.y };
   const intentLabel = formatIntentLabel(note.intent);
@@ -70,20 +71,24 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recent
       data-focus={isFocus ? 'true' : 'false'}
       data-visual-state={visualState}
       data-project-state={meta?.projectState ?? 'none'}
+      data-project-selection={activeProjectColor ? 'active' : 'idle'}
+      data-project-affinity={meta?.projectAccent ? 'tinted' : 'none'}
       data-workspace-state={meta?.workspaceState ?? 'none'}
       data-emphasis={meta?.emphasis ?? 'context'}
       data-dragging={isDragging ? 'true' : 'false'}
       data-direct-dragging={isDirectlyDragging ? 'true' : 'false'}
       style={{
-        transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale})`,
+        transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift - (isDirectlyDragging ? 6 : isDragging ? 2 : 0)}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale * dragScale})`,
         transformOrigin: 'top left',
         zIndex: note.z,
         opacity: bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity,
         filter: `blur(${bias.blur}px)`,
         ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0',
-        ['--project-accent' as string]: activeProjectColor ?? 'rgba(122, 162, 247, 0.42)',
+        ['--project-accent' as string]: meta?.projectAccent ?? activeProjectColor ?? 'rgba(122, 162, 247, 0.42)',
         ['--project-glow-strength' as string]: String(projectVisual.glowStrength),
-        transition: isDragging ? 'none' : undefined,
+        transition: isDragging
+          ? 'opacity 160ms ease, box-shadow 180ms ease, border-color 180ms ease, filter 180ms ease, background 180ms ease'
+          : undefined,
         animation: isDragging ? 'none' : undefined
       }}
     >
@@ -91,10 +96,10 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, recent
         {isFocus ? <span className="note-meta-token note-meta-token--focus">Focus</span> : null}
         {intentLabel ? <span className="note-meta-token">{intentLabel}</span> : null}
         {meta?.projectState === 'member' && activeProjectLabel ? <span className="note-meta-token note-meta-token--project">{activeProjectLabel}</span> : null}
-        {meta?.workspaceState === 'orphan' ? <span className="note-meta-token note-meta-token--attention">No workspace</span> : null}
         {meta?.contextLabel ? <span className="note-meta-context">{meta.contextLabel}</span> : null}
       </div>
       <h3 title={displayTitle}>{displayTitle}</h3>
+      <p className={`note-workspace-label ${meta?.workspaceState === 'orphan' ? 'is-empty' : ''}`}>{meta?.workspaceLabel ?? 'No workspace assigned'}</p>
       <p className="summary-preview">{summaryPreview}</p>
       <p className="trace">{describeNoteTrace(note)}</p>
     </article>
@@ -110,6 +115,7 @@ export const NoteCard = memo(NoteCardComponent, (prev, next) => {
     prev.meta?.surfaced === next.meta?.surfaced &&
     prev.meta?.revealed === next.meta?.revealed &&
     prev.meta?.projectState === next.meta?.projectState &&
+    prev.meta?.projectAccent === next.meta?.projectAccent &&
     prev.meta?.workspaceState === next.meta?.workspaceState &&
     prev.meta?.contextLabel === next.meta?.contextLabel &&
     prev.focusHighlightEnabled === next.focusHighlightEnabled &&
