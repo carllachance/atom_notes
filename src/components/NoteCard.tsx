@@ -8,6 +8,7 @@ type NoteCardProps = {
   recentlyClosed: boolean;
   ambientRelated: boolean;
   ambientPulse: boolean;
+  ambientGlowLevel: number;
   revealMatched: boolean;
   revealActive: boolean;
   isActive: boolean;
@@ -24,6 +25,7 @@ function getVisualState(
     isActive: boolean;
     revealActive: boolean;
     ambientPulse: boolean;
+    ambientGlowLevel: number;
     recentlyClosed: boolean;
     revealMatched: boolean;
     ambientRelated: boolean;
@@ -36,7 +38,7 @@ function getVisualState(
   if (flags.ambientPulse) return 'pulse';
   if (flags.recentlyClosed) return 'recent';
   if (flags.revealMatched) return 'reveal-match';
-  if (flags.ambientRelated) return 'ambient-related';
+  if (flags.ambientRelated && flags.ambientGlowLevel > 0.01) return 'ambient-related';
   if (note.inFocus) return 'focus';
   if (flags.isHovered) return 'hover';
   return 'default';
@@ -47,6 +49,7 @@ export function NoteCard({
   recentlyClosed,
   ambientRelated,
   ambientPulse,
+  ambientGlowLevel,
   revealMatched,
   revealActive,
   isActive,
@@ -63,6 +66,7 @@ export function NoteCard({
     isActive,
     revealActive,
     ambientPulse,
+    ambientGlowLevel,
     recentlyClosed,
     revealMatched,
     ambientRelated,
@@ -83,7 +87,8 @@ export function NoteCard({
         transform: `translate(${note.x}px, ${note.y - bias.lift}px) scale(${bias.scale})`,
         zIndex: note.z,
         opacity: bias.opacity,
-        filter: `blur(${bias.blur}px)`
+        filter: `blur(${bias.blur}px)`,
+        ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0'
       }}
     >
       <h3 title={displayTitle}>{displayTitle}</h3>

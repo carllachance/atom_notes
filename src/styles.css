@@ -163,8 +163,8 @@ textarea {
 }
 
 .note-card[data-visual-state='ambient-related'] {
-  border-color: rgba(137, 162, 210, 0.3);
-  box-shadow: 0 12px 26px rgba(20, 34, 56, 0.16);
+  border-color: color-mix(in srgb, rgba(137, 162, 210, 0.18) calc(var(--ambient-glow-level, 0) * 100%), rgba(121, 145, 189, 0.1));
+  box-shadow: 0 10px 24px rgba(2, 4, 9, 0.12), 0 0 calc(22px * var(--ambient-glow-level, 0)) rgba(74, 104, 158, calc(0.24 * var(--ambient-glow-level, 0)));
 }
 
 .note-card[data-visual-state='recent'] {
@@ -287,8 +287,8 @@ textarea {
   pointer-events: auto;
   width: min(560px, calc(100vw - 36px));
   border-radius: 16px;
-  border: 1px solid rgba(70, 87, 121, 0.34);
-  background: rgba(18, 26, 40, 0.66);
+  border: 1px solid rgba(70, 87, 121, 0.26);
+  background: rgba(16, 24, 37, 0.74);
   padding: 14px;
   box-shadow: 0 12px 20px rgba(2, 4, 9, 0.14);
 }
@@ -296,12 +296,6 @@ textarea {
 .expanded-note textarea {
   min-height: 190px;
   resize: vertical;
-}
-
-.expanded-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 .archive-head h2 {
@@ -356,6 +350,121 @@ button {
   padding: 2px 8px;
 }
 
+
+.relationship-strip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.relationship-strip button {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  border-color: rgba(85, 103, 140, 0.24);
+  background: rgba(18, 27, 43, 0.36);
+}
+
+.relationship-strip button span {
+  margin-left: 5px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(95, 116, 158, 0.2);
+  color: #b6c5e7;
+  font-size: 0.66rem;
+}
+
+.relationship-strip button.active {
+  background: rgba(66, 88, 132, 0.32);
+}
+
+.body-mode-switch {
+  display: inline-flex;
+  gap: 3px;
+  border: 1px solid rgba(79, 98, 135, 0.18);
+  border-radius: 999px;
+  padding: 2px;
+  margin-bottom: 8px;
+}
+
+.body-mode-switch button {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  opacity: 0.7;
+  border-color: transparent;
+  background: transparent;
+}
+
+.body-mode-switch button.active {
+  background: rgba(73, 95, 143, 0.3);
+  opacity: 1;
+}
+
+.relations-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.relation-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.relation-main {
+  flex: 1;
+  text-align: left;
+  border-radius: 8px;
+  border-color: rgba(88, 108, 145, 0.18);
+  background: rgba(11, 17, 29, 0.24);
+  display: grid;
+  gap: 2px;
+}
+
+.relation-title {
+  font-size: 0.76rem;
+}
+
+.relation-main small {
+  color: #92a7d1;
+  font-size: 0.66rem;
+}
+
+.relation-confirm {
+  font-size: 0.66rem;
+  padding: 3px 8px;
+}
+
+.relations-empty {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #8598c1;
+}
+
+.link-compose {
+  margin-bottom: 8px;
+}
+
+.link-row {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr auto;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.link-row select {
+  border-radius: 8px;
+  border: 1px solid rgba(61, 78, 110, 0.4);
+  background: rgba(10, 15, 26, 0.56);
+  color: #dfe7fb;
+  padding: 6px;
+}
+
+.expanded-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
 
 .canvas-dim {
   position: fixed;
@@ -417,42 +526,6 @@ button {
   text-overflow: ellipsis;
 }
 
-.relationship-strip {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.relationship-strip button {
-  font-size: 0.72rem;
-  opacity: 0.78;
-}
-
-.relationship-strip button.active {
-  background: rgba(69, 92, 138, 0.44);
-  opacity: 1;
-}
-
-
-.body-mode-switch {
-  display: inline-flex;
-  gap: 4px;
-  border: 1px solid rgba(79, 98, 135, 0.28);
-  border-radius: 999px;
-  padding: 2px;
-  margin-bottom: 8px;
-}
-
-.body-mode-switch button {
-  font-size: 0.7rem;
-  padding: 3px 9px;
-  opacity: 0.8;
-}
-
-.body-mode-switch button.active {
-  background: rgba(73, 95, 143, 0.42);
-  opacity: 1;
-}
 
 .markdown-projection {
   margin-bottom: 10px;
@@ -551,67 +624,6 @@ button {
   border: 1px dashed rgba(92, 111, 146, 0.28);
   color: #91a7d3;
   font-size: 0.76rem;
-}
-
-.relations-view {
-  margin-bottom: 10px;
-  border: 1px solid rgba(84, 103, 138, 0.2);
-  border-radius: 10px;
-  padding: 8px;
-  background: rgba(9, 14, 24, 0.3);
-}
-
-.relations-view h4 {
-  margin: 0 0 8px;
-  font-size: 0.76rem;
-  color: #b4c4e7;
-}
-
-.relation-group + .relation-group {
-  margin-top: 8px;
-}
-
-.relation-group h5 {
-  margin: 0 0 6px;
-  font-size: 0.68rem;
-  color: #92a8d3;
-}
-
-.relation-item {
-  width: 100%;
-  text-align: left;
-  border-radius: 8px;
-  margin-bottom: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-
-.relation-item small {
-  color: #8ea4cf;
-  font-size: 0.68rem;
-}
-
-.relations-empty {
-  margin: 0;
-  font-size: 0.7rem;
-  color: #8598c1;
-}
-
-.link-row {
-  display: grid;
-  grid-template-columns: 1.8fr 1fr auto;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.link-row select {
-  border-radius: 8px;
-  border: 1px solid rgba(61, 78, 110, 0.55);
-  background: rgba(10, 15, 26, 0.74);
-  color: #dfe7fb;
-  padding: 7px;
 }
 
 .inferred-list {

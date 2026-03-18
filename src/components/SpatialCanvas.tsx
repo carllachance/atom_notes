@@ -19,6 +19,7 @@ type SpatialCanvasProps = {
   recentlyClosedNoteId: string | null;
   relatedGlowNoteIds: string[];
   pulseNoteId: string | null;
+  ambientGlowLevel: number;
   recenterTarget: RecenterTarget | null;
   onScroll: (left: number, top: number) => void;
   onViewportCenterChange: (x: number, y: number) => void;
@@ -51,6 +52,7 @@ export function SpatialCanvas({
   recentlyClosedNoteId,
   relatedGlowNoteIds,
   pulseNoteId,
+  ambientGlowLevel,
   recenterTarget,
   onScroll,
   onViewportCenterChange,
@@ -132,6 +134,7 @@ export function SpatialCanvas({
             recentlyClosed={recentlyClosedNoteId === note.id}
             ambientRelated={relatedGlowIdsSet.has(note.id)}
             ambientPulse={pulseNoteId === note.id}
+            ambientGlowLevel={ambientGlowLevel}
             revealMatched={revealMatchedIdsSet.has(note.id)}
             revealActive={revealActiveNoteId === note.id}
             isActive={activeNoteId === note.id}

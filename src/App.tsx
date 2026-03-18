@@ -19,6 +19,7 @@ export function App() {
     relationshipPanelItems,
     relationshipTotals,
     ambientRelatedNoteIds,
+    ambientGlowLevel,
     pulseNoteId,
     recenterTarget,
     revealState,
@@ -78,6 +79,7 @@ export function App() {
             initialScrollTop={scene.canvasScrollTop}
             recentlyClosedNoteId={recentlyClosedNoteId}
             relatedGlowNoteIds={ambientRelatedNoteIds}
+            ambientGlowLevel={ambientGlowLevel}
             pulseNoteId={pulseNoteId}
             recenterTarget={recenterTarget}
             onScroll={onCanvasScroll}
