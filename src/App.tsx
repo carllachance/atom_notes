@@ -34,6 +34,7 @@ export function App() {
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    activeInsightTimeline,
     streamingResponse,
     isStreamingResponse,
     ambientRelatedNoteIds,
@@ -159,6 +160,7 @@ export function App() {
           scopeLabel={lensPresentation.lensLabel}
           notes={scene.notes}
           streamedResponse={streamingResponse}
+          timelineEntries={activeInsightTimeline}
           streaming={isStreamingResponse}
           onStateChange={setAIPanelVisibility}
           onModeChange={(mode) => setAIPanel({ mode })}

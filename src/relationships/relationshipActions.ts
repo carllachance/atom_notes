@@ -1,3 +1,4 @@
+import { appendInsightTimelineEntries, createRelationshipConfirmationTimelineEntries, createRelationshipTimelineEntries } from '../insights/insightTimeline';
 import { createNote, now } from '../notes/noteModel';
 import { getDisplayTitle, normalizeOptionalTitle } from '../noteText';
 import { isRelationshipTypeDirectional, refreshInferredRelationships, relationshipNodePairKey, relationshipPairKey } from '../relationshipLogic';
@@ -58,7 +59,8 @@ export function createExplicitRelationshipInScene(
     lastActiveAt: now()
   };
 
-  return reconcileRelationships(scene, explicitRelationship);
+  const nextScene = reconcileRelationships(scene, explicitRelationship);
+  return appendInsightTimelineEntries(nextScene, createRelationshipTimelineEntries(nextScene, explicitRelationship, { createdAt: explicitRelationship.lastActiveAt }));
 }
 
 export function createInlineLinkedNoteInScene(
@@ -121,7 +123,8 @@ export function updateRelationshipInScene(
     lastActiveAt: now()
   };
 
-  return reconcileRelationships(scene, editedRelationship);
+  const nextScene = reconcileRelationships(scene, editedRelationship);
+  return appendInsightTimelineEntries(nextScene, createRelationshipTimelineEntries(nextScene, editedRelationship, { createdAt: editedRelationship.lastActiveAt, title: 'Refined connection', detail: 'Relationship details were edited to better reflect the structure.' }));
 }
 
 export function restoreRelationshipInScene(scene: SceneState, snapshot: Relationship): SceneState {
@@ -129,14 +132,17 @@ export function restoreRelationshipInScene(scene: SceneState, snapshot: Relation
 }
 
 export function confirmRelationshipInScene(scene: SceneState, relationshipId: string): SceneState {
-  return {
-    ...scene,
-    relationships: scene.relationships.map((relationship) =>
-      relationship.id === relationshipId
-        ? { ...relationship, state: 'confirmed', lastActiveAt: now(), heuristicSupported: true, isInferred: true }
-        : relationship
-    )
-  };
+  const confirmedAt = now();
+  const relationships: Relationship[] = scene.relationships.map((relationship) =>
+    relationship.id === relationshipId
+      ? { ...relationship, state: 'confirmed' as const, lastActiveAt: confirmedAt, heuristicSupported: true, isInferred: true }
+      : relationship
+  );
+  const confirmedRelationship = relationships.find((relationship) => relationship.id === relationshipId);
+  const nextScene = { ...scene, relationships };
+  return confirmedRelationship
+    ? appendInsightTimelineEntries(nextScene, createRelationshipConfirmationTimelineEntries(nextScene, confirmedRelationship))
+    : nextScene;
 }
 
 export function traverseToRelatedInScene(scene: SceneState, targetNoteId: string, relationshipId: string): SceneState {

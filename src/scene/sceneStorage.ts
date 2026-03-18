@@ -1,7 +1,7 @@
 import { createNote, normalizeNote, now } from '../notes/noteModel';
 import { normalizeProject } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
-import { AIInteractionMode, AIPanelViewState, CaptureComposerState, FocusMode, Lens, Relationship, RelationshipType, SceneState, Workspace } from '../types';
+import { AIInteractionMode, ActionSuggestion, AIPanelViewState, CaptureComposerState, FocusMode, InsightTimelineEntry, Lens, Relationship, RelationshipType, SceneState, Workspace } from '../types';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { createDefaultLens, normalizeLens } from './lens';
 
@@ -70,6 +70,53 @@ function normalizeFocusMode(raw: Partial<FocusMode> | undefined): FocusMode {
   };
 }
 
+function normalizeInsightTimeline(raw: unknown): InsightTimelineEntry[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((entry, index) => {
+      if (!entry || typeof entry !== 'object') return null;
+      const candidate = entry as Partial<InsightTimelineEntry>;
+      const actions = Array.isArray(candidate.actions)
+        ? candidate.actions
+            .map((action, actionIndex) => {
+              if (!action || typeof action !== 'object') return null;
+              if ((action as { kind?: string }).kind === 'open' && typeof (action as { noteId?: unknown }).noteId === 'string') {
+                return {
+                  id: String((action as { id?: unknown }).id ?? `timeline-action-${index}-${actionIndex}`),
+                  label: String((action as { label?: unknown }).label ?? 'Open'),
+                  kind: 'open' as const,
+                  noteId: String((action as { noteId?: unknown }).noteId)
+                };
+              }
+              if ((action as { kind?: string }).kind === 'preview' && (action as { suggestion?: unknown }).suggestion && typeof (action as { suggestion?: unknown }).suggestion === 'object') {
+                return {
+                  id: String((action as { id?: unknown }).id ?? `timeline-action-${index}-${actionIndex}`),
+                  label: String((action as { label?: unknown }).label ?? 'Apply'),
+                  kind: 'preview' as const,
+                  suggestion: (action as { suggestion: ActionSuggestion }).suggestion
+                };
+              }
+              return null;
+            })
+            .filter(Boolean)
+        : [];
+
+      if (typeof candidate.noteId !== 'string' || typeof candidate.title !== 'string' || typeof candidate.detail !== 'string') return null;
+
+      return {
+        id: String(candidate.id ?? `timeline-${index}`),
+        noteId: candidate.noteId,
+        kind: candidate.kind === 'ai' || candidate.kind === 'action' ? candidate.kind : 'structural',
+        title: candidate.title,
+        detail: candidate.detail,
+        createdAt: Number(candidate.createdAt ?? now()),
+        actions: actions as InsightTimelineEntry['actions']
+      } satisfies InsightTimelineEntry;
+    })
+    .filter((entry): entry is InsightTimelineEntry => Boolean(entry));
+}
+
 function normalizeAIPanel(raw: Partial<AIPanelViewState> | undefined): AIPanelViewState {
   const mode: AIInteractionMode = raw?.mode === 'explore' || raw?.mode === 'summarize' || raw?.mode === 'act' ? raw.mode : 'ask';
   const state = raw?.state === 'peek' || raw?.state === 'open' ? raw.state : 'hidden';
@@ -95,6 +142,7 @@ export function loadScene(): SceneState {
     relationships: [],
     projects: [],
     workspaces: [],
+    insightTimeline: [],
     isDragging: false,
     activeNoteId: null,
     quickCaptureOpen: false,
@@ -155,6 +203,7 @@ export function loadScene(): SceneState {
       relationships: refreshInferredRelationships(normalizedNotes, normalizedRelationships as Relationship[], now()),
       projects: normalizedProjects,
       workspaces: normalizedWorkspaces,
+      insightTimeline: normalizeInsightTimeline(parsed.insightTimeline),
       isDragging: false,
       activeNoteId,
       quickCaptureOpen: Boolean(parsed.quickCaptureOpen),

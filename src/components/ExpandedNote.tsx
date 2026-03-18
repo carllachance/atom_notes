@@ -70,12 +70,63 @@ type BodyMode = 'read' | 'edit';
 type SidebarSection = 'connections' | 'organize';
 type SuggestedLinkRow = ProactiveLinkSuggestion & { selectedType: RelationshipType };
 
+type IconButtonKind = 'back' | 'project' | 'workspace';
+
+type IconToolButtonProps = {
+  label: string;
+  kind: IconButtonKind;
+  onClick: () => void;
+  pressed?: boolean;
+};
+
 const DEFAULT_PROJECT_DRAFT: ProjectDraft = { key: '', name: '', color: '#7aa2f7', description: '' };
 const DEFAULT_WORKSPACE_DRAFT: WorkspaceDraft = { key: '', name: '', color: '#5fbf97', description: '' };
 const RELATIONSHIP_FILTER_OPTIONS = [{ type: 'all' as const, label: 'All' }, ...DETAIL_SURFACE_RELATIONSHIP_OPTIONS.map(({ type, label }) => ({ type, label }))];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function ToolIcon({ kind }: { kind: IconButtonKind }) {
+  if (kind === 'back') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M9.7 3.4 5.3 7.8l4.4 4.8" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.4" />
+        <path d="M6 7.8h5.2" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+      </svg>
+    );
+  }
+
+  if (kind === 'workspace') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="2.3" y="3.1" width="11.4" height="9.8" rx="2.1" fill="none" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M5.2 5.8h5.6M5.2 8h5.6M5.2 10.2h3.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M3.1 4.8h6.8l2 2v4.4a1.7 1.7 0 0 1-1.7 1.7H4.8a1.7 1.7 0 0 1-1.7-1.7z" fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.2" />
+      <path d="M8 6.1v4M6 8.1h4" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+function IconToolButton({ label, kind, onClick, pressed = false }: IconToolButtonProps) {
+  return (
+    <button
+      type="button"
+      className={`ghost-button icon-tool-button ${pressed ? 'active' : ''}`}
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      onClick={onClick}
+    >
+      <ToolIcon kind={kind} />
+    </button>
+  );
 }
 
 function formatRelationshipType(type: RelationshipType) {
@@ -306,22 +357,26 @@ export function ExpandedNote({
         }}>
           <div className="expanded-note-header-main">
             <input className="note-title-field" aria-label="Note title" placeholder="Untitled note" value={note.title ?? ''} onChange={(event) => onChange(note.id, { title: event.target.value })} />
-            <div className="body-mode-switch" role="tablist" aria-label="Note body mode">
-              <button role="tab" aria-selected={bodyMode === 'read'} className={bodyMode === 'read' ? 'active' : ''} onClick={() => setBodyMode('read')}>Read</button>
-              <button role="tab" aria-selected={bodyMode === 'edit'} className={bodyMode === 'edit' ? 'active' : ''} onClick={() => setBodyMode('edit')}>Edit</button>
-            </div>
-            <div className="note-project-pills">
-              {noteProjects.map((project) => (
-                <button key={project.id} className={`project-pill ${activeProjectRevealId === project.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: project.color }} onClick={() => onSetProjectLens(activeProjectRevealId === project.id ? null : project.id)}>{project.key}</button>
-              ))}
-              {noteWorkspace ? (
-                <button className={`project-pill workspace-pill ${activeWorkspaceLensId === noteWorkspace.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: noteWorkspace.color }} onClick={() => onSetWorkspaceLens(activeWorkspaceLensId === noteWorkspace.id ? null : noteWorkspace.id)}>{noteWorkspace.key}</button>
-              ) : <span className="workspace-inline-label">No workspace</span>}
-              <button className={`project-pill project-pill--utility ${isFocus ? 'active' : ''}`} onClick={() => onToggleFocus(note.id)}>{isFocus ? 'Focus' : 'Mark Focus'}</button>
-              <button className="project-pill project-pill--utility" onClick={() => onArchive(note.id)}>Archive</button>
+            <div className="note-header-meta-row">
+              <div className="body-mode-switch" role="tablist" aria-label="Note body mode">
+                <button role="tab" aria-selected={bodyMode === 'read'} className={bodyMode === 'read' ? 'active' : ''} onClick={() => setBodyMode('read')}>Read</button>
+                <button role="tab" aria-selected={bodyMode === 'edit'} className={bodyMode === 'edit' ? 'active' : ''} onClick={() => setBodyMode('edit')}>Edit</button>
+              </div>
+              <div className="note-project-pills">
+                {noteProjects.map((project) => (
+                  <button key={project.id} className={`project-pill ${activeProjectRevealId === project.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: project.color }} onClick={() => onSetProjectLens(activeProjectRevealId === project.id ? null : project.id)}>{project.key}</button>
+                ))}
+                {noteWorkspace ? (
+                  <button className={`project-pill workspace-pill ${activeWorkspaceLensId === noteWorkspace.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: noteWorkspace.color }} onClick={() => onSetWorkspaceLens(activeWorkspaceLensId === noteWorkspace.id ? null : noteWorkspace.id)}>{noteWorkspace.key}</button>
+                ) : <span className="workspace-inline-label workspace-inline-label--attention">No workspace</span>}
+                <button className={`project-pill project-pill--utility ${isFocus ? 'active' : ''}`} onClick={() => onToggleFocus(note.id)}>{isFocus ? 'Focus' : 'Mark Focus'}</button>
+                <button className="project-pill project-pill--utility" onClick={() => onArchive(note.id)}>Archive</button>
+              </div>
             </div>
           </div>
-          <button className="ghost-button" onClick={onClose}>Back to canvas</button>
+          <div className="note-header-tools">
+            <IconToolButton label="Back to canvas" kind="back" onClick={onClose} />
+          </div>
         </header>
 
         <div className="expanded-note-layout">
@@ -552,9 +607,20 @@ export function ExpandedNote({
             {activeSidebarSection === 'organize' ? (
             <>
             <section className="detail-section detail-section--organize" aria-label="Workspace scope">
-              <div className="section-head"><strong>Workspace</strong><button className="ghost-button" onClick={() => setShowWorkspaceComposer((open) => !open)}>{showWorkspaceComposer ? 'Close workspace tools' : 'New workspace'}</button></div>
+              <div className="section-head section-head--icon-action">
+                <div>
+                  <strong>Workspace</strong>
+                  <small className="section-hint">Keep the note anchored without turning scope into a form.</small>
+                </div>
+                <IconToolButton
+                  label={showWorkspaceComposer ? 'Close workspace composer' : 'New workspace'}
+                  kind="workspace"
+                  pressed={showWorkspaceComposer}
+                  onClick={() => setShowWorkspaceComposer((open) => !open)}
+                />
+              </div>
               <div className="organize-choice-list">
-                <label className="project-membership-row">
+                <label className="project-membership-row project-membership-row--attention">
                   <input type="radio" name={`workspace-${note.id}`} checked={!note.workspaceId} onChange={() => onSetWorkspaceId(note.id, null)} />
                   <span><strong>No workspace</strong><small>Keep this note in the shared surface.</small></span>
                 </label>
@@ -579,7 +645,18 @@ export function ExpandedNote({
             </section>
 
             <section className="detail-section detail-section--organize" aria-label="Project membership">
-              <div className="section-head"><strong>Projects</strong><button className="ghost-button" onClick={() => setShowProjectComposer((open) => !open)}>{showProjectComposer ? 'Close project tools' : 'New project'}</button></div>
+              <div className="section-head section-head--icon-action">
+                <div>
+                  <strong>Projects</strong>
+                  <small className="section-hint">Keep project structure visible, but quiet.</small>
+                </div>
+                <IconToolButton
+                  label={showProjectComposer ? 'Close project composer' : 'New project'}
+                  kind="project"
+                  pressed={showProjectComposer}
+                  onClick={() => setShowProjectComposer((open) => !open)}
+                />
+              </div>
               {projects.length ? (
                 <div className="organize-choice-list">
                   {projects.map((project) => (
@@ -592,7 +669,7 @@ export function ExpandedNote({
                     </label>
                   ))}
                 </div>
-              ) : <p className="relations-empty">No projects yet. Create one to give this note a shared middle layer.</p>}
+              ) : <p className="relations-empty relations-empty--attention">No projects yet. Add one only when this note needs a shared thread.</p>}
               {showProjectComposer ? (
                 <div className="project-compose-inline">
                   <div className="project-compose-grid">
