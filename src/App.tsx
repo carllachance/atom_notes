@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { CaptureBox } from './components/CaptureBox';
 import { ExpandedNote } from './components/ExpandedNote';
 import { RecallBand } from './components/RecallBand';
 import { RelationshipWeb } from './components/RelationshipWeb';
+import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
 import { useSceneController } from './scene/useSceneController';
 
 export function App() {
+  const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const {
     scene,
     activeNote,
@@ -84,6 +87,7 @@ export function App() {
             recenterTarget={recenterTarget}
             onScroll={onCanvasScroll}
             onViewportCenterChange={onViewportCenterChange}
+            onMetricsChange={setCanvasMetrics}
             onDrag={(id, x, y) => updateNote(id, { x, y }, 'moved')}
             onOpen={onOpenNote}
             onBringToFront={bringToFront}
@@ -103,6 +107,7 @@ export function App() {
           notes={visibleNotes}
           rankedRelationships={rankedRelationships}
           filter={relationshipFilter}
+          canvasMetrics={canvasMetrics}
           onTraverse={traverseToRelated}
         />
       ) : null}

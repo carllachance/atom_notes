@@ -85,6 +85,7 @@ export function NoteCard({
       data-visual-state={visualState}
       style={{
         transform: `translate(${note.x}px, ${note.y - bias.lift}px) scale(${bias.scale})`,
+        transformOrigin: 'top left',
         zIndex: note.z,
         opacity: bias.opacity,
         filter: `blur(${bias.blur}px)`,

@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import {
   confirmRelationshipInScene,
   createExplicitRelationshipInScene,
   traverseToRelatedInScene
 } from '../relationships/relationshipActions';
-import { SceneState } from '../types';
+import type { SceneState } from '../types';
 
 function baseScene(): SceneState {
   return {
@@ -22,44 +23,47 @@ function baseScene(): SceneState {
   };
 }
 
-describe('relationshipActions invariants', () => {
-  it('creates explicit relationship and prevents duplicate explicit links', () => {
-    vi.spyOn(Date, 'now').mockReturnValue(100);
-    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('rel-1');
+test('relationshipActions creates explicit relationship and prevents duplicate explicit links', (t: any) => {
+  t.mock.method(Date, 'now', () => 100);
+  t.mock.method(globalThis.crypto, 'randomUUID', () => 'rel-1');
 
-    const scene1 = createExplicitRelationshipInScene(baseScene(), 'a', 'b', 'references');
-    expect(scene1.relationships.some((r) => r.id === 'rel-1' && r.explicitness === 'explicit')).toBe(true);
+  const scene1 = createExplicitRelationshipInScene(baseScene(), 'a', 'b', 'references');
+  assert.equal(scene1.relationships.some((r) => r.id === 'rel-1' && r.explicitness === 'explicit'), true);
 
-    const scene2 = createExplicitRelationshipInScene(scene1, 'a', 'b', 'references');
-    expect(scene2).toBe(scene1);
+  const scene2 = createExplicitRelationshipInScene(scene1, 'a', 'b', 'references');
+  assert.equal(scene2, scene1);
+});
+
+test('relationshipActions confirms and traverses relationships deterministically', (t: any) => {
+  t.mock.method(Date, 'now', () => 200);
+  const scene = {
+    ...baseScene(),
+    relationships: [
+      {
+        id: 'rel-x',
+        fromId: 'a',
+        toId: 'b',
+        type: 'related_concept' as const,
+        state: 'proposed' as const,
+        explicitness: 'inferred' as const,
+        confidence: 0.5,
+        explanation: 'Shared keyword',
+        heuristicSupported: false,
+        createdAt: 10,
+        lastActiveAt: 10
+      }
+    ]
+  };
+
+  const confirmed = confirmRelationshipInScene(scene, 'rel-x');
+  assert.deepEqual(confirmed.relationships[0], {
+    ...scene.relationships[0],
+    state: 'confirmed',
+    heuristicSupported: true,
+    lastActiveAt: 200
   });
 
-  it('confirms and traverses relationships deterministically', () => {
-    vi.spyOn(Date, 'now').mockReturnValue(200);
-    const scene = {
-      ...baseScene(),
-      relationships: [
-        {
-          id: 'rel-x',
-          fromId: 'a',
-          toId: 'b',
-          type: 'related_concept' as const,
-          state: 'proposed' as const,
-          explicitness: 'inferred' as const,
-          confidence: 0.5,
-          explanation: 'Shared keyword',
-          heuristicSupported: false,
-          createdAt: 10,
-          lastActiveAt: 10
-        }
-      ]
-    };
-
-    const confirmed = confirmRelationshipInScene(scene, 'rel-x');
-    expect(confirmed.relationships[0]).toMatchObject({ state: 'confirmed', heuristicSupported: true, lastActiveAt: 200 });
-
-    const traversed = traverseToRelatedInScene(confirmed, 'b', 'rel-x');
-    expect(traversed.activeNoteId).toBe('b');
-    expect(traversed.relationships[0].lastActiveAt).toBe(200);
-  });
+  const traversed = traverseToRelatedInScene(confirmed, 'b', 'rel-x');
+  assert.equal(traversed.activeNoteId, 'b');
+  assert.equal(traversed.relationships[0].lastActiveAt, 200);
 });

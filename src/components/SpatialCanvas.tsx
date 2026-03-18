@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { NoteCardModel } from '../types';
+import { CanvasViewportMetrics } from './relationshipWebGeometry';
 import { NoteCard } from './NoteCard';
 
 type RecenterTarget = {
@@ -23,6 +24,7 @@ type SpatialCanvasProps = {
   recenterTarget: RecenterTarget | null;
   onScroll: (left: number, top: number) => void;
   onViewportCenterChange: (x: number, y: number) => void;
+  onMetricsChange: (metrics: CanvasViewportMetrics) => void;
   onDrag: (id: string, x: number, y: number) => void;
   onOpen: (id: string) => void;
   onBringToFront: (id: string) => void;
@@ -56,6 +58,7 @@ export function SpatialCanvas({
   recenterTarget,
   onScroll,
   onViewportCenterChange,
+  onMetricsChange,
   onDrag,
   onOpen,
   onBringToFront,
@@ -73,11 +76,24 @@ export function SpatialCanvas({
     onViewportCenterChange(node.scrollLeft + node.clientWidth / 2, node.scrollTop + node.clientHeight / 2);
   };
 
+  const emitCanvasMetrics = () => {
+    const node = canvasRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    onMetricsChange({
+      left: rect.left,
+      top: rect.top,
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop
+    });
+  };
+
   useLayoutEffect(() => {
     if (!canvasRef.current) return;
     canvasRef.current.scrollLeft = initialScrollLeft;
     canvasRef.current.scrollTop = initialScrollTop;
     emitViewportCenter();
+    emitCanvasMetrics();
   }, [initialScrollLeft, initialScrollTop]);
 
   useEffect(() => {
@@ -86,11 +102,39 @@ export function SpatialCanvas({
     const onScrollEvent = () => {
       onScroll(node.scrollLeft, node.scrollTop);
       emitViewportCenter();
+      emitCanvasMetrics();
     };
     node.addEventListener('scroll', onScrollEvent);
     emitViewportCenter();
+    emitCanvasMetrics();
     return () => node.removeEventListener('scroll', onScrollEvent);
-  }, [onScroll]);
+  }, [onMetricsChange, onScroll]);
+
+  useEffect(() => {
+    const node = canvasRef.current;
+    if (!node) return;
+
+    const updateMetrics = () => {
+      emitViewportCenter();
+      emitCanvasMetrics();
+    };
+
+    updateMetrics();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateMetrics);
+      return () => window.removeEventListener('resize', updateMetrics);
+    }
+
+    const observer = new ResizeObserver(updateMetrics);
+    observer.observe(node);
+    window.addEventListener('resize', updateMetrics);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateMetrics);
+    };
+  }, [onMetricsChange, onViewportCenterChange]);
 
   useEffect(() => {
     const node = canvasRef.current;

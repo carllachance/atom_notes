@@ -1,0 +1,10 @@
+declare module 'node:test' {
+  const test: any;
+  export const beforeEach: any;
+  export default test;
+}
+
+declare module 'node:assert/strict' {
+  const assert: any;
+  export default assert;
+}
