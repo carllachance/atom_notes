@@ -19,6 +19,10 @@ type RecallBandProps = {
   onReveal: () => void;
   onRevealNext: () => void;
   onRevealPrev: () => void;
+  demoLinks?: Array<{
+    href: string;
+    label: string;
+  }>;
 };
 
 export function RecallBand({
@@ -39,7 +43,8 @@ export function RecallBand({
   onRevealQueryChange,
   onReveal,
   onRevealNext,
-  onRevealPrev
+  onRevealPrev,
+  demoLinks = []
 }: RecallBandProps) {
   const activeProjectId = lens.kind === 'project' || lens.kind === 'reveal' ? lens.projectId ?? '' : '';
   const activeWorkspaceId = lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.workspaceId ?? '' : '';
@@ -110,6 +115,11 @@ export function RecallBand({
       </div>
 
       <button className="ghost-button recall-capture-toggle" onClick={onWhereWasI}>Where was I?</button>
+      {demoLinks.map((link) => (
+        <a key={link.href} className="ghost-button recall-capture-toggle recall-demo-link" href={link.href}>
+          {link.label}
+        </a>
+      ))}
       <button className="ghost-button recall-capture-toggle" onClick={onOpenComposer}>Capture</button>
     </header>
   );
