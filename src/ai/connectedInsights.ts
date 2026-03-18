@@ -50,21 +50,34 @@ function scoreNote(query: string, note: NoteCardModel, context: { selectedNoteId
 }
 
 function buildActions(mode: AIInteractionMode, topIds: string[]): ActionSuggestion[] {
-  const base: ActionSuggestion[] = [
-    {
-      id: 'highlight-top',
-      label: 'Highlight',
-      kind: 'highlight_nodes',
-      noteIds: topIds,
-      requiresConfirmation: false
-    }
-  ];
+  const topId = topIds[0];
+  const base: ActionSuggestion[] = topIds.length
+    ? [
+        {
+          id: 'highlight-top',
+          label: 'Highlight related notes',
+          kind: 'highlight_nodes',
+          noteIds: topIds,
+          requiresConfirmation: false
+        },
+        {
+          id: 'pin-answer',
+          label: 'Pin as note',
+          kind: 'pin_to_note',
+          noteIds: topIds,
+          requiresConfirmation: true
+        }
+      ]
+    : [];
 
   if (mode === 'explore' || mode === 'ask') {
-    base.push({ id: 'focus-cluster', label: 'Focus cluster', kind: 'focus_cluster', noteIds: topIds, requiresConfirmation: true });
+    base.push({ id: 'focus-cluster', label: 'Focus this cluster', kind: 'focus_cluster', noteIds: topIds, requiresConfirmation: true });
   }
   if (mode === 'summarize') {
-    base.push({ id: 'create-summary', label: 'Create summary', kind: 'create_summary', noteIds: topIds, requiresConfirmation: true });
+    base.push({ id: 'create-summary', label: 'Create summary note', kind: 'create_summary', noteIds: topIds, requiresConfirmation: true });
+  }
+  if (topId) {
+    base.push({ id: 'append-note', label: 'Add to current note', kind: 'append_to_note', noteId: topId, noteIds: topIds, requiresConfirmation: true });
   }
   return base;
 }
@@ -103,23 +116,48 @@ export async function runConnectedInsights(scene: SceneState, request: Connected
   }
 
   const topIds = ranked.slice(0, 3).map((item) => item.noteId);
+  const strongest = ranked[0];
+  const currentNote = request.selectedNoteId ? scene.notes.find((note) => note.id === request.selectedNoteId) ?? null : null;
   const answer = ranked.length
-    ? `I found ${ranked.length} relevant notes grounded in the current graph. ${topIds.length ? 'The strongest matches are ready to inspect on the canvas.' : ''}`
+    ? currentNote
+      ? `From ${currentNote.title ?? 'this note'}, the strongest graph paths point toward ${topIds.length} nearby note${topIds.length === 1 ? '' : 's'} that can help next.`
+      : `I found ${ranked.length} relevant notes grounded in the current canvas graph.`
     : 'I could not find a strong match in the visible graph yet.';
+  const summaryLines = ranked.slice(0, 3).map((result, index) => `${index + 1}. ${result.reasons.join(', ')}`);
+  const responseSummary = [answer, ...summaryLines].join('\n');
+  const actions = buildActions(mode, topIds).map((action) => ({
+    ...action,
+    summary: responseSummary,
+    relationships:
+      action.kind === 'create_link' && request.selectedNoteId && strongest
+        ? [{ fromId: request.selectedNoteId, toId: strongest.noteId, type: 'related' as const }]
+        : action.relationships
+  }));
+
+  if (request.selectedNoteId && strongest) {
+    actions.push({
+      id: 'link-strongest',
+      label: `Link ${scene.notes.find((note) => note.id === strongest.noteId)?.title ?? 'strongest match'}`,
+      kind: 'create_link',
+      noteIds: [strongest.noteId],
+      relationships: [{ fromId: request.selectedNoteId, toId: strongest.noteId, type: 'related' }],
+      requiresConfirmation: true,
+      summary: responseSummary
+    });
+  }
 
   return {
     answer,
     sections: [
       {
         id: 'summary',
-        title: mode === 'summarize' ? 'Summary' : 'Grounded view',
-        body: ranked.length
-          ? ranked.slice(0, 3).map((result, index) => `${index + 1}. ${result.reasons.join(', ')}`).join('\n')
-          : 'No strong graph-first candidates were found.'
+        title: mode === 'summarize' ? 'Synthesis' : 'Grounded view',
+        body: ranked.length ? summaryLines.join('\n') : 'No strong graph-first candidates were found.'
       }
     ],
     references: topIds,
     results: ranked.map((item) => ({ noteId: item.noteId, score: Number(item.score.toFixed(3)), reasons: [...new Set(item.reasons)] })),
-    actions: buildActions(mode, topIds)
+    actions,
+    highlightNoteIds: topIds
   };
 }

@@ -34,6 +34,8 @@ export function App() {
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    streamingResponse,
+    isStreamingResponse,
     ambientRelatedNoteIds,
     ambientGlowLevel,
     pulseNoteId,
@@ -54,6 +56,7 @@ export function App() {
     setAIPanel,
     setAIPanelVisibility,
     createExplicitRelationship,
+    createInlineLinkedNote,
     confirmRelationship,
     updateRelationship,
     undoRelationshipEdit,
@@ -152,7 +155,11 @@ export function App() {
           selectedNote={activeNote}
           visibleNotesCount={visibleNotes.length}
           activeProject={lensPresentation.activeProject}
+          activeWorkspace={lensPresentation.activeWorkspace}
+          scopeLabel={lensPresentation.lensLabel}
           notes={scene.notes}
+          streamedResponse={streamingResponse}
+          streaming={isStreamingResponse}
           onStateChange={setAIPanelVisibility}
           onModeChange={(mode) => setAIPanel({ mode })}
           onQueryChange={(query) => setAIPanel({ query })}
@@ -204,6 +211,7 @@ export function App() {
         onInspectRelationship={inspectRelationship}
         onCloseRelationshipInspector={closeRelationshipInspector}
         onCreateExplicitLink={createExplicitRelationship}
+        onCreateInlineLinkedNote={createInlineLinkedNote}
         onConfirmRelationship={confirmRelationship}
         onUpdateRelationship={updateRelationship}
         onUndoRelationshipEdit={undoRelationshipEdit}

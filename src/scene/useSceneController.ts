@@ -5,7 +5,7 @@ import { createNote, now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
 import { getProjectsForNote } from '../projects/projectSelectors';
 import { getRankedRelationshipsForNote, getRelationshipTargetNoteId, refreshInferredRelationships } from '../relationshipLogic';
-import { ActionSuggestion, AIInteractionMode, Relationship, RelationshipType, SceneState } from '../types';
+import { ActionSuggestion, AIInteractionMode, InsightsResponse, Relationship, RelationshipType, SceneState } from '../types';
 import { getWorkspaceForNote } from '../workspaces/workspaceSelectors';
 import { loadScene, saveScene } from './sceneStorage';
 import { getLensPresentation } from './lens';
@@ -16,9 +16,18 @@ import { useSceneMutations } from './useSceneMutations';
 const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
 const NOTE_HEIGHT = 170;
+const AI_STREAM_STEP_MS = 26;
 
 function getNoteCenter(note: { x: number; y: number }) {
   return { x: note.x + NOTE_WIDTH / 2, y: note.y + NOTE_HEIGHT / 2 };
+}
+
+function makeEmptyInsightsResponse(response: InsightsResponse): InsightsResponse {
+  return {
+    ...response,
+    answer: '',
+    sections: response.sections.map((section) => ({ ...section, body: '' }))
+  };
 }
 
 export function useSceneController() {
@@ -31,6 +40,9 @@ export function useSceneController() {
   const [pendingAction, setPendingAction] = useState<ActionSuggestion | null>(null);
   const [inspectedRelationshipId, setInspectedRelationshipId] = useState<string | null>(null);
   const [lastRelationshipEdit, setLastRelationshipEdit] = useState<{ before: Relationship; afterId: string } | null>(null);
+  const [streamingResponse, setStreamingResponse] = useState<InsightsResponse | null>(null);
+  const [isStreamingResponse, setIsStreamingResponse] = useState(false);
+  const streamingTimerRef = useRef<number | null>(null);
 
   const liveLensPresentation = useMemo(() => getLensPresentation(scene), [scene]);
   const stableLensPresentationRef = useRef(liveLensPresentation);
@@ -127,6 +139,12 @@ export function useSceneController() {
   useEffect(() => {
     const timer = window.setInterval(() => setTraceClock((tick) => tick + 1), 60_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (streamingTimerRef.current) window.clearTimeout(streamingTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -308,6 +326,76 @@ export function useSceneController() {
     mutations.onOpenNote(noteId);
   }, [mutations]);
 
+  const appendTextToActiveNote = useCallback((content: string) => {
+    if (!scene.activeNoteId) return;
+    const current = scene.notes.find((note) => note.id === scene.activeNoteId);
+    if (!current) return;
+    const nextBody = [current.body.trim(), content.trim()].filter(Boolean).join('\n\n');
+    mutations.updateNote(scene.activeNoteId, { body: nextBody }, 'refined');
+  }, [mutations, scene.activeNoteId, scene.notes]);
+
+  const pinInsightToNewNote = useCallback((content: string) => {
+    const inheritedProjectIds = scene.lens.kind === 'project' && scene.lens.projectId ? [scene.lens.projectId] : [];
+    const inheritedWorkspaceId = scene.lens.kind === 'workspace' ? scene.lens.workspaceId : scene.lens.kind === 'reveal' ? scene.lens.workspaceId : null;
+    const placement = resolveCapturePlacement(scene.notes, viewportCenter, activeNote, highestZ + 1);
+    const createdNote = createNote(content, highestZ + 1, inheritedProjectIds, inheritedWorkspaceId, placement);
+
+    setScene((prev) => {
+      const notes = [...prev.notes, createdNote];
+      return {
+        ...prev,
+        notes,
+        relationships: refreshInferredRelationships(notes, prev.relationships, now()),
+        activeNoteId: createdNote.id
+      };
+    });
+
+    setHighlightedNoteIds([createdNote.id]);
+    runAsyncInference(createdNote.id);
+  }, [activeNote, highestZ, runAsyncInference, scene.lens, scene.notes, viewportCenter]);
+
+  const streamInsightsResponse = useCallback((response: InsightsResponse, onComplete: () => void) => {
+    const answerParts = response.answer.split(/(\s+)/).filter(Boolean);
+    const sectionParts = response.sections.map((section) => section.body.split(/(\s+)/).filter(Boolean));
+    let answerIndex = 0;
+    const sectionIndices = sectionParts.map(() => 0);
+
+    if (streamingTimerRef.current) window.clearTimeout(streamingTimerRef.current);
+    setStreamingResponse(makeEmptyInsightsResponse(response));
+    setIsStreamingResponse(true);
+
+    const tick = () => {
+      if (answerIndex < answerParts.length) {
+        answerIndex += 1;
+      } else {
+        const nextSectionIndex = sectionIndices.findIndex((count, index) => count < sectionParts[index].length);
+        if (nextSectionIndex !== -1) sectionIndices[nextSectionIndex] += 1;
+      }
+
+      setStreamingResponse({
+        ...response,
+        answer: answerParts.slice(0, answerIndex).join(''),
+        sections: response.sections.map((section, index) => ({
+          ...section,
+          body: sectionParts[index].slice(0, sectionIndices[index]).join('')
+        }))
+      });
+
+      const done = answerIndex >= answerParts.length && sectionIndices.every((count, index) => count >= sectionParts[index].length);
+      if (!done) {
+        streamingTimerRef.current = window.setTimeout(tick, AI_STREAM_STEP_MS);
+        return;
+      }
+
+      streamingTimerRef.current = null;
+      setIsStreamingResponse(false);
+      setStreamingResponse(null);
+      onComplete();
+    };
+
+    streamingTimerRef.current = window.setTimeout(tick, AI_STREAM_STEP_MS);
+  }, []);
+
   const runInsights = useCallback(async () => {
     const query = scene.aiPanel.query.trim();
     if (!query) return;
@@ -323,6 +411,7 @@ export function useSceneController() {
     mutations.setAIPanel({
       loading: true,
       state: 'open',
+      response: null,
       transcript: [...scene.aiPanel.transcript, userEntry]
     });
 
@@ -335,22 +424,26 @@ export function useSceneController() {
       mode: scene.aiPanel.mode
     });
 
-    const assistantEntry = {
-      id: crypto.randomUUID(),
-      role: 'assistant' as const,
-      mode: scene.aiPanel.mode,
-      content: response.answer,
-      createdAt: now()
-    };
+    setHighlightedNoteIds(response.highlightNoteIds ?? response.references);
 
-    mutations.setAIPanel({
-      loading: false,
-      response,
-      query: '',
-      state: 'open',
-      transcript: [...scene.aiPanel.transcript, userEntry, assistantEntry]
+    streamInsightsResponse(response, () => {
+      const assistantEntry = {
+        id: crypto.randomUUID(),
+        role: 'assistant' as const,
+        mode: scene.aiPanel.mode,
+        content: response.answer,
+        createdAt: now()
+      };
+
+      mutations.setAIPanel({
+        loading: false,
+        response,
+        query: '',
+        state: 'open',
+        transcript: [...scene.aiPanel.transcript, userEntry, assistantEntry]
+      });
     });
-  }, [lensPresentation.activeProject, mutations, scene, visibleNotes]);
+  }, [lensPresentation.activeProject, mutations, scene, streamInsightsResponse, visibleNotes]);
 
   const confirmPendingAction = useCallback(() => {
     if (!pendingAction) return;
@@ -368,8 +461,20 @@ export function useSceneController() {
       const summary = ['Summary', ...related.map((note) => `- ${note.title ?? note.body.slice(0, 42)}`)].join('\n');
       mutations.setCaptureComposer({ open: true, draft: summary });
     }
+    if (pendingAction.kind === 'append_to_note' && pendingAction.summary) {
+      appendTextToActiveNote(pendingAction.summary);
+    }
+    if (pendingAction.kind === 'pin_to_note' && pendingAction.summary) {
+      pinInsightToNewNote(pendingAction.summary);
+    }
+    if (pendingAction.kind === 'create_link' && pendingAction.relationships?.length) {
+      for (const relationship of pendingAction.relationships) {
+        mutations.createExplicitRelationship(relationship.fromId, relationship.toId, relationship.type);
+      }
+      setHighlightedNoteIds(pendingAction.relationships.flatMap((relationship) => [relationship.fromId, relationship.toId]));
+    }
     setPendingAction(null);
-  }, [mutations, openAIReference, pendingAction, scene.notes]);
+  }, [appendTextToActiveNote, mutations, openAIReference, pendingAction, pinInsightToNewNote, scene.notes]);
 
   return {
     scene,
@@ -391,6 +496,8 @@ export function useSceneController() {
     rankedRelationships,
     relationshipPanelItems,
     relationshipTotals,
+    streamingResponse,
+    isStreamingResponse,
     ambientRelatedNoteIds: ambient.ambientRelatedNoteIds,
     ambientGlowLevel: ambient.ambientGlowLevel,
     pulseNoteId: ambient.pulseNoteId,
@@ -413,6 +520,7 @@ export function useSceneController() {
     setAIPanel: mutations.setAIPanel,
     setAIPanelVisibility: mutations.setAIPanelVisibility,
     createExplicitRelationship: mutations.createExplicitRelationship,
+    createInlineLinkedNote: mutations.createInlineLinkedNote,
     confirmRelationship: mutations.confirmRelationship,
     updateRelationship,
     undoRelationshipEdit,

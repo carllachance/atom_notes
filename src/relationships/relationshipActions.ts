@@ -1,4 +1,5 @@
-import { now } from '../notes/noteModel';
+import { createNote, now } from '../notes/noteModel';
+import { getDisplayTitle, normalizeOptionalTitle } from '../noteText';
 import { isRelationshipTypeDirectional, refreshInferredRelationships, relationshipNodePairKey, relationshipPairKey } from '../relationshipLogic';
 import { Relationship, RelationshipType, SceneState } from '../types';
 
@@ -30,7 +31,8 @@ export function createExplicitRelationshipInScene(
   scene: SceneState,
   fromId: string,
   toId: string,
-  type: RelationshipType
+  type: RelationshipType,
+  explanation = 'Linked inline while writing.'
 ): SceneState {
   const directional = isRelationshipTypeDirectional(type);
   const key = relationshipPairKey(fromId, toId, type, directional);
@@ -50,13 +52,47 @@ export function createExplicitRelationshipInScene(
     directional,
     confidence: 1,
     isInferred: false,
-    explanation: 'Created by you in the modal.',
+    explanation,
     heuristicSupported: true,
     createdAt: existing?.createdAt ?? now(),
     lastActiveAt: now()
   };
 
   return reconcileRelationships(scene, explicitRelationship);
+}
+
+export function createInlineLinkedNoteInScene(
+  scene: SceneState,
+  sourceNoteId: string,
+  title: string,
+  type: RelationshipType
+): { scene: SceneState; targetNoteId: string | null } {
+  const source = scene.notes.find((note) => note.id === sourceNoteId);
+  const normalizedTitle = normalizeOptionalTitle(title);
+  if (!source || !normalizedTitle) return { scene, targetNoteId: null };
+
+  const existing = scene.notes.find(
+    (note) => !note.archived && note.id !== sourceNoteId && getDisplayTitle(note).trim().toLowerCase() === normalizedTitle.toLowerCase()
+  );
+
+  if (existing) {
+    return {
+      scene: createExplicitRelationshipInScene(scene, sourceNoteId, existing.id, type),
+      targetNoteId: existing.id
+    };
+  }
+
+  const created = createNote(normalizedTitle, scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0) + 1, source.projectIds, source.workspaceId, {
+    x: source.x + 320,
+    y: source.y + 36
+  });
+  created.trace = 'linked';
+  const sceneWithNote = { ...scene, notes: [...scene.notes, created] };
+
+  return {
+    scene: createExplicitRelationshipInScene(sceneWithNote, sourceNoteId, created.id, type),
+    targetNoteId: created.id
+  };
 }
 
 export function updateRelationshipInScene(

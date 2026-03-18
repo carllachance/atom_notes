@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { confirmRelationshipInScene, createExplicitRelationshipInScene, restoreRelationshipInScene, traverseToRelatedInScene, updateRelationshipInScene } from '../relationships/relationshipActions';
+import {
+  confirmRelationshipInScene,
+  createExplicitRelationshipInScene,
+  createInlineLinkedNoteInScene,
+  restoreRelationshipInScene,
+  traverseToRelatedInScene,
+  updateRelationshipInScene
+} from '../relationships/relationshipActions';
 import type { SceneState } from '../types';
 
 function baseScene(): SceneState {
@@ -88,4 +95,48 @@ test('relationshipActions can restore the prior relationship snapshot for undo',
 
   const restored = restoreRelationshipInScene(editedScene, snapshot);
   assert.equal(restored.relationships.some((relationship) => relationship.id === 'rel-edit' && relationship.type === 'references' && relationship.explicitness === 'inferred'), true);
+});
+
+test('relationshipActions creates a new linked note inline and inherits the active context', (t: any) => {
+  t.mock.method(Date, 'now', () => 500);
+  t.mock.method(globalThis.crypto, 'randomUUID', () => 'inline-note');
+  const scene = {
+    ...baseScene(),
+    notes: [
+      {
+        ...baseScene().notes[0],
+        projectIds: ['project-1'],
+        workspaceId: 'workspace-1',
+        x: 120,
+        y: 180
+      },
+      baseScene().notes[1]
+    ]
+  };
+
+  const result = createInlineLinkedNoteInScene(scene, 'a', 'New linked note', 'supports');
+  assert.equal(result.targetNoteId, 'inline-note');
+  assert.equal(result.scene.notes.length, 3);
+  assert.deepEqual(result.scene.notes[2], {
+    id: 'inline-note',
+    title: 'New linked note',
+    body: '',
+    anchors: [],
+    trace: 'linked',
+    x: 440,
+    y: 216,
+    z: 3,
+    createdAt: 500,
+    updatedAt: 500,
+    archived: false,
+    inFocus: false,
+    isFocus: false,
+    projectIds: ['project-1'],
+    inferredProjectIds: [],
+    workspaceId: 'workspace-1',
+    intent: undefined,
+    intentConfidence: undefined,
+    inferredRelationships: []
+  });
+  assert.equal(result.scene.relationships.some((relationship) => relationship.fromId === 'a' && relationship.toId === 'inline-note' && relationship.type === 'supports'), true);
 });
