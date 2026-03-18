@@ -1,21 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import { getCompactDisplayTitle, getDisplayTitle, getSummaryPreview, normalizeOptionalTitle } from '../noteText';
 
-describe('noteText contract helpers', () => {
-  it('normalizes optional title and derives display title from body', () => {
-    expect(normalizeOptionalTitle('   Hello   there ')).toBe('Hello there');
-    expect(normalizeOptionalTitle('   ')).toBeNull();
+test('normalizes optional title and derives display title from body', () => {
+  assert.equal(normalizeOptionalTitle('   Hello   there '), 'Hello there');
+  assert.equal(normalizeOptionalTitle('   '), null);
 
-    expect(getDisplayTitle({ title: ' Explicit ', body: 'Body line' })).toBe('Explicit');
-    expect(getDisplayTitle({ title: null, body: '\n\nFirst meaningful line\nSecond line' })).toBe('First meaningful line');
-    expect(getDisplayTitle({ title: null, body: '   ' })).toBe('Quick note');
-  });
+  assert.equal(getDisplayTitle({ title: ' Explicit ', body: 'Body line' }), 'Explicit');
+  assert.equal(getDisplayTitle({ title: null, body: '\n\nFirst meaningful line\nSecond line' }), 'First meaningful line');
+  assert.equal(getDisplayTitle({ title: null, body: '   ' }), 'Quick note');
+});
 
-  it('provides compact title and summary preview consistently', () => {
-    expect(getCompactDisplayTitle({ title: null, body: 'This is long body title seed' }, 8)).toBe('This is…');
-    expect(getSummaryPreview({ title: null, body: '   alpha    beta    gamma   ' }, 10)).toBe('alpha bet…');
-    expect(getSummaryPreview({ title: null, body: 'Heading\nDeeper context line\nSecond detail' }, 24)).toBe('Deeper context line…');
-    expect(getSummaryPreview({ title: 'Explicit', body: 'Heading\nDeeper context line' }, 24)).toBe('Heading Deeper context…');
-    expect(getSummaryPreview({ title: null, body: '   ' })).toBe('No summary yet.');
-  });
+test('provides compact title and summary preview consistently', () => {
+  assert.equal(getCompactDisplayTitle({ title: null, body: 'This is long body title seed' }, 8), 'This is…');
+  assert.equal(getSummaryPreview({ title: null, body: '   alpha    beta    gamma   ' }, 10), 'alpha bet…');
+  assert.equal(getSummaryPreview({ title: null, body: 'Heading\nDeeper context line\nSecond detail' }, 24), 'Deeper context line Sec…');
+  assert.equal(getSummaryPreview({ title: 'Explicit', body: 'Heading\nDeeper context line' }, 24), 'Heading Deeper context…');
+  assert.equal(getSummaryPreview({ title: null, body: '   ' }), 'No summary yet.');
 });

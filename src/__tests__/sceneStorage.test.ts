@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import test, { beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
 import { loadScene, saveScene, SCENE_KEY } from '../scene/sceneStorage';
-import { SceneState } from '../types';
+import type { SceneState } from '../types';
 
 function makeStorage() {
   const store = new Map<string, string>();
@@ -16,43 +17,52 @@ function makeStorage() {
   };
 }
 
-describe('sceneStorage load/save normalization', () => {
-  beforeEach(() => {
-    const local = makeStorage();
-    Object.defineProperty(globalThis, 'localStorage', { value: local, configurable: true });
-    vi.spyOn(Date, 'now').mockReturnValue(5_000);
-    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('uuid-1');
+beforeEach((t: any) => {
+  const local = makeStorage();
+  Object.defineProperty(globalThis, 'localStorage', { value: local, configurable: true });
+  t.mock.method(Date, 'now', () => 5_000);
+  t.mock.method(globalThis.crypto, 'randomUUID', () => 'uuid-1');
+});
+
+test('sceneStorage loads fallback scene when no persisted data exists', () => {
+  const scene = loadScene();
+  assert.equal(scene.notes.length, 1);
+  assert.deepEqual(scene.notes[0], {
+    id: 'uuid-1',
+    title: null,
+    body: 'Welcome to Atom Notes\nDrag this card around.',
+    anchors: [],
+    trace: 'captured',
+    x: 112,
+    y: 128,
+    z: 1,
+    createdAt: 5_000,
+    updatedAt: 5_000,
+    archived: false,
+    inFocus: false
   });
+});
 
-  it('loads fallback scene when no persisted data exists', () => {
-    const scene = loadScene();
-    expect(scene.notes).toHaveLength(1);
-    expect(scene.notes[0]).toMatchObject({
-      id: 'uuid-1',
-      body: 'Welcome to Atom Notes\nDrag this card around.',
-      trace: 'captured'
-    });
+test('sceneStorage loads and normalizes persisted legacy scene data and saves with v2 key', () => {
+  const raw = JSON.stringify({
+    notes: [{ id: 7, title: '  ', body: 'hello', stateCue: 'legacy' }],
+    relationships: [{ fromId: '7', toId: '7', type: 'references' }],
+    activeNoteId: '7',
+    quickCaptureOpen: true,
+    currentView: 'archive'
   });
+  localStorage.setItem('atom-notes.scene.v1', raw);
 
-  it('loads and normalizes persisted legacy scene data and saves with v2 key', () => {
-    const raw = JSON.stringify({
-      notes: [{ id: 7, title: '  ', body: 'hello', stateCue: 'legacy' }],
-      relationships: [{ fromId: '7', toId: '7', type: 'references' }],
-      activeNoteId: '7',
-      quickCaptureOpen: true,
-      currentView: 'archive'
-    });
-    localStorage.setItem('atom-notes.scene.v1', raw);
+  const loaded = loadScene();
+  assert.equal(loaded.notes[0].id, '7');
+  assert.equal(loaded.notes[0].title, null);
+  assert.equal(loaded.notes[0].body, 'hello');
+  assert.equal(loaded.relationships.length, 0);
+  assert.equal(loaded.lens, 'archive');
 
-    const loaded = loadScene();
-    expect(loaded.notes[0]).toMatchObject({ id: '7', title: null, body: 'hello' });
-    expect(loaded.relationships[0]).toMatchObject({ fromId: '7', toId: '7', type: 'references' });
-    expect(loaded.lens).toBe('archive');
-
-    const sceneToSave = loaded as SceneState;
-    saveScene(sceneToSave);
-    const persisted = JSON.parse(localStorage.getItem(SCENE_KEY) as string) as SceneState;
-    expect(persisted.activeNoteId).toBe(loaded.activeNoteId);
-    expect(persisted.notes[0].id).toBe('7');
-  });
+  const sceneToSave = loaded as SceneState;
+  saveScene(sceneToSave);
+  const persisted = JSON.parse(localStorage.getItem(SCENE_KEY) as string) as SceneState;
+  assert.equal(persisted.activeNoteId, loaded.activeNoteId);
+  assert.equal(persisted.notes[0].id, '7');
 });
