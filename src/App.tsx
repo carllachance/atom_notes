@@ -11,6 +11,8 @@ import { useSceneController } from './scene/useSceneController';
 
 export function App() {
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
+  const demoLinks = [{ href: '/query-prototype', label: 'Query demo' }];
+
   const {
     scene,
     activeNote,
@@ -95,6 +97,7 @@ export function App() {
         onReveal={onReveal}
         onRevealPrev={onRevealPrev}
         onRevealNext={onRevealNext}
+        demoLinks={demoLinks}
       />
 
       <section className="workspace-shell">

@@ -110,6 +110,23 @@ npm install
 npm run tauri dev
 ```
 
+### Prototype demo route
+```bash
+npm install
+npm run dev
+```
+Then open `http://localhost:5173/query-prototype` to launch the isolated query-layer prototype without changing the default app flow.
+
+The prototype lives in `src/prototypes/QueryLayerPrototype.tsx` with mocked data isolated in `src/prototypes/queryLayerPrototype.mock.ts`. The mocked layer currently stands in for:
+- note search results
+- relationship previews
+- project/focus metadata
+
+Next steps to connect it to the real store:
+- replace the mock item list with ranked note search results from the scene/store
+- swap relationship preview data for live graph relationships and explainability metadata
+- feed real project, focus, and workspace context into the detail panel
+
 ### Validate
 ```bash
 npm test
