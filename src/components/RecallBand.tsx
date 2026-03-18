@@ -1,4 +1,5 @@
 import { FocusMode, Lens, Project, Workspace } from '../types';
+import { RecallPrompt } from './RecallPrompt';
 
 type RecallBandProps = {
   count: number;
@@ -22,6 +23,12 @@ type RecallBandProps = {
     href: string;
     label: string;
   }>;
+  recallCue?: {
+    noteTitle: string;
+    suggestedNextStep: string;
+  } | null;
+  onAdvanceRecallCue: () => void;
+  onClearRecallCue: () => void;
 };
 
 function describeFocusState(focusMode: FocusMode, focusCount: number) {
@@ -62,7 +69,10 @@ export function RecallBand({
   onReveal,
   onRevealNext,
   onRevealPrev,
-  demoLinks = []
+  demoLinks = [],
+  recallCue,
+  onAdvanceRecallCue,
+  onClearRecallCue
 }: RecallBandProps) {
   const activeProjectId = lens.kind === 'project' || lens.kind === 'reveal' ? lens.projectId ?? '' : '';
   const activeWorkspaceId = lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.workspaceId ?? '' : '';
@@ -138,6 +148,15 @@ export function RecallBand({
         <button className="ghost-button" onClick={onRevealPrev} disabled={revealMatchCount < 2}>‹</button>
         <button className="ghost-button" onClick={onRevealNext} disabled={revealMatchCount < 2}>›</button>
       </div>
+
+      {recallCue ? (
+        <RecallPrompt
+          noteTitle={recallCue.noteTitle}
+          suggestedNextStep={recallCue.suggestedNextStep}
+          onAdvance={onAdvanceRecallCue}
+          onClear={onClearRecallCue}
+        />
+      ) : null}
 
       {demoLinks.map((link) => (
         <a key={link.href} className="ghost-button recall-capture-toggle recall-demo-link" href={link.href}>

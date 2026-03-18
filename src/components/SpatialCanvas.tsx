@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getProjectGroupingVisual } from '../relationships/relationshipVisuals';
-import { NoteCardModel, Project, Relationship } from '../types';
-import { buildClusteredProjectConnectorSegments, useSubtleCanvasClustering } from './canvasClustering';
+import { FocusMode, NoteCardModel, Project, Relationship } from '../types';
+import { buildClusteredProjectConnectorSegments, getDirectNeighborIds, useSubtleCanvasClustering } from './canvasClustering';
 import { LensNotePresentation } from '../scene/lens';
 import { ProjectConnectorSegment } from '../projects/projectSelectors';
 import { CanvasViewportMetrics } from './relationshipWebGeometry';
@@ -16,7 +16,7 @@ type RecenterTarget = {
 type SpatialCanvasProps = {
   notes: NoteCardModel[];
   noteMetaById: Record<string, LensNotePresentation>;
-  focusHighlightEnabled: boolean;
+  focusMode: FocusMode;
   activeNoteId: string | null;
   hoveredNoteId: string | null;
   revealMatchedNoteIds: string[];
@@ -58,7 +58,7 @@ const CLUSTER_FORCE_RESTORE_MS = 420;
 export function SpatialCanvas({
   notes,
   noteMetaById,
-  focusHighlightEnabled,
+  focusMode,
   activeNoteId,
   hoveredNoteId,
   revealMatchedNoteIds,
@@ -94,8 +94,21 @@ export function SpatialCanvas({
   const [clusterForceScaleById, setClusterForceScaleById] = useState<Record<string, number>>({});
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
   const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
+  const focusNoteIds = useMemo(() => notes.filter((note) => Boolean(note.isFocus ?? note.inFocus)).map((note) => note.id), [notes]);
+  const hoverConnectedIds = useMemo(() => getDirectNeighborIds(hoveredNoteId, notes, relationships), [hoveredNoteId, notes, relationships]);
   const projectVisual = getProjectGroupingVisual();
-  const clusterInteraction = useMemo(() => ({ forceScaleById: clusterForceScaleById }), [clusterForceScaleById]);
+  const clusterInteraction = useMemo(() => ({
+    forceScaleById: clusterForceScaleById,
+    focusModeActive: focusMode.highlight || focusMode.isolate,
+    focusNoteIds,
+    hoveredNoteId,
+    viewportCenter: canvasRef.current
+      ? {
+          x: canvasRef.current.scrollLeft + canvasRef.current.clientWidth / 2,
+          y: canvasRef.current.scrollTop + canvasRef.current.clientHeight / 2
+        }
+      : null
+  }), [clusterForceScaleById, focusMode.highlight, focusMode.isolate, focusNoteIds, hoveredNoteId]);
   const clusteredPositions = useSubtleCanvasClustering(notes, relationships, isDragging, clusterInteraction);
   const clusteredNotes = useMemo(
     () => notes.map((note) => ({ ...note, x: clusteredPositions[note.id]?.x ?? note.x, y: clusteredPositions[note.id]?.y ?? note.y })),
@@ -325,7 +338,8 @@ export function SpatialCanvas({
               note={note}
               position={dragPosition?.id === note.id ? { x: dragPosition.x, y: dragPosition.y } : clusteredPositions[note.id] ?? null}
               meta={meta}
-              focusHighlightEnabled={focusHighlightEnabled}
+              focusHighlightEnabled={focusMode.highlight}
+              focusModeActive={focusMode.highlight || focusMode.isolate}
               recentlyClosed={recentlyClosedNoteId === note.id}
               ambientRelated={relatedGlowIdsSet.has(note.id)}
               ambientPulse={pulseNoteId === note.id}
@@ -336,6 +350,8 @@ export function SpatialCanvas({
               revealActive={revealActiveNoteId === note.id}
               isActive={activeNoteId === note.id}
               isHovered={hoveredNoteId === note.id}
+              hoverMicroClusterActive={Boolean(hoveredNoteId && hoverConnectedIds.size > 0)}
+              hoverConnected={hoveredNoteId === note.id || hoverConnectedIds.has(note.id)}
               activeProjectColor={activeProject?.color ?? null}
               activeProjectLabel={activeProject?.key ?? null}
               onPointerEnter={() => onHoverStart(note.id)}

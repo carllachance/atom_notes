@@ -19,27 +19,43 @@ type Vector = { x: number; y: number };
 
 type ClusterInteractionState = {
   forceScaleById?: Record<string, number>;
+  focusModeActive?: boolean;
+  focusNoteIds?: string[];
+  hoveredNoteId?: string | null;
+  viewportCenter?: Vector | null;
 };
 
 type ClusterForces = {
   connectedAttraction: number;
+  focusedAttraction: number;
+  hoverAttraction: number;
   unconnectedRepulsion: number;
+  focusCenterPull: number;
+  nonFocusOutwardPush: number;
   anchorStrength: number;
   damping: number;
   maxSpeed: number;
   maxOffset: number;
   attractionDistance: number;
+  focusAttractionDistance: number;
+  hoverAttractionDistance: number;
   repulsionDistance: number;
 };
 
 export const DEFAULT_CLUSTER_FORCES: ClusterForces = {
   connectedAttraction: 0.0038,
+  focusedAttraction: 0.0064,
+  hoverAttraction: 0.0072,
   unconnectedRepulsion: 0.012,
+  focusCenterPull: 0.01,
+  nonFocusOutwardPush: 0.0075,
   anchorStrength: 0.028,
   damping: 0.78,
   maxSpeed: 0.32,
   maxOffset: 18,
   attractionDistance: 260,
+  focusAttractionDistance: 200,
+  hoverAttractionDistance: 190,
   repulsionDistance: 220
 };
 
@@ -61,6 +77,20 @@ export function buildConnectionIndex(notes: ClusterLayoutNode[], relationships: 
   }
 
   return connectedPairs;
+}
+
+export function getDirectNeighborIds(noteId: string | null | undefined, notes: ClusterLayoutNode[], relationships: Relationship[]) {
+  if (!noteId) return new Set<string>();
+
+  const visibleIds = new Set(notes.map((note) => note.id));
+  const neighbors = new Set<string>();
+
+  for (const relationship of relationships) {
+    if (relationship.fromId === noteId && visibleIds.has(relationship.toId)) neighbors.add(relationship.toId);
+    if (relationship.toId === noteId && visibleIds.has(relationship.fromId)) neighbors.add(relationship.fromId);
+  }
+
+  return neighbors;
 }
 
 export function syncClusterState(notes: ClusterLayoutNode[], previous: ClusterSimulationState = {}): ClusterSimulationState {
@@ -93,19 +123,52 @@ export function stepClusterState(
 ): ClusterSimulationState {
   const forces = { ...DEFAULT_CLUSTER_FORCES, ...overrides };
   const forceScaleById = interaction.forceScaleById ?? {};
+  const focusNoteIds = new Set(interaction.focusNoteIds ?? []);
+  const focusModeActive = Boolean(interaction.focusModeActive && focusNoteIds.size > 0);
+  const hoveredNoteId = interaction.hoveredNoteId ?? null;
+  const viewportCenter = interaction.viewportCenter ?? null;
   const state = syncClusterState(notes, previous);
   const connectedPairs = buildConnectionIndex(notes, relationships);
+  const hoveredNeighborIds = getDirectNeighborIds(hoveredNoteId, notes, relationships);
+  const hoverActive = Boolean(hoveredNoteId && hoveredNeighborIds.size > 0);
   const impulseById = new Map<string, Vector>();
   const forceScaleFor = (id: string) => Math.max(0, Math.min(1, forceScaleById[id] ?? 1));
+  const focusCenter = focusModeActive
+    ? (() => {
+        if (viewportCenter) return viewportCenter;
+        const focusedNodes = notes.filter((note) => focusNoteIds.has(note.id));
+        if (focusedNodes.length === 0) return null;
+        const centroid = focusedNodes.reduce((acc, note) => ({ x: acc.x + note.x, y: acc.y + note.y }), { x: 0, y: 0 });
+        return { x: centroid.x / focusedNodes.length, y: centroid.y / focusedNodes.length };
+      })()
+    : null;
 
   for (const note of notes) {
     const current = state[note.id];
     const forceScale = forceScaleFor(note.id);
     const anchorStrength = forces.anchorStrength * (1.55 - forceScale * 0.35);
-    impulseById.set(note.id, {
+    const impulse = {
       x: (current.anchorX - current.x) * anchorStrength,
       y: (current.anchorY - current.y) * anchorStrength
-    });
+    };
+
+    if (focusModeActive && focusCenter) {
+      const isFocus = focusNoteIds.has(note.id);
+      const centerDx = focusCenter.x - current.x;
+      const centerDy = focusCenter.y - current.y;
+      const centerDistance = Math.max(1, Math.hypot(centerDx, centerDy));
+      const centerScale = Math.min(1, centerDistance / 220);
+
+      if (isFocus) {
+        impulse.x += centerDx * forces.focusCenterPull * centerScale * forceScale;
+        impulse.y += centerDy * forces.focusCenterPull * centerScale * forceScale;
+      } else {
+        impulse.x -= (centerDx / centerDistance) * forces.nonFocusOutwardPush * forceScale;
+        impulse.y -= (centerDy / centerDistance) * forces.nonFocusOutwardPush * forceScale;
+      }
+    }
+
+    impulseById.set(note.id, impulse);
   }
 
   for (let index = 0; index < notes.length; index += 1) {
@@ -126,6 +189,43 @@ export function stepClusterState(
       const interactionScale = Math.min(forceScaleFor(currentNote.id), forceScaleFor(otherNote.id));
 
       if (interactionScale <= 0) continue;
+
+      const currentFocused = focusModeActive && focusNoteIds.has(currentNote.id);
+      const otherFocused = focusModeActive && focusNoteIds.has(otherNote.id);
+      const bothFocused = currentFocused && otherFocused;
+      const hoveredPair = hoverActive
+        && ((currentNote.id === hoveredNoteId && hoveredNeighborIds.has(otherNote.id))
+          || (otherNote.id === hoveredNoteId && hoveredNeighborIds.has(currentNote.id)));
+
+      if (bothFocused) {
+        const focusAttractionDistance = Math.min(
+          forces.focusAttractionDistance,
+          Math.max(120, distance({ x: current.anchorX, y: current.anchorY }, { x: other.anchorX, y: other.anchorY }) * 0.72)
+        );
+
+        if (dist > focusAttractionDistance) {
+          const focusAttraction = (dist - focusAttractionDistance) * forces.focusedAttraction * interactionScale;
+          currentImpulse.x += nx * focusAttraction;
+          currentImpulse.y += ny * focusAttraction;
+          otherImpulse.x -= nx * focusAttraction;
+          otherImpulse.y -= ny * focusAttraction;
+        }
+      }
+
+      if (hoveredPair) {
+        const hoverAttractionDistance = Math.min(
+          forces.hoverAttractionDistance,
+          Math.max(112, distance({ x: current.anchorX, y: current.anchorY }, { x: other.anchorX, y: other.anchorY }) * 0.78)
+        );
+
+        if (dist > hoverAttractionDistance) {
+          const hoverAttraction = (dist - hoverAttractionDistance) * forces.hoverAttraction * interactionScale;
+          currentImpulse.x += nx * hoverAttraction;
+          currentImpulse.y += ny * hoverAttraction;
+          otherImpulse.x -= nx * hoverAttraction;
+          otherImpulse.y -= ny * hoverAttraction;
+        }
+      }
 
       if (connected) {
         const attractionDistance = Math.min(forces.attractionDistance, Math.max(140, distance({ x: current.anchorX, y: current.anchorY }, { x: other.anchorX, y: other.anchorY }) * 0.9));

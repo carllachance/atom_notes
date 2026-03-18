@@ -68,13 +68,13 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
             const visual = getSemanticRelationshipVisual(relationship, score, isHovered ? 'hovered' : emphasis);
             const hoverStrokeOpacity = hoverActive
               ? isHovered
-                ? Math.min(0.92, visual.edge.opacity * 2.5)
-                : Math.max(0.06, visual.edge.opacity * 0.16)
+                ? Math.min(0.98, visual.edge.opacity * 2.9)
+                : Math.max(0.035, visual.edge.opacity * 0.1)
               : visual.edge.opacity;
             const hoverStrokeWidth = hoverActive
               ? isHovered
-                ? Math.max(visual.edge.strokeWidth * 2.4, visual.edge.strokeWidth + 2.2)
-                : Math.max(0.85, visual.edge.strokeWidth * 0.72)
+                ? Math.max(visual.edge.strokeWidth * 2.6, visual.edge.strokeWidth + 2.6)
+                : Math.max(0.7, visual.edge.strokeWidth * 0.62)
               : visual.edge.strokeWidth;
             return (
               <path
@@ -89,7 +89,7 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
                 strokeDasharray={isHovered && relationship.directional ? '12 10' : visual.edge.dasharray === 'none' ? undefined : visual.edge.dasharray}
                 strokeWidth={hoverStrokeWidth}
                 markerEnd={relationship.directional ? 'url(#relationship-arrow)' : undefined}
-                style={{ filter: isHovered ? `drop-shadow(0 0 ${visual.edge.blurRadius + 8}px rgba(164, 196, 255, 0.34)) brightness(1.22)` : hoverActive ? 'brightness(0.72)' : `drop-shadow(0 0 ${visual.edge.blurRadius}px rgba(67, 90, 138, 0.08))` }}
+                style={{ filter: isHovered ? `drop-shadow(0 0 ${visual.edge.blurRadius + 10}px rgba(164, 196, 255, 0.38)) brightness(1.28)` : hoverActive ? 'brightness(0.62)' : `drop-shadow(0 0 ${visual.edge.blurRadius}px rgba(67, 90, 138, 0.08))` }}
                 onClick={() => onInspectRelationship(relationship.id)}
               />
             );
@@ -110,7 +110,8 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
               data-relationship-category={visual.category}
               style={{
                 ...nodeStyle,
-                transform: `${nodeStyle.transform ?? ''}${isHovered ? ' scale(1.04)' : ''}`.trim(),
+                opacity: hoverActive ? (isHovered ? 1 : 0.42) : 1,
+                transform: `${nodeStyle.transform ?? ''}${isHovered ? ' scale(1.04)' : hoverActive ? ' scale(0.985)' : ''}`.trim(),
                 borderStyle: visual.node.borderStyle,
                 borderColor: visual.node.borderColor,
                 background: `color-mix(in srgb, rgba(17, 25, 39, 0.82) ${Math.round(visual.node.backgroundOpacity * 100)}%, transparent)`,

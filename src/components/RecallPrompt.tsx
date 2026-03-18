@@ -15,7 +15,7 @@ export function RecallPrompt({ noteTitle, suggestedNextStep, onAdvance, onClear 
         title={suggestedNextStep}
         aria-label={`Continue ${noteTitle}. ${suggestedNextStep}`}
       >
-        <span className="recall-resume-chip__label">Continue:</span>
+        <span className="recall-resume-chip__label">Where was I?</span>
         <span className="recall-resume-chip__title">{noteTitle}</span>
       </button>
       <button

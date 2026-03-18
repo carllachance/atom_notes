@@ -3,7 +3,6 @@ import { AIPanel } from './components/AIPanel';
 import { CaptureComposer } from './components/CaptureComposer';
 import { ExpandedNote } from './components/ExpandedNote';
 import { RecallBand } from './components/RecallBand';
-import { RecallPrompt } from './components/RecallPrompt';
 import { RelationshipWeb } from './components/RelationshipWeb';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
@@ -117,16 +116,10 @@ export function App() {
         onRevealPrev={onRevealPrev}
         onRevealNext={onRevealNext}
         demoLinks={demoLinks}
+        recallCue={recallCue}
+        onAdvanceRecallCue={onAdvanceRecallCue}
+        onClearRecallCue={onClearRecallCue}
       />
-
-      {recallCue ? (
-        <RecallPrompt
-          noteTitle={recallCue.noteTitle}
-          suggestedNextStep={recallCue.suggestedNextStep}
-          onAdvance={onAdvanceRecallCue}
-          onClear={onClearRecallCue}
-        />
-      ) : null}
 
       <section className="workspace-shell">
         <section className="view-stack" data-lens={scene.lens.kind}>
@@ -134,7 +127,7 @@ export function App() {
             <SpatialCanvas
               notes={visibleNotes}
               noteMetaById={lensPresentation.noteMetaById}
-              focusHighlightEnabled={scene.focusMode.highlight}
+              focusMode={scene.focusMode}
               activeNoteId={activeNote?.id ?? null}
               hoveredNoteId={hoveredNoteId}
               revealMatchedNoteIds={visibleRevealMatchIds}
