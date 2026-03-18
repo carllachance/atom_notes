@@ -1,7 +1,8 @@
 import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
 import { getCompactDisplayTitle } from '../noteText';
-import { NoteCardModel, RelationshipType } from '../types';
+import { ProjectDraft } from '../projects/projectModel';
+import { NoteCardModel, Project, RelationshipType } from '../types';
 
 type VisibleRelationship = {
   id: string;
@@ -17,9 +18,12 @@ type VisibleRelationship = {
 type ExpandedNoteProps = {
   note: NoteCardModel | null;
   notes: NoteCardModel[];
+  projects: Project[];
+  noteProjects: Project[];
   relationships: VisibleRelationship[];
   relationshipTotals: { related: number; references: number };
   activeFilter: 'all' | RelationshipType;
+  activeProjectRevealId: string | null;
   onSetFilter: (filter: 'all' | RelationshipType) => void;
   onClose: () => void;
   onArchive: (id: string) => void;
@@ -28,6 +32,9 @@ type ExpandedNoteProps = {
   onCreateExplicitLink: (fromId: string, toId: string, type: RelationshipType) => void;
   onConfirmRelationship: (relationshipId: string) => void;
   onToggleFocus: (id: string) => void;
+  onSetProjectIds: (id: string, projectIds: string[]) => void;
+  onCreateProject: (id: string, draft: ProjectDraft) => void;
+  onRevealProject: (projectId: string | null) => void;
 };
 
 type DragState = {
@@ -41,12 +48,22 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+const DEFAULT_PROJECT_DRAFT: ProjectDraft = {
+  key: '',
+  name: '',
+  color: '#7aa2f7',
+  description: ''
+};
+
 export function ExpandedNote({
   note,
   notes,
+  projects,
+  noteProjects,
   relationships,
   relationshipTotals,
   activeFilter,
+  activeProjectRevealId,
   onSetFilter,
   onClose,
   onArchive,
@@ -54,11 +71,16 @@ export function ExpandedNote({
   onOpenRelated,
   onCreateExplicitLink,
   onConfirmRelationship,
-  onToggleFocus
+  onToggleFocus,
+  onSetProjectIds,
+  onCreateProject,
+  onRevealProject
 }: ExpandedNoteProps) {
   const [linkTargetId, setLinkTargetId] = useState('');
   const [linkType, setLinkType] = useState<RelationshipType>('related_concept');
   const [showLinkComposer, setShowLinkComposer] = useState(false);
+  const [showProjectComposer, setShowProjectComposer] = useState(false);
+  const [projectDraft, setProjectDraft] = useState<ProjectDraft>(DEFAULT_PROJECT_DRAFT);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [bodyMode, setBodyMode] = useState<BodyMode>('read');
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -74,6 +96,8 @@ export function ExpandedNote({
     setDragState(null);
     setBodyMode('read');
     setShowLinkComposer(false);
+    setShowProjectComposer(false);
+    setProjectDraft(DEFAULT_PROJECT_DRAFT);
     setLinkTargetId('');
   }, [note?.id]);
 
@@ -106,6 +130,8 @@ export function ExpandedNote({
 
   if (!note) return null;
 
+  const noteProjectIds = new Set(note.projectIds);
+
   return (
     <section className="expanded-note-shell">
       <aside
@@ -122,7 +148,23 @@ export function ExpandedNote({
             setDragState({ dx: event.clientX - position.x, dy: event.clientY - position.y });
           }}
         >
-          <strong title={getCompactDisplayTitle(note, 72)}>{getCompactDisplayTitle(note, 56)}</strong>
+          <div>
+            <strong title={getCompactDisplayTitle(note, 72)}>{getCompactDisplayTitle(note, 56)}</strong>
+            {noteProjects.length ? (
+              <div className="note-project-pills">
+                {noteProjects.map((project) => (
+                  <button
+                    key={project.id}
+                    className={`project-pill ${activeProjectRevealId === project.id ? 'active' : ''}`}
+                    style={{ ['--project-accent' as string]: project.color }}
+                    onClick={() => onRevealProject(activeProjectRevealId === project.id ? null : project.id)}
+                  >
+                    {project.key}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <button className="ghost-button" onClick={onClose}>
             Back to canvas
           </button>
@@ -181,6 +223,80 @@ export function ExpandedNote({
             onChange={(event) => onChange(note.id, { body: event.target.value })}
           />
         )}
+
+        <section className="project-membership" aria-label="Project membership">
+          <div className="section-head">
+            <strong>Projects</strong>
+            <button className="ghost-button" onClick={() => setShowProjectComposer((open) => !open)}>
+              {showProjectComposer ? 'Close project tools' : 'New project'}
+            </button>
+          </div>
+          {projects.length ? (
+            <div className="project-membership-grid">
+              {projects.map((project) => (
+                <label key={project.id} className="project-membership-row" style={{ ['--project-accent' as string]: project.color }}>
+                  <input
+                    type="checkbox"
+                    checked={noteProjectIds.has(project.id)}
+                    onChange={(event) => {
+                      const next = event.target.checked
+                        ? [...note.projectIds, project.id]
+                        : note.projectIds.filter((projectId) => projectId !== project.id);
+                      onSetProjectIds(note.id, next);
+                    }}
+                  />
+                  <span>
+                    <strong>{project.key}</strong>
+                    <small>{project.name}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p className="relations-empty">No projects yet. Create one to give this note a shared middle layer.</p>
+          )}
+
+          {showProjectComposer ? (
+            <div className="project-compose-card">
+              <div className="project-compose-grid">
+                <input
+                  aria-label="Project key"
+                  placeholder="Key (SLD)"
+                  value={projectDraft.key ?? ''}
+                  onChange={(event) => setProjectDraft((prev) => ({ ...prev, key: event.target.value }))}
+                />
+                <input
+                  aria-label="Project name"
+                  placeholder="Project name"
+                  value={projectDraft.name ?? ''}
+                  onChange={(event) => setProjectDraft((prev) => ({ ...prev, name: event.target.value }))}
+                />
+                <input
+                  aria-label="Project color"
+                  type="color"
+                  value={projectDraft.color ?? '#7aa2f7'}
+                  onChange={(event) => setProjectDraft((prev) => ({ ...prev, color: event.target.value }))}
+                />
+              </div>
+              <textarea
+                aria-label="Project description"
+                placeholder="Why these notes belong together…"
+                value={projectDraft.description ?? ''}
+                onChange={(event) => setProjectDraft((prev) => ({ ...prev, description: event.target.value }))}
+              />
+              <button
+                onClick={() => {
+                  if (!(projectDraft.key ?? projectDraft.name ?? '').trim()) return;
+                  onCreateProject(note.id, projectDraft);
+                  setProjectDraft(DEFAULT_PROJECT_DRAFT);
+                  setShowProjectComposer(false);
+                }}
+              >
+                Create and attach
+              </button>
+            </div>
+          ) : null}
+        </section>
 
         <section className="relations-list" aria-label="Relations">
           {relationships.length ? (

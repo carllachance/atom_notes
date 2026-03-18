@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createNote, normalizeNote } from '../notes/noteModel';
 
-test('createNote applies defaults and trims body', (t: any) => {
+test('createNote applies defaults, trims body, and preserves project membership', (t: any) => {
   t.mock.method(Date, 'now', () => 1_700_000_000_000);
   t.mock.method(globalThis.crypto, 'randomUUID', () => 'note-1');
 
-  const note = createNote('  hello world  ', 10);
+  const note = createNote('  hello world  ', 10, ['proj-1']);
 
   assert.deepEqual(note, {
     id: 'note-1',
@@ -20,7 +20,8 @@ test('createNote applies defaults and trims body', (t: any) => {
     createdAt: 1_700_000_000_000,
     updatedAt: 1_700_000_000_000,
     archived: false,
-    inFocus: false
+    inFocus: false,
+    projectIds: ['proj-1']
   });
 });
 
@@ -37,7 +38,8 @@ test('normalizeNote preserves contract defaults and coercions', (t: any) => {
       x: '8' as unknown as number,
       y: undefined,
       z: undefined,
-      archived: 0 as unknown as boolean
+      archived: 0 as unknown as boolean,
+      projectIds: ['proj-1', 'proj-1', 9] as unknown as string[]
     },
     4
   );
@@ -54,6 +56,7 @@ test('normalizeNote preserves contract defaults and coercions', (t: any) => {
     createdAt: 1234,
     updatedAt: 1234,
     archived: false,
-    inFocus: false
+    inFocus: false,
+    projectIds: ['proj-1', '9']
   });
 });

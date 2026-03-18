@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { getCompactDisplayTitle } from '../noteText';
 import { getRelationshipTargetNoteId } from '../relationshipLogic';
+import { getSemanticRelationshipVisual } from '../relationships/relationshipVisuals';
 import { NoteCardModel, Relationship, RelationshipType } from '../types';
 import {
   CanvasViewportMetrics,
@@ -28,16 +29,6 @@ type VisibleEdge = {
   target: NoteCardModel;
   score: number;
 };
-
-const EDGE_TYPE_STYLES: Record<RelationshipType, { color: string }> = {
-  related_concept: { color: 'rgba(113, 162, 255, 0.34)' },
-  references: { color: 'rgba(177, 132, 255, 0.34)' }
-};
-
-function getEdgeLineStyle(relationship: Relationship) {
-  if (relationship.explicitness === 'explicit') return undefined;
-  return '8 8';
-}
 
 export function RelationshipWeb({
   activeNote,
@@ -70,14 +61,14 @@ export function RelationshipWeb({
   }, [activeNote.id, filter, notesById, rankedRelationships]);
 
   const visibleTargets = visibleEdges.slice(0, 8);
+  const emphasis = filter === 'all' ? 'default' : 'selected';
 
   return (
     <div className="relationship-web-layer">
       <div className="relationship-web-plane" style={getRelationshipWebPlaneStyle(canvasMetrics)}>
         <svg className="relationship-web" aria-hidden="true">
           {visibleTargets.map(({ relationship, target, score }) => {
-            const edgeStyle = EDGE_TYPE_STYLES[relationship.type];
-            const confidenceOpacity = Math.min(0.44, 0.18 + score * 0.2);
+            const visual = getSemanticRelationshipVisual(relationship, score, emphasis);
 
             return (
               <path
@@ -86,27 +77,43 @@ export function RelationshipWeb({
                 className="relationship-edge"
                 data-type={relationship.type}
                 data-explicitness={relationship.explicitness}
-                stroke={edgeStyle.color}
-                strokeOpacity={confidenceOpacity}
-                strokeDasharray={getEdgeLineStyle(relationship)}
+                data-relationship-category={visual.category}
+                stroke={visual.edge.stroke}
+                strokeOpacity={visual.edge.opacity}
+                strokeDasharray={visual.edge.dasharray === 'none' ? undefined : visual.edge.dasharray}
+                strokeWidth={visual.edge.strokeWidth}
+                style={{ filter: `drop-shadow(0 0 ${visual.edge.blurRadius}px rgba(67, 90, 138, 0.08))` }}
               />
             );
           })}
         </svg>
 
-        {visibleTargets.map(({ target: note, relationship }) => (
-          <button
-            key={note.id}
-            className="related-node"
-            title={relationship.explanation}
-            data-type={relationship.type}
-            data-explicitness={relationship.explicitness}
-            style={getRelatedNodeStyle(note)}
-            onClick={() => onTraverse(note.id, relationship.id)}
-          >
-            {getCompactDisplayTitle(note, 36)}
-          </button>
-        ))}
+        {visibleTargets.map(({ target: note, relationship, score }) => {
+          const visual = getSemanticRelationshipVisual(relationship, score, emphasis);
+          return (
+            <button
+              key={note.id}
+              className="related-node"
+              title={relationship.explanation}
+              data-type={relationship.type}
+              data-explicitness={relationship.explicitness}
+              data-relationship-category={visual.category}
+              style={{
+                ...getRelatedNodeStyle(note),
+                borderStyle: visual.node.borderStyle,
+                borderColor: visual.node.borderColor,
+                background: `color-mix(in srgb, rgba(17, 25, 39, 0.82) ${Math.round(visual.node.backgroundOpacity * 100)}%, transparent)`,
+                boxShadow: `0 6px 16px rgba(2, 4, 9, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.02), 0 0 18px color-mix(in srgb, ${visual.node.glowColor} ${Math.round(visual.node.glowOpacity * 100)}%, transparent)`
+              }}
+              onClick={() => onTraverse(note.id, relationship.id)}
+            >
+              <span className="related-node-kind" style={{ opacity: visual.node.labelOpacity }}>
+                {visual.label}
+              </span>
+              <span className="related-node-title">{getCompactDisplayTitle(note, 36)}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

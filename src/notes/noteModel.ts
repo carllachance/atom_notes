@@ -1,9 +1,10 @@
 import { normalizeOptionalTitle } from '../noteText';
+import { normalizeProjectIds } from '../projects/projectModel';
 import { NoteCardModel } from '../types';
 
 export const now = () => Date.now();
 
-export function createNote(text: string, z: number): NoteCardModel {
+export function createNote(text: string, z: number, projectIds: string[] = []): NoteCardModel {
   const t = now();
   const trimmed = text.trim();
 
@@ -19,7 +20,8 @@ export function createNote(text: string, z: number): NoteCardModel {
     createdAt: t,
     updatedAt: t,
     archived: false,
-    inFocus: false
+    inFocus: false,
+    projectIds: normalizeProjectIds(projectIds)
   };
 }
 
@@ -36,6 +38,7 @@ export function normalizeNote(note: Partial<NoteCardModel>, i: number): NoteCard
     createdAt: Number(note.createdAt ?? now()),
     updatedAt: Number(note.updatedAt ?? now()),
     archived: Boolean(note.archived),
-    inFocus: Boolean(note.inFocus)
+    inFocus: Boolean(note.inFocus),
+    projectIds: normalizeProjectIds(note.projectIds)
   };
 }

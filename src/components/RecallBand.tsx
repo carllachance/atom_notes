@@ -1,13 +1,18 @@
-import { Lens } from '../types';
+import { Lens, Project } from '../types';
 
 type RecallBandProps = {
   count: number;
   archivedCount: number;
   quickCaptureOpen: boolean;
   lens: Lens;
+  projects: Project[];
+  activeProjectId: string | null;
+  projectIsolate: boolean;
   revealQuery: string;
   revealMatchCount: number;
   onSetLens: (lens: Lens) => void;
+  onSetProjectReveal: (projectId: string | null) => void;
+  onSetProjectIsolation: (isolate: boolean) => void;
   onToggleQuickCapture: () => void;
   onWhereWasI: () => void;
   onRevealQueryChange: (query: string) => void;
@@ -21,9 +26,14 @@ export function RecallBand({
   archivedCount,
   quickCaptureOpen,
   lens,
+  projects,
+  activeProjectId,
+  projectIsolate,
   revealQuery,
   revealMatchCount,
   onSetLens,
+  onSetProjectReveal,
+  onSetProjectIsolation,
   onToggleQuickCapture,
   onWhereWasI,
   onRevealQueryChange,
@@ -48,6 +58,31 @@ export function RecallBand({
           Archive
         </button>
       </nav>
+
+      <div className="project-reveal-controls">
+        <label className="project-reveal-label" htmlFor="project-reveal-select">
+          Project
+        </label>
+        <select
+          id="project-reveal-select"
+          value={activeProjectId ?? ''}
+          onChange={(event) => onSetProjectReveal(event.target.value || null)}
+        >
+          <option value="">All projects</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.key} · {project.name}
+            </option>
+          ))}
+        </select>
+        <button
+          className={`ghost-button ${projectIsolate ? 'active' : ''}`}
+          disabled={!activeProjectId}
+          onClick={() => onSetProjectIsolation(!projectIsolate)}
+        >
+          {projectIsolate ? 'Show context' : 'Only project'}
+        </button>
+      </div>
 
       <div className="reveal-controls">
         <input

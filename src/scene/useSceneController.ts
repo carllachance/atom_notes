@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
+import { getProjectRevealPresentation, getProjectsForNote } from '../projects/projectSelectors';
 import { getRankedRelationshipsForNote, getRelationshipTargetNoteId } from '../relationshipLogic';
 import { loadScene, saveScene } from './sceneStorage';
 import { applyLens } from './lens';
@@ -21,10 +22,19 @@ export function useSceneController() {
     [scene.activeNoteId, scene.notes]
   );
 
-  const visibleNotes = useMemo(() => applyLens(scene.notes, scene.lens), [scene.notes, scene.lens]);
+  const lensVisibleNotes = useMemo(() => applyLens(scene.notes, scene.lens), [scene.notes, scene.lens]);
+  const projectReveal = useMemo(
+    () => getProjectRevealPresentation(scene, lensVisibleNotes),
+    [scene, lensVisibleNotes]
+  );
+  const visibleNotes = projectReveal.visibleNotes;
   const archivedNotes = scene.notes.filter((note) => note.archived);
   const highestZ = scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0);
   const visibleNoteIds = useMemo(() => new Set(visibleNotes.map((note) => note.id)), [visibleNotes]);
+  const activeNoteProjects = useMemo(
+    () => (activeNote ? getProjectsForNote(scene, activeNote.id) : []),
+    [activeNote, scene]
+  );
 
   const activeRelationships = useMemo(() => {
     if (!activeNote) return [];
@@ -132,8 +142,11 @@ export function useSceneController() {
   return {
     scene,
     activeNote,
+    activeNoteProjects,
     visibleNotes,
     archivedNotes,
+    projects: scene.projects,
+    projectReveal,
     hoveredNoteId: ambient.hoveredNoteId,
     relationshipFilter,
     recentlyClosedNoteId: ambient.recentlyClosedNoteId,
@@ -156,6 +169,10 @@ export function useSceneController() {
     confirmRelationship: mutations.confirmRelationship,
     traverseToRelated: mutations.traverseToRelated,
     toggleNoteFocus: mutations.toggleNoteFocus,
+    setNoteProjects: mutations.setNoteProjects,
+    createProjectForNote: mutations.createProjectForNote,
+    setProjectReveal: mutations.setProjectReveal,
+    setProjectRevealIsolation: mutations.setProjectRevealIsolation,
     toggleQuickCapture: mutations.toggleQuickCapture,
     onCanvasScroll: mutations.onCanvasScroll,
     onViewportCenterChange: ambient.onViewportCenterChange,

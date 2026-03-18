@@ -1,6 +1,13 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback } from 'react';
 import { createNote, now } from '../notes/noteModel';
+import {
+  createProjectAndAssignToNoteInScene,
+  setNoteProjectsInScene,
+  setProjectRevealInScene,
+  setProjectRevealIsolationInScene
+} from '../projects/projectActions';
+import { ProjectDraft } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import {
   confirmRelationshipInScene,
@@ -114,10 +121,28 @@ export function useSceneMutations({
     setScene((prev) => toggleNoteFocusInScene(prev, id));
   }, [setScene]);
 
+  const setNoteProjects = useCallback((id: string, projectIds: string[]) => {
+    setScene((prev) => setNoteProjectsInScene(prev, id, projectIds));
+  }, [setScene]);
+
+  const createProjectForNote = useCallback((id: string, draft: ProjectDraft) => {
+    setScene((prev) => createProjectAndAssignToNoteInScene(prev, id, draft));
+  }, [setScene]);
+
+  const setProjectReveal = useCallback((projectId: string | null) => {
+    cancelHoverIntent();
+    setScene((prev) => setProjectRevealInScene(prev, projectId));
+  }, [cancelHoverIntent, setScene]);
+
+  const setProjectRevealIsolation = useCallback((isolate: boolean) => {
+    setScene((prev) => setProjectRevealIsolationInScene(prev, isolate));
+  }, [setScene]);
+
   const onCapture = useCallback(
     (text: string) => {
       setScene((prev) => {
-        const notes = [...prev.notes, createNote(text, highestZ + 1)];
+        const inheritedProjectIds = prev.projectReveal.activeProjectId ? [prev.projectReveal.activeProjectId] : [];
+        const notes = [...prev.notes, createNote(text, highestZ + 1, inheritedProjectIds)];
         return {
           ...prev,
           notes,
@@ -141,6 +166,10 @@ export function useSceneMutations({
     onOpenNote,
     onArchiveNote,
     toggleNoteFocus,
+    setNoteProjects,
+    createProjectForNote,
+    setProjectReveal,
+    setProjectRevealIsolation,
     onCapture
   };
 }

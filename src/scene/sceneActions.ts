@@ -1,5 +1,6 @@
 import { now } from '../notes/noteModel';
 import { normalizeOptionalTitle } from '../noteText';
+import { normalizeProjectIds } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import { Lens, NoteCardModel, SceneState } from '../types';
 
@@ -9,10 +10,13 @@ export function updateNoteInScene(
   updates: Partial<NoteCardModel>,
   trace?: string
 ): SceneState {
-  const normalizedUpdates =
-    'title' in updates
-      ? { ...updates, title: normalizeOptionalTitle((updates.title as string | null | undefined) ?? null) }
-      : updates;
+  const normalizedUpdates = {
+    ...updates,
+    ...('title' in updates
+      ? { title: normalizeOptionalTitle((updates.title as string | null | undefined) ?? null) }
+      : {}),
+    ...('projectIds' in updates ? { projectIds: normalizeProjectIds(updates.projectIds) } : {})
+  };
 
   const notes = scene.notes.map((note) => {
     if (note.id !== id) return note;
@@ -72,7 +76,6 @@ export function restoreNoteInScene(scene: SceneState, id: string, highestZ: numb
   const restored = updateNoteInScene(scene, id, { archived: false, z: highestZ + 1 }, 'restored');
   return { ...restored, lens: 'all' };
 }
-
 
 export function toggleNoteFocusInScene(scene: SceneState, id: string): SceneState {
   return {
