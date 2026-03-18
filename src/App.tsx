@@ -74,7 +74,6 @@ export function App() {
     onArchiveNote,
     onHoverStart,
     onHoverEnd,
-    onWhereWasI,
     onAdvanceRecallCue,
     onClearRecallCue,
     onRevealQueryChange,
@@ -113,7 +112,6 @@ export function App() {
         onSetLens={setLens}
         onSetFocusMode={setFocusMode}
         onOpenComposer={() => onCaptureDraftChange(scene.captureComposer.draft)}
-        onWhereWasI={onWhereWasI}
         onRevealQueryChange={onRevealQueryChange}
         onReveal={onReveal}
         onRevealPrev={onRevealPrev}
@@ -151,6 +149,7 @@ export function App() {
               recenterTarget={recenterTarget}
               activeProject={lensPresentation.activeProject}
               projectConnectorSegments={lensPresentation.projectConnectorSegments}
+              relationships={scene.relationships}
               onScroll={onCanvasScroll}
               onViewportCenterChange={onViewportCenterChange}
               onMetricsChange={setCanvasMetrics}

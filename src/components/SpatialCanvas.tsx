@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getProjectGroupingVisual } from '../relationships/relationshipVisuals';
-import { NoteCardModel, Project } from '../types';
+import { NoteCardModel, Project, Relationship } from '../types';
+import { buildClusteredProjectConnectorSegments, useSubtleCanvasClustering } from './canvasClustering';
 import { LensNotePresentation } from '../scene/lens';
 import { ProjectConnectorSegment } from '../projects/projectSelectors';
 import { CanvasViewportMetrics } from './relationshipWebGeometry';
@@ -30,6 +31,7 @@ type SpatialCanvasProps = {
   recenterTarget: RecenterTarget | null;
   activeProject: Project | null;
   projectConnectorSegments: ProjectConnectorSegment[];
+  relationships: Relationship[];
   onScroll: (left: number, top: number) => void;
   onViewportCenterChange: (x: number, y: number) => void;
   onMetricsChange: (metrics: CanvasViewportMetrics) => void;
@@ -70,6 +72,7 @@ export function SpatialCanvas({
   recenterTarget,
   activeProject,
   projectConnectorSegments,
+  relationships,
   onScroll,
   onViewportCenterChange,
   onMetricsChange,
@@ -88,6 +91,15 @@ export function SpatialCanvas({
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
   const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
   const projectVisual = getProjectGroupingVisual();
+  const clusteredPositions = useSubtleCanvasClustering(notes, relationships, isDragging);
+  const clusteredNotes = useMemo(
+    () => notes.map((note) => ({ ...note, x: clusteredPositions[note.id]?.x ?? note.x, y: clusteredPositions[note.id]?.y ?? note.y })),
+    [clusteredPositions, notes]
+  );
+  const resolvedProjectConnectorSegments = useMemo(
+    () => (activeProject ? buildClusteredProjectConnectorSegments(clusteredNotes.filter((note) => note.projectIds.includes(activeProject.id))) : projectConnectorSegments),
+    [activeProject, clusteredNotes, projectConnectorSegments]
+  );
 
   const flushDragPosition = () => {
     if (!dragState.current || !pendingDragPositionRef.current) return;
@@ -236,7 +248,7 @@ export function SpatialCanvas({
       <div className="canvas-plane">
         {activeProject ? (
           <svg className="project-grouping-overlay" aria-hidden="true">
-            {projectConnectorSegments.map((segment, index) => (
+            {resolvedProjectConnectorSegments.map((segment, index) => (
               <path
                 key={`${segment.from.x}-${segment.from.y}-${segment.to.x}-${segment.to.y}-${index}`}
                 className="project-grouping-link"
@@ -253,13 +265,13 @@ export function SpatialCanvas({
             ))}
           </svg>
         ) : null}
-        {notes.map((note) => {
+        {clusteredNotes.map((note) => {
           const meta = noteMetaById[note.id];
           return (
             <NoteCard
               key={note.id}
               note={note}
-              position={dragPosition?.id === note.id ? { x: dragPosition.x, y: dragPosition.y } : null}
+              position={dragPosition?.id === note.id ? { x: dragPosition.x, y: dragPosition.y } : clusteredPositions[note.id] ?? null}
               meta={meta}
               focusHighlightEnabled={focusHighlightEnabled}
               recentlyClosed={recentlyClosedNoteId === note.id}

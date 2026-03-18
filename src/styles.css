@@ -1,5 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Lexend:wght@400;500;600;700&display=swap');
 
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
 :root {
   font-family: Inter, 'Segoe UI', system-ui, sans-serif;
   --note-title-font-size: 0.97rem;
@@ -33,11 +40,13 @@ textarea {
 }
 
 .thinking-surface {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 8px;
   padding: 12px;
+  overflow: hidden;
 }
 
 .recall-band {
@@ -70,71 +79,64 @@ textarea {
   flex-shrink: 0;
 }
 
-.recall-prompt {
+.recall-resume {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(242, 201, 111, 0.3);
-  background:
-    linear-gradient(180deg, rgba(242, 201, 111, 0.1), rgba(255, 255, 255, 0.02)),
-    rgba(24, 20, 12, 0.72);
-  box-shadow: 0 10px 24px rgba(15, 12, 7, 0.14);
-}
-
-.recall-prompt-copy {
-  display: grid;
-  gap: 7px;
-}
-
-.recall-prompt-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(242, 201, 111, 0.9);
-}
-
-.recall-prompt-details {
-  display: grid;
-  gap: 4px;
-}
-
-.recall-prompt-details p {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-  color: rgba(239, 231, 214, 0.92);
-  font-size: 0.82rem;
-  line-height: 1.5;
+  min-height: 0;
 }
 
-.recall-prompt-details strong {
-  color: rgba(242, 201, 111, 0.96);
-  font-size: 0.72rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.recall-prompt-actions {
-  display: flex;
+.recall-resume-chip {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  max-width: min(100%, 320px);
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 201, 111, 0.24);
+  background: rgba(24, 20, 12, 0.46);
+  color: rgba(248, 241, 225, 0.94);
+  box-shadow: 0 6px 18px rgba(15, 12, 7, 0.08);
 }
 
-.recall-prompt-actions > button:first-child {
+.recall-resume-chip:hover,
+.recall-resume-chip:focus-visible {
   border-color: rgba(242, 201, 111, 0.34);
-  background: rgba(242, 201, 111, 0.18);
-  color: rgba(255, 246, 220, 0.96);
+  background: rgba(30, 24, 14, 0.62);
 }
 
-.recall-prompt-actions > .ghost-button {
-  border-color: rgba(242, 201, 111, 0.18);
-  color: rgba(241, 231, 206, 0.8);
+.recall-resume-chip__label {
+  font-size: 0.72rem;
+  color: rgba(242, 201, 111, 0.9);
+  white-space: nowrap;
+}
+
+.recall-resume-chip__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.recall-resume-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 201, 111, 0.16);
+  background: rgba(24, 20, 12, 0.22);
+  color: rgba(242, 201, 111, 0.76);
+  padding: 0;
+  line-height: 1;
+}
+
+.recall-resume-dismiss:hover,
+.recall-resume-dismiss:focus-visible {
+  border-color: rgba(242, 201, 111, 0.28);
+  color: rgba(248, 241, 225, 0.92);
 }
 
 .recall-meta {
@@ -238,8 +240,10 @@ textarea {
 
 .view-stack {
   position: relative;
-  min-height: 560px;
+  min-height: 0;
+  height: 100%;
   isolation: isolate;
+  overflow: hidden;
 }
 
 .view-layer {
@@ -269,11 +273,12 @@ textarea {
 }
 .spatial-canvas {
   position: relative;
+  height: 100%;
+  min-height: 0;
   overflow: auto;
   border-radius: 14px;
   border: 1px solid rgba(49, 65, 95, 0.18);
   background: radial-gradient(circle at top, rgba(32, 44, 66, 0.48) 0%, rgba(13, 18, 32, 0.34) 75%);
-  min-height: 560px;
 }
 
 .canvas-plane {
@@ -637,13 +642,15 @@ textarea {
   place-items: center;
   pointer-events: none;
   z-index: 8;
+  overflow: hidden;
 }
 
 .expanded-note {
   pointer-events: auto;
-  width: min(1040px, calc(100vw - 36px));
+  width: min(760px, calc(100vw - 420px));
+  max-width: calc(100vw - 32px);
   max-height: min(92vh, 920px);
-  overflow: auto;
+  overflow: hidden;
   border-radius: 16px;
   border: 1px solid rgba(70, 87, 121, 0.26);
   background: rgba(16, 24, 37, 0.74);
@@ -990,7 +997,7 @@ button {
 
 .expanded-note-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.95fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -1066,9 +1073,21 @@ button {
   font-size: 0.72rem;
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1080px) {
   .expanded-note {
     width: min(760px, calc(100vw - 24px));
+  }
+
+  .expanded-note-sidebar {
+    position: static;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    max-height: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .expanded-note-layout {
@@ -1211,6 +1230,8 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: stretch;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 1080px) {
@@ -1218,9 +1239,12 @@ button {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .recall-prompt {
-    align-items: flex-start;
-    flex-direction: column;
+  .recall-resume {
+    flex-wrap: wrap;
+  }
+
+  .recall-resume-chip {
+    max-width: 100%;
   }
 }
 
@@ -1299,6 +1323,7 @@ button {
 .ai-panel {
   width: min(420px, 40vw);
   min-width: 72px;
+  height: 100%;
   border-radius: 18px;
   border: 1px solid rgba(62, 76, 108, 0.2);
   background: rgba(10, 15, 26, 0.34);
@@ -1333,6 +1358,27 @@ button {
   justify-content: center;
   gap: 8px;
   padding: 8px 10px;
+}
+
+.thinking-glyph {
+  width: 0.94rem;
+  height: 0.94rem;
+  flex-shrink: 0;
+}
+
+.ai-panel-toggle--thinking {
+  color: #d9c8ff;
+  border-color: rgba(187, 140, 255, 0.24);
+  background: linear-gradient(180deg, rgba(187, 140, 255, 0.12), rgba(187, 140, 255, 0.04));
+}
+
+.ai-panel-toggle--thinking.active,
+.ai-panel-toggle--thinking:hover,
+.ai-panel-toggle--thinking:focus-visible {
+  color: #f3ecff;
+  border-color: rgba(187, 140, 255, 0.34);
+  background: linear-gradient(180deg, rgba(187, 140, 255, 0.2), rgba(127, 181, 255, 0.1));
+  box-shadow: 0 0 0 1px rgba(187, 140, 255, 0.08), 0 8px 18px rgba(104, 65, 155, 0.14);
 }
 
 .ai-panel-toggle-label,
@@ -1462,8 +1508,9 @@ button {
 
 .query-prototype-shell {
   position: relative;
-  min-height: 100vh;
-  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
   background:
     radial-gradient(circle at top, rgba(36, 55, 92, 0.32), transparent 42%),
     linear-gradient(180deg, rgba(8, 12, 21, 0.94), rgba(5, 7, 14, 1));
@@ -3068,10 +3115,18 @@ button {
 
 .ai-panel-body {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 14px;
   min-height: 0;
   padding: 16px;
+  overflow: hidden;
+}
+
+.ai-panel-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
 }
 
 .ai-panel-header--context {
@@ -3138,12 +3193,12 @@ button {
   background: rgba(171, 124, 255, 0.06);
 }
 
-.ai-chat-shell--sticky {
-  position: sticky;
-  bottom: 0;
+.ai-chat-shell {
+  position: relative;
   z-index: 2;
   background: rgba(12, 15, 23, 0.96);
   backdrop-filter: blur(22px);
+  overflow: hidden;
 }
 
 .ai-query-row {
@@ -3186,7 +3241,21 @@ button {
 }
 
 .expanded-note-sidebar {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(56vh, 560px);
+  display: grid;
+  gap: 12px;
   overflow: auto;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(70, 87, 121, 0.24);
+  background: rgba(12, 18, 28, 0.84);
+  box-shadow: 0 20px 44px rgba(2, 4, 9, 0.26);
+  pointer-events: auto;
+  z-index: 9;
 }
 
 .note-toolbar-row {

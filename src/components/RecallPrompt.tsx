@@ -7,19 +7,26 @@ type RecallPromptProps = {
 
 export function RecallPrompt({ noteTitle, suggestedNextStep, onAdvance, onClear }: RecallPromptProps) {
   return (
-    <section className="recall-prompt" aria-live="polite">
-      <div className="recall-prompt-copy">
-        <span className="recall-prompt-label">Where was I?</span>
-        <div className="recall-prompt-details">
-          <p><strong>Last active note</strong>{noteTitle}</p>
-          <p><strong>Suggested next step</strong>{suggestedNextStep}</p>
-        </div>
-      </div>
-
-      <div className="recall-prompt-actions">
-        <button type="button" onClick={onAdvance}>Resume note</button>
-        <button type="button" className="ghost-button" onClick={onClear}>Clear</button>
-      </div>
-    </section>
+    <div className="recall-resume" aria-live="polite">
+      <button
+        type="button"
+        className="recall-resume-chip"
+        onClick={onAdvance}
+        title={suggestedNextStep}
+        aria-label={`Continue ${noteTitle}. ${suggestedNextStep}`}
+      >
+        <span className="recall-resume-chip__label">Continue:</span>
+        <span className="recall-resume-chip__title">{noteTitle}</span>
+      </button>
+      <button
+        type="button"
+        className="recall-resume-dismiss"
+        onClick={onClear}
+        aria-label="Dismiss resume suggestion"
+        title="Dismiss"
+      >
+        ×
+      </button>
+    </div>
   );
 }

@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { DEFAULT_CLUSTER_FORCES, stepClusterState, syncClusterState } from '../components/canvasClustering';
+import { Relationship } from '../types';
+
+const notes: Array<{ id: string; x: number; y: number }> = [
+  { id: 'a', x: 0, y: 0 },
+  { id: 'b', x: 320, y: 0 },
+  { id: 'c', x: 96, y: 0 }
+];
+
+function connected(fromId: string, toId: string): Relationship {
+  return {
+    id: `${fromId}-${toId}`,
+    fromId,
+    toId,
+    type: 'related',
+    state: 'confirmed',
+    explicitness: 'explicit',
+    directional: false,
+    explanation: 'linked',
+    heuristicSupported: false,
+    createdAt: 1,
+    lastActiveAt: 1
+  };
+}
+
+test('connected notes drift together while nearby unconnected notes drift apart', () => {
+  let state = syncClusterState(notes);
+
+  for (let step = 0; step < 120; step += 1) {
+    state = stepClusterState(notes, [connected('a', 'b')], state);
+  }
+
+  const connectedDistance = state.b.x - state.a.x;
+  assert.ok(connectedDistance < notes[1].x - notes[0].x, 'connected notes should move slightly closer');
+  assert.ok(state.c.x > notes[2].x, 'unconnected notes should gain a little breathing room');
+});
+
+test('anchor spring and offset cap preserve manual layout dominance', () => {
+  const displaced = syncClusterState([{ id: 'solo', x: 180, y: 120 }]);
+  displaced.solo.x += 60;
+  displaced.solo.y += 60;
+
+  const next = stepClusterState([{ id: 'solo', x: 180, y: 120 }], [], displaced);
+  const offset = Math.hypot(next.solo.x - 180, next.solo.y - 120);
+
+  assert.ok(offset <= DEFAULT_CLUSTER_FORCES.maxOffset + 0.0001);
+  assert.ok(next.solo.x < displaced.solo.x);
+  assert.ok(next.solo.y < displaced.solo.y);
+});
+
+test('strong damping keeps per-frame motion slow and controlled', () => {
+  let state = syncClusterState(notes);
+  state = stepClusterState(notes, [connected('a', 'b')], state);
+
+  const speedA = Math.hypot(state.a.vx, state.a.vy);
+  const speedB = Math.hypot(state.b.vx, state.b.vy);
+
+  assert.ok(speedA <= DEFAULT_CLUSTER_FORCES.maxSpeed + 0.0001);
+  assert.ok(speedB <= DEFAULT_CLUSTER_FORCES.maxSpeed + 0.0001);
+  assert.ok(DEFAULT_CLUSTER_FORCES.damping < 0.8);
+});
