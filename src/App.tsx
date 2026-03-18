@@ -134,7 +134,7 @@ export function App() {
             <SpatialCanvas
               notes={visibleNotes}
               noteMetaById={lensPresentation.noteMetaById}
-              focusHighlightEnabled={scene.focusMode.highlight}
+              focusMode={scene.focusMode}
               activeNoteId={activeNote?.id ?? null}
               hoveredNoteId={hoveredNoteId}
               revealMatchedNoteIds={visibleRevealMatchIds}

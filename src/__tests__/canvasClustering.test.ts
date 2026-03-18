@@ -97,3 +97,26 @@ test('released nodes rejoin clustering gradually and stay close to manual anchor
   assert.ok(softSpeed <= fullSpeed, 'early release should move more gently than full clustering');
   assert.ok(softOffset <= DEFAULT_CLUSTER_FORCES.maxOffset * 0.6 + 0.0001);
 });
+
+
+test('focus mode pulls focused notes toward center and softens non-focus positions', () => {
+  const focusNotes = [
+    { id: 'focus-a', x: 0, y: 40 },
+    { id: 'focus-b', x: 360, y: 60 },
+    { id: 'context', x: 160, y: 40 }
+  ];
+
+  let state = syncClusterState(focusNotes);
+
+  for (let step = 0; step < 120; step += 1) {
+    state = stepClusterState(focusNotes, [], state, {}, {
+      focusModeActive: true,
+      focusNoteIds: ['focus-a', 'focus-b'],
+      viewportCenter: { x: 180, y: 50 }
+    });
+  }
+
+  assert.ok(state['focus-a'].x > focusNotes[0].x, 'focused note should drift inward from the left');
+  assert.ok(state['focus-b'].x < focusNotes[1].x, 'focused note should drift inward from the right');
+  assert.ok(state.context.y < focusNotes[2].y, 'non-focus note should ease outward from the focus center');
+});
