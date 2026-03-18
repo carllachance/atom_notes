@@ -3,6 +3,17 @@ import { NoteCardModel } from '../types';
 
 export const now = () => Date.now();
 
+function normalizeTag(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized ? normalized : null;
+}
+
+function normalizeStringList(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return [...new Set(values.map((value) => normalizeTag(value)).filter((value): value is string => Boolean(value)))];
+}
+
 export function createNote(text: string, z: number): NoteCardModel {
   const t = now();
   const trimmed = text.trim();
@@ -19,11 +30,18 @@ export function createNote(text: string, z: number): NoteCardModel {
     createdAt: t,
     updatedAt: t,
     archived: false,
-    inFocus: false
+    inFocus: false,
+    workspaceId: null,
+    workspaceAffinities: [],
+    projectIds: []
   };
 }
 
-export function normalizeNote(note: Partial<NoteCardModel>, i: number): NoteCardModel {
+export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: unknown; projects?: unknown }, i: number): NoteCardModel {
+  const workspaceId = normalizeTag(note.workspaceId ?? note.workspace);
+  const workspaceAffinities = normalizeStringList(note.workspaceAffinities);
+  const projectIds = normalizeStringList(note.projectIds ?? note.projects);
+
   return {
     id: String(note.id ?? `legacy-${i}`),
     title: normalizeOptionalTitle(typeof note.title === 'string' ? note.title : null),
@@ -36,6 +54,9 @@ export function normalizeNote(note: Partial<NoteCardModel>, i: number): NoteCard
     createdAt: Number(note.createdAt ?? now()),
     updatedAt: Number(note.updatedAt ?? now()),
     archived: Boolean(note.archived),
-    inFocus: Boolean(note.inFocus)
+    inFocus: Boolean(note.inFocus),
+    workspaceId,
+    workspaceAffinities,
+    projectIds
   };
 }

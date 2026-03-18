@@ -1,327 +1,83 @@
-# Atomic Notes (atom_notes)
+# Atomic Notes
 
-### From complexity to clarity.
+Atomic Notes is a local-first thinking surface built around one shared universe of notes.
 
-Atomic Notes is a local-first workspace where ideas don’t sit in folders—they connect, evolve, and surface themselves when they matter.
+Instead of splitting ideas into isolated boards, the app treats every note as part of the same relational system and uses lenses to decide what to emphasize right now.
 
-It’s designed for people who think in threads, not files.
+## Updated mental model
 
+### One universe, many lenses
 
----
+Notes do not live inside exclusive silos.
 
-The Vision
+Each note can carry:
 
-Most tools force you to decide too early:
+- an **origin workspace** (`workspaceId`)
+- additional **workspace affinities** (`workspaceAffinities`)
+- zero or more **project memberships** (`projectIds`)
 
-Is this a note?
+That metadata helps the system focus the canvas without turning workspace into a prison.
 
-A task?
+### Workspaces are scope, not containment
 
-A document?
+A workspace lens answers:
 
+> “What should I emphasize from this scope right now?”
 
-Atomic Notes removes that decision.
+It does **not** mean:
 
-Everything starts as a note—and grows into whatever it needs to become.
+> “Hide everything that was born elsewhere forever.”
 
-> A note can become a task, a project, a research hub, or a decision trail—without ever losing its history.
+Because notes can have affinities beyond their origin, a workspace view can include shared notes while still showing where they came from.
 
+### Projects span scopes
 
+A project lens can gather notes from multiple workspaces.
 
+This keeps the canvas aligned to the work at hand while preserving origin cues for cross-scope notes.
 
----
+### Reveal searches the shared universe
 
-What It Feels Like
+Reveal is now a real lens, not just a temporary highlight.
 
-You open the app and start typing:
+A reveal query searches across the full note universe and can surface off-scope matches. Those surfaced notes stay visibly marked with scope context so cross-workspace discovery remains explainable.
 
-> “daily fed report”
+### Relationship reveal stays local and calm
 
+Opening a note still reveals its local relationship web behind the modal.
 
+That relationship neighborhood is treated as a formal reveal lens in state/selectors so the rules for visibility, context, and off-scope surfacing stay centralized instead of being scattered across components.
 
-Instead of a list of files, the system responds with a living view:
+## Current lens types
 
-Relevant notes appear
+The app currently supports these lens families:
 
-Connections form between them
+- **Workspace lens** — focus on a workspace or the shared universe
+- **Project lens** — focus on one project across scopes
+- **Reveal lens** — surface notes by query or local relationships
+- **Archive lens** — inspect historical notes without mixing them into the active canvas
 
-Patterns emerge visually
+## Key behavior guarantees
 
+- The active lens is shown in the UI.
+- Workspace metadata focuses the canvas without exclusive containment.
+- Cross-workspace reveal can surface relevant notes.
+- Off-scope surfaced notes keep visible context cues.
+- Lens rules live in centralized selectors/state.
+- Lens state is serialized with the scene.
 
-You don’t go looking for information.
+## Development
 
-It assembles around your intent.
+### Prerequisites
 
+- Node.js (LTS)
+- npm
 
----
+### Commands
 
-Core Experience
-
-Capture Without Friction
-
-Quickly drop anything into the system:
-
-Thoughts
-
-Links
-
-Code snippets
-
-Checklists
-
-Attachments
-
-
-No forms. No structure required.
-
-
----
-
-Notes That Think With You
-
-Each note includes its own AI context:
-
-Ask questions about the note
-
-Analyze attachments and links
-
-Keep reasoning tied to the note itself
-
-
-Your thinking stays grounded and persistent, not scattered across chats.
-
-
----
-
-Relationships Over Folders
-
-Instead of organizing notes manually, the system builds connections:
-
-What relates to this?
-
-What depends on this?
-
-What changed because of this?
-
-
-These relationships are:
-
-Explicit (you define them)
-
-Inferred (the system suggests them)
-
-Time-aware (what’s relevant now vs what’s fading)
-
-
-
----
-
-A Living Graph, Not a Static List
-
-Your knowledge isn’t stored—it’s continuously shaped.
-
-Important ideas surface
-
-Old context fades but never disappears
-
-Hidden connections become visible
-
-
-The system doesn’t just store information.
-
-It helps you see it.
-
-
----
-
-Why It Exists
-
-Work today is fragmented:
-
-Notes live in one place
-
-Tasks in another
-
-Research somewhere else
-
-
-This creates constant context switching.
-
-Atomic Notes is an attempt to unify all of that into a single object:
-
-> A living work artifact that carries its content, context, relationships, and reasoning together.
-
-
-
-
----
-
-Example Moments
-
-“What was I working on here?”
-
-Open a note → see everything connected → instantly regain context.
-
-“Does this impact anything?”
-
-Add new information → relationships surface downstream effects.
-
-“Where did this idea come from?”
-
-Trace backwards through connected notes and decisions.
-
-“What actually matters right now?”
-
-The system prioritizes active, relevant connections automatically.
-
-
----
-
-Design Principles
-
-Local-first → your data stays with you
-
-Low friction → capture should feel effortless
-
-Explainable → relationships are visible, not hidden
-
-Composable → small ideas build into larger systems
-
-Calm by default → clarity over visual noise
-
-
-
----
-
-What Exists Today
-
-The current build focuses on the core interaction model and foundational behaviors:
-
-Note creation with mixed content (text, links, lightweight structure)
-
-Local-first desktop experience (Tauri-based)
-
-Basic relationship modeling between notes
-
-Graph-aware ranking of connected notes
-
-Time-aware handling of relevance (active vs stale relationships)
-
-Embedded AI per note (context stays scoped to the note)
-
-Simplified capture flow (fast entry, minimal friction)
-
-Deterministic graph curation (bounded, stable results)
-
-
-The emphasis so far has been on getting the core primitives right: notes, relationships, and how they surface.
-
-
----
-
-What Is In Progress
-
-These areas are actively being refined:
-
-Graph clarity (making relationships feel obvious, not technical)
-
-Ranking logic (what surfaces first and why)
-
-UI simplification (reducing cognitive load and visual noise)
-
-Language consistency (making the system self-explanatory)
-
-
-
----
-
-What Is Next (Near-Term)
-
-Query-first entry (start with intent instead of navigation)
-
-Improved visual graph exploration
-
-Relationship editing and inspection tools
-
-Better ingestion for links and structured content
-
-Stronger AI-assisted relationship suggestions
-
-
-
----
-
-Future Direction
-
-Longer-term direction for the system:
-
-Document ingestion pipeline (docx, PDF, web → atomic notes)
-
-Automated atomization and relationship extraction
-
-Time-based insight layer (drift, resurfacing, decay)
-
-Multi-agent workflows for analysis and enrichment
-
-Domain-specific workspaces (e.g., regulations, procedures)
-
-Large-scale graph exploration without losing clarity
-
-
-
----
-
-Getting Started
-
-Prerequisites
-
-Node.js (LTS)
-
-npm or pnpm
-
-Rust + Cargo (for Tauri)
-
-
-Install
-
-git clone https://github.com/your-username/atom_notes.git
-cd atom_notes
+```bash
 npm install
-
-Run
-
-npm run tauri dev
-
-
----
-
-Direction
-
-Where this is heading:
-
-Query-first interface (start with intent, not location)
-
-Automated document ingestion and atomization
-
-Stronger relationship inference
-
-Visual exploration that scales with complexity
-
-Multi-agent workflows for analysis and enrichment
-
-
-
----
-
-Closing Thought
-
-Most tools help you store more.
-
-Atomic Notes is about helping you understand more.
-
-
----
-
-License
-
-TBD
+npm test
+npm run build
+npm run dev
+```

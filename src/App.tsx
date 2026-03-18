@@ -4,6 +4,7 @@ import { RecallBand } from './components/RecallBand';
 import { RelationshipWeb } from './components/RelationshipWeb';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
+import { createProjectLens, createWorkspaceLens } from './scene/lens';
 import { useSceneController } from './scene/useSceneController';
 
 export function App() {
@@ -11,7 +12,10 @@ export function App() {
     scene,
     activeNote,
     visibleNotes,
+    lensState,
     archivedNotes,
+    activeProjectId,
+    lensWorkspaceId,
     hoveredNoteId,
     relationshipFilter,
     recentlyClosedNoteId,
@@ -55,22 +59,31 @@ export function App() {
         count={visibleNotes.length}
         archivedCount={archivedNotes.length}
         quickCaptureOpen={scene.quickCaptureOpen}
-        lens={scene.lens}
-        onSetLens={setLens}
-        onToggleQuickCapture={toggleQuickCapture}
-        onWhereWasI={onWhereWasI}
+        activeLensLabel={lensState.activeLensLabel}
+        activeLensDescription={lensState.activeLensDescription}
+        activeWorkspaceId={lensWorkspaceId}
+        activeProjectId={activeProjectId}
+        availableWorkspaceIds={lensState.availableWorkspaceIds}
+        availableProjectIds={lensState.availableProjectIds}
         revealQuery={revealState.query}
         revealMatchCount={visibleRevealMatchIds.length}
+        onSetWorkspaceLens={(workspaceId) => setLens(createWorkspaceLens(workspaceId))}
+        onSetProjectLens={(projectId) =>
+          setLens(projectId ? createProjectLens(projectId, lensWorkspaceId) : createWorkspaceLens(lensWorkspaceId))
+        }
+        onToggleQuickCapture={toggleQuickCapture}
+        onWhereWasI={onWhereWasI}
         onRevealQueryChange={onRevealQueryChange}
         onReveal={onReveal}
         onRevealPrev={onRevealPrev}
         onRevealNext={onRevealNext}
       />
 
-      <section className="view-stack" data-lens={scene.lens}>
+      <section className="view-stack" data-lens={scene.lens.kind}>
         <div className="view-layer view-layer-canvas">
           <SpatialCanvas
             notes={visibleNotes}
+            noteStates={lensState.noteStates}
             activeNoteId={activeNote?.id ?? null}
             hoveredNoteId={hoveredNoteId}
             revealMatchedNoteIds={visibleRevealMatchIds}
@@ -90,8 +103,8 @@ export function App() {
             onHoverStart={onHoverStart}
             onHoverEnd={onHoverEnd}
           />
-          {scene.lens === 'focus' && visibleNotes.length === 0 ? (
-            <div className="lens-empty-state">No focused notes yet. Mark a note as focused to surface it here.</div>
+          {visibleNotes.length === 0 && lensState.emptyMessage ? (
+            <div className="lens-empty-state">{lensState.emptyMessage}</div>
           ) : null}
         </div>
       </section>
@@ -100,7 +113,7 @@ export function App() {
       {activeNote ? (
         <RelationshipWeb
           activeNote={activeNote}
-          notes={visibleNotes}
+          notes={scene.notes}
           rankedRelationships={rankedRelationships}
           filter={relationshipFilter}
           onTraverse={traverseToRelated}

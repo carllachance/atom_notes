@@ -1,111 +1,82 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NoteCardModel } from '../types';
 
-const REVEAL_CLEAR_MS = 5200;
 const NOTE_WIDTH = 270;
 const NOTE_HEIGHT = 170;
 
 type CanvasCenter = { x: number; y: number };
 
-type RevealState = {
-  query: string;
-  matchedNoteIds: string[];
-  activeMatchIndex: number;
-};
-
 type UseRevealControllerOptions = {
   visibleNotes: NoteCardModel[];
-  visibleNoteIds: Set<string>;
+  activeRevealQuery: string;
+  onApplyReveal: (query: string) => void;
   panToCenterIfFar: (targetCenter: CanvasCenter) => void;
 };
-
-export function findMatchingNoteIds(query: string, notes: NoteCardModel[]): string[] {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return [];
-
-  return notes
-    .filter((note) => `${note.title ?? ''}\n${note.body}`.toLowerCase().includes(normalized))
-    .map((note) => note.id);
-}
 
 function getNoteCenter(note: { x: number; y: number }): CanvasCenter {
   return { x: note.x + NOTE_WIDTH / 2, y: note.y + NOTE_HEIGHT / 2 };
 }
 
-export function useRevealController({ visibleNotes, visibleNoteIds, panToCenterIfFar }: UseRevealControllerOptions) {
-  const [revealState, setRevealState] = useState<RevealState>({ query: '', matchedNoteIds: [], activeMatchIndex: 0 });
-  const revealTimerRef = useRef<number | null>(null);
+export function useRevealController({ visibleNotes, activeRevealQuery, onApplyReveal, panToCenterIfFar }: UseRevealControllerOptions) {
+  const [draftQuery, setDraftQuery] = useState(activeRevealQuery);
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+
+  useEffect(() => {
+    setDraftQuery(activeRevealQuery);
+    setActiveMatchIndex(0);
+  }, [activeRevealQuery]);
 
   const visibleRevealMatchIds = useMemo(
-    () => revealState.matchedNoteIds.filter((noteId) => visibleNoteIds.has(noteId)),
-    [revealState.matchedNoteIds, visibleNoteIds]
+    () => (activeRevealQuery ? visibleNotes.map((note) => note.id) : []),
+    [activeRevealQuery, visibleNotes]
   );
 
   const revealActiveNoteId =
-    visibleRevealMatchIds.length > 0
-      ? visibleRevealMatchIds[revealState.activeMatchIndex % visibleRevealMatchIds.length]
-      : null;
-
-  const scheduleRevealClear = useCallback(() => {
-    if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
-    revealTimerRef.current = window.setTimeout(() => {
-      setRevealState((prev) => ({ ...prev, matchedNoteIds: [], activeMatchIndex: 0 }));
-      revealTimerRef.current = null;
-    }, REVEAL_CLEAR_MS);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
-    };
-  }, []);
+    visibleRevealMatchIds.length > 0 ? visibleRevealMatchIds[activeMatchIndex % visibleRevealMatchIds.length] : null;
 
   const onRevealQueryChange = useCallback((query: string) => {
-    setRevealState((prev) => ({ ...prev, query }));
+    setDraftQuery(query);
   }, []);
 
   const onReveal = useCallback(() => {
-    const matches = findMatchingNoteIds(revealState.query, visibleNotes);
-    setRevealState((prev) => ({ ...prev, matchedNoteIds: matches, activeMatchIndex: 0 }));
+    const query = draftQuery.trim();
+    onApplyReveal(query);
+    setActiveMatchIndex(0);
 
-    if (matches.length === 0) return;
+    if (!query || visibleNotes.length === 0) return;
 
-    const matchNotes = visibleNotes.filter((note) => matches.includes(note.id));
-    const centers = matchNotes.map((note) => getNoteCenter(note));
+    const centers = visibleNotes.map((note) => getNoteCenter(note));
     const minX = Math.min(...centers.map((point) => point.x));
     const maxX = Math.max(...centers.map((point) => point.x));
     const minY = Math.min(...centers.map((point) => point.y));
     const maxY = Math.max(...centers.map((point) => point.y));
 
     panToCenterIfFar({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
-    scheduleRevealClear();
-  }, [panToCenterIfFar, revealState.query, scheduleRevealClear, visibleNotes]);
+  }, [draftQuery, onApplyReveal, panToCenterIfFar, visibleNotes]);
 
   const onRevealStep = useCallback(
     (direction: -1 | 1) => {
       if (visibleRevealMatchIds.length < 2) return;
-      const nextIndex = (revealState.activeMatchIndex + direction + visibleRevealMatchIds.length) % visibleRevealMatchIds.length;
+      const nextIndex = (activeMatchIndex + direction + visibleRevealMatchIds.length) % visibleRevealMatchIds.length;
       const nextId = visibleRevealMatchIds[nextIndex];
       const targetNote = visibleNotes.find((note) => note.id === nextId);
-      if (targetNote) {
-        panToCenterIfFar(getNoteCenter(targetNote));
-      }
-      setRevealState((prev) => ({ ...prev, activeMatchIndex: nextIndex }));
-      scheduleRevealClear();
+      if (targetNote) panToCenterIfFar(getNoteCenter(targetNote));
+      setActiveMatchIndex(nextIndex);
     },
-    [panToCenterIfFar, revealState.activeMatchIndex, scheduleRevealClear, visibleNotes, visibleRevealMatchIds]
+    [activeMatchIndex, panToCenterIfFar, visibleNotes, visibleRevealMatchIds]
   );
 
-  const onRevealNext = useCallback(() => onRevealStep(1), [onRevealStep]);
-  const onRevealPrev = useCallback(() => onRevealStep(-1), [onRevealStep]);
-
   return {
-    revealState,
+    revealState: {
+      query: draftQuery,
+      matchedNoteIds: visibleRevealMatchIds,
+      activeMatchIndex
+    },
     visibleRevealMatchIds,
     revealActiveNoteId,
     onRevealQueryChange,
     onReveal,
-    onRevealNext,
-    onRevealPrev
+    onRevealNext: () => onRevealStep(1),
+    onRevealPrev: () => onRevealStep(-1)
   };
 }

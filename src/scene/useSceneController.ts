@@ -3,7 +3,15 @@ import { now } from '../notes/noteModel';
 import { getCompactDisplayTitle } from '../noteText';
 import { getRankedRelationshipsForNote, getRelationshipTargetNoteId } from '../relationshipLogic';
 import { loadScene, saveScene } from './sceneStorage';
-import { applyLens } from './lens';
+import {
+  applyLens,
+  createRelationshipLens,
+  createRevealQueryLens,
+  createWorkspaceLens,
+  getLensProjectId,
+  getLensRevealQuery,
+  getLensWorkspaceId
+} from './lens';
 import { RelationshipType, SceneState } from '../types';
 import { useAmbientGuidance } from './useAmbientGuidance';
 import { useRevealController } from './useRevealController';
@@ -21,10 +29,14 @@ export function useSceneController() {
     [scene.activeNoteId, scene.notes]
   );
 
-  const visibleNotes = useMemo(() => applyLens(scene.notes, scene.lens), [scene.notes, scene.lens]);
-  const archivedNotes = scene.notes.filter((note) => note.archived);
+  const lensState = useMemo(() => applyLens(scene), [scene]);
+  const visibleNotes = lensState.visibleNotes;
+  const archivedNotes = lensState.archivedNotes;
   const highestZ = scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0);
   const visibleNoteIds = useMemo(() => new Set(visibleNotes.map((note) => note.id)), [visibleNotes]);
+  const lensWorkspaceId = getLensWorkspaceId(scene.lens);
+  const activeRevealQuery = getLensRevealQuery(scene.lens);
+  const activeProjectId = getLensProjectId(scene.lens);
 
   const activeRelationships = useMemo(() => {
     if (!activeNote) return [];
@@ -46,6 +58,11 @@ export function useSceneController() {
     return getRankedRelationshipsForNote(activeNote.id, scene);
   }, [activeNote, scene]);
 
+  const relationshipLensState = useMemo(() => {
+    if (!activeNote) return null;
+    return applyLens(scene, createRelationshipLens(activeNote.id, lensWorkspaceId));
+  }, [activeNote, lensWorkspaceId, scene]);
+
   const relationshipPanelItems = useMemo(() => {
     if (!activeNote) return [];
     const notesById = new Map(scene.notes.map((note) => [note.id, note]));
@@ -58,6 +75,7 @@ export function useSceneController() {
         targetTitle: notesById.get(targetId)
           ? getCompactDisplayTitle(notesById.get(targetId) as { title: string | null; body: string })
           : getCompactDisplayTitle({ title: null, body: '' }),
+        targetContextLabel: relationshipLensState?.noteStates[targetId]?.contextLabel ?? 'Unscoped',
         type: relationship.type,
         explicitness: relationship.explicitness,
         state: relationship.state,
@@ -65,19 +83,13 @@ export function useSceneController() {
         heuristicSupported: relationship.heuristicSupported
       };
     });
-  }, [activeNote, activeRelationships, scene.notes]);
+  }, [activeNote, activeRelationships, relationshipLensState?.noteStates, scene.notes]);
 
   const ambient = useAmbientGuidance({
     visibleNotes,
     visibleNoteIds,
     relationships: scene.relationships,
     allNotes: scene.notes
-  });
-
-  const reveal = useRevealController({
-    visibleNotes,
-    visibleNoteIds,
-    panToCenterIfFar: ambient.panToCenterIfFar
   });
 
   const mutations = useSceneMutations({
@@ -89,6 +101,15 @@ export function useSceneController() {
     onNoteArchived: ambient.onNoteArchived,
     onNoteTraversed: ambient.onNoteTraversed,
     setRelationshipFilter
+  });
+
+  const reveal = useRevealController({
+    visibleNotes,
+    activeRevealQuery,
+    panToCenterIfFar: ambient.panToCenterIfFar,
+    onApplyReveal: (query) => {
+      mutations.setLens(query ? createRevealQueryLens(query, lensWorkspaceId) : createWorkspaceLens(lensWorkspaceId));
+    }
   });
 
   useEffect(() => {
@@ -133,7 +154,10 @@ export function useSceneController() {
     scene,
     activeNote,
     visibleNotes,
+    lensState,
     archivedNotes,
+    activeProjectId,
+    lensWorkspaceId,
     hoveredNoteId: ambient.hoveredNoteId,
     relationshipFilter,
     recentlyClosedNoteId: ambient.recentlyClosedNoteId,

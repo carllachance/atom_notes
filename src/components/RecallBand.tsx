@@ -1,13 +1,19 @@
-import { Lens } from '../types';
+import { ProjectId, WorkspaceId } from '../types';
 
 type RecallBandProps = {
   count: number;
   archivedCount: number;
   quickCaptureOpen: boolean;
-  lens: Lens;
+  activeLensLabel: string;
+  activeLensDescription: string;
+  activeWorkspaceId: WorkspaceId | null;
+  activeProjectId: ProjectId | null;
+  availableWorkspaceIds: WorkspaceId[];
+  availableProjectIds: ProjectId[];
   revealQuery: string;
   revealMatchCount: number;
-  onSetLens: (lens: Lens) => void;
+  onSetWorkspaceLens: (workspaceId: WorkspaceId | null) => void;
+  onSetProjectLens: (projectId: ProjectId | null) => void;
   onToggleQuickCapture: () => void;
   onWhereWasI: () => void;
   onRevealQueryChange: (query: string) => void;
@@ -20,10 +26,16 @@ export function RecallBand({
   count,
   archivedCount,
   quickCaptureOpen,
-  lens,
+  activeLensLabel,
+  activeLensDescription,
+  activeWorkspaceId,
+  activeProjectId,
+  availableWorkspaceIds,
+  availableProjectIds,
   revealQuery,
   revealMatchCount,
-  onSetLens,
+  onSetWorkspaceLens,
+  onSetProjectLens,
   onToggleQuickCapture,
   onWhereWasI,
   onRevealQueryChange,
@@ -33,26 +45,47 @@ export function RecallBand({
 }: RecallBandProps) {
   return (
     <header className="recall-band">
+      <div className="recall-lens-status" aria-live="polite">
+        <span className="lens-kicker">Active lens</span>
+        <strong>{activeLensLabel}</strong>
+        <small>{activeLensDescription}</small>
+      </div>
+
       <div className="recall-meta">
-        <span>{count} notes</span>
+        <span>{count} visible</span>
         <span>{archivedCount} archived</span>
       </div>
-      <nav className="view-switch" aria-label="Lens selection">
-        <button className={lens === 'all' ? 'active' : ''} onClick={() => onSetLens('all')}>
-          Canvas
-        </button>
-        <button className={lens === 'focus' ? 'active' : ''} onClick={() => onSetLens('focus')}>
-          Focus
-        </button>
-        <button className={lens === 'archive' ? 'active' : ''} onClick={() => onSetLens('archive')}>
-          Archive
-        </button>
-      </nav>
+
+      <div className="lens-controls" aria-label="Scoped lenses">
+        <label>
+          <span>Workspace</span>
+          <select value={activeWorkspaceId ?? ''} onChange={(event) => onSetWorkspaceLens(event.target.value || null)}>
+            <option value="">Shared universe</option>
+            {availableWorkspaceIds.map((workspaceId) => (
+              <option key={workspaceId} value={workspaceId}>
+                {workspaceId}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span>Project</span>
+          <select value={activeProjectId ?? ''} onChange={(event) => onSetProjectLens(event.target.value || null)}>
+            <option value="">No project lens</option>
+            {availableProjectIds.map((projectId) => (
+              <option key={projectId} value={projectId}>
+                {projectId}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <div className="reveal-controls">
         <input
           aria-label="Reveal query"
-          placeholder="Reveal on canvas…"
+          placeholder="Reveal across scopes…"
           value={revealQuery}
           onChange={(event) => onRevealQueryChange(event.target.value)}
           onKeyDown={(event) => {

@@ -1,10 +1,12 @@
 import { PointerEvent } from 'react';
 import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
 import { describeNoteTrace, getTraceVisualBias } from '../trace';
+import { LensNoteState } from '../scene/lens';
 import { NoteCardModel } from '../types';
 
 type NoteCardProps = {
   note: NoteCardModel;
+  lensState?: LensNoteState;
   recentlyClosed: boolean;
   ambientRelated: boolean;
   ambientPulse: boolean;
@@ -46,6 +48,7 @@ function getVisualState(
 
 export function NoteCard({
   note,
+  lensState,
   recentlyClosed,
   ambientRelated,
   ambientPulse,
@@ -83,6 +86,8 @@ export function NoteCard({
       data-trace={note.trace}
       data-focus={note.inFocus ? 'true' : 'false'}
       data-visual-state={visualState}
+      data-lens-emphasis={lensState?.emphasis ?? 'strong'}
+      data-off-scope={lensState?.offScope ? 'true' : 'false'}
       style={{
         transform: `translate(${note.x}px, ${note.y - bias.lift}px) scale(${bias.scale})`,
         zIndex: note.z,
@@ -93,6 +98,7 @@ export function NoteCard({
     >
       <h3 title={displayTitle}>{displayTitle}</h3>
       <p className="summary-preview">{summaryPreview}</p>
+      {lensState?.contextLabel ? <p className="scope-cue">{lensState.contextLabel}</p> : null}
       <p className="trace">{describeNoteTrace(note)}</p>
     </article>
   );

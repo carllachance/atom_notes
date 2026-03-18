@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { NoteCardModel } from '../types';
+import { LensNoteState } from '../scene/lens';
 import { NoteCard } from './NoteCard';
 
 type RecenterTarget = {
@@ -10,6 +11,7 @@ type RecenterTarget = {
 
 type SpatialCanvasProps = {
   notes: NoteCardModel[];
+  noteStates: Record<string, LensNoteState>;
   activeNoteId: string | null;
   hoveredNoteId: string | null;
   revealMatchedNoteIds: string[];
@@ -43,6 +45,7 @@ const OPEN_THRESHOLD_PX = 6;
 
 export function SpatialCanvas({
   notes,
+  noteStates,
   activeNoteId,
   hoveredNoteId,
   revealMatchedNoteIds,
@@ -131,6 +134,7 @@ export function SpatialCanvas({
           <NoteCard
             key={note.id}
             note={note}
+            lensState={noteStates[note.id]}
             recentlyClosed={recentlyClosedNoteId === note.id}
             ambientRelated={relatedGlowIdsSet.has(note.id)}
             ambientPulse={pulseNoteId === note.id}

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "tsc -p tsconfig.tests.json && node scripts/fix-test-imports.mjs && node --test dist-tests/__tests__/*.test.js"
   },
   "dependencies": {
     "react": "^18.3.1",

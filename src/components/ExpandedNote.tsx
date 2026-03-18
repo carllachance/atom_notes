@@ -7,6 +7,7 @@ type VisibleRelationship = {
   id: string;
   targetId: string;
   targetTitle: string;
+  targetContextLabel: string;
   type: RelationshipType;
   explicitness: 'explicit' | 'inferred';
   state: 'proposed' | 'confirmed';
@@ -36,6 +37,10 @@ type DragState = {
 };
 
 type BodyMode = 'read' | 'edit';
+
+function normalizeCommaSeparatedList(value: string): string[] {
+  return [...new Set(value.split(',').map((part) => part.trim()).filter(Boolean))];
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -153,6 +158,41 @@ export function ExpandedNote({
           onChange={(event) => onChange(note.id, { title: event.target.value })}
         />
 
+        <div className="scope-editor">
+          <label>
+            <span>Workspace</span>
+            <input
+              aria-label="Note workspace"
+              value={note.workspaceId ?? ''}
+              placeholder="Optional origin workspace"
+              onChange={(event) => {
+                const workspaceId = event.target.value.trim();
+                onChange(note.id, { workspaceId: workspaceId || null });
+              }}
+            />
+          </label>
+          <label>
+            <span>Shared in</span>
+            <input
+              aria-label="Note workspace affinities"
+              value={note.workspaceAffinities.join(', ')}
+              placeholder="Optional additional scopes"
+              onChange={(event) =>
+                onChange(note.id, { workspaceAffinities: normalizeCommaSeparatedList(event.target.value) })
+              }
+            />
+          </label>
+          <label>
+            <span>Projects</span>
+            <input
+              aria-label="Note projects"
+              value={note.projectIds.join(', ')}
+              placeholder="Comma-separated project ids"
+              onChange={(event) => onChange(note.id, { projectIds: normalizeCommaSeparatedList(event.target.value) })}
+            />
+          </label>
+        </div>
+
         <div className="body-mode-switch" role="tablist" aria-label="Note body mode">
           <button
             role="tab"
@@ -189,7 +229,7 @@ export function ExpandedNote({
                 <button className="relation-main" onClick={() => onOpenRelated(relationship.targetId, relationship.id)}>
                   <span className="relation-title">{relationship.targetTitle}</span>
                   <small>
-                    {relationship.type === 'references' ? 'Reference' : 'Related'} ·{' '}
+                    {relationship.type === 'references' ? 'Reference' : 'Related'} · {relationship.targetContextLabel} ·{' '}
                     {relationship.explicitness === 'inferred' ? relationship.explanation : 'Explicit link'}
                   </small>
                 </button>

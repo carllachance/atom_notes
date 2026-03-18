@@ -1,6 +1,7 @@
 import { createNote, normalizeNote, now } from '../notes/noteModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import { Relationship, SceneState } from '../types';
+import { createWorkspaceLens, normalizeLens } from './lens';
 
 export const SCENE_KEY = 'atom-notes.scene.v2';
 
@@ -29,7 +30,7 @@ export function loadScene(): SceneState {
     activeNoteId: null,
     quickCaptureOpen: true,
     lastCtrlTapTs: 0,
-    lens: 'all',
+    lens: createWorkspaceLens(null),
     canvasScrollLeft: 0,
     canvasScrollTop: 0
   };
@@ -47,12 +48,7 @@ export function loadScene(): SceneState {
       ? parsed.relationships.map((item) => normalizeRelationship(item)).filter(Boolean)
       : [];
 
-    const requestedLens =
-      parsed.lens === 'focus' || parsed.lens === 'archive'
-        ? parsed.lens
-        : parsed.currentView === 'archive'
-          ? 'archive'
-          : 'all';
+    const requestedLens = parsed.currentView === 'archive' ? normalizeLens('archive') : normalizeLens(parsed.lens);
     const activeNoteId =
       typeof parsed.activeNoteId === 'string' && normalizedNotes.some((note) => note.id === parsed.activeNoteId)
         ? parsed.activeNoteId

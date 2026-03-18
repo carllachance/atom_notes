@@ -2,6 +2,7 @@ import { now } from '../notes/noteModel';
 import { normalizeOptionalTitle } from '../noteText';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import { Lens, NoteCardModel, SceneState } from '../types';
+import { createArchiveLens, createWorkspaceLens } from './lens';
 
 export function updateNoteInScene(
   scene: SceneState,
@@ -65,14 +66,13 @@ export function closeActiveNoteInScene(scene: SceneState): SceneState {
 
 export function archiveNoteInScene(scene: SceneState, id: string): SceneState {
   const archived = updateNoteInScene(scene, id, { archived: true }, 'archive');
-  return { ...archived, activeNoteId: null, lens: 'archive' };
+  return { ...archived, activeNoteId: null, lens: createArchiveLens() };
 }
 
 export function restoreNoteInScene(scene: SceneState, id: string, highestZ: number): SceneState {
   const restored = updateNoteInScene(scene, id, { archived: false, z: highestZ + 1 }, 'restored');
-  return { ...restored, lens: 'all' };
+  return { ...restored, lens: createWorkspaceLens(null) };
 }
-
 
 export function toggleNoteFocusInScene(scene: SceneState, id: string): SceneState {
   return {

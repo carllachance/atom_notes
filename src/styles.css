@@ -41,13 +41,38 @@ textarea {
 .recall-band {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  justify-content: space-between;
   gap: 12px;
-  padding: 6px 8px;
-  border-radius: 999px;
+  padding: 10px 12px;
+  border-radius: 18px;
   border: 1px solid rgba(62, 76, 108, 0.2);
-  background: rgba(10, 15, 26, 0.3);
+  background: rgba(10, 15, 26, 0.34);
   backdrop-filter: blur(4px);
+}
+
+.recall-lens-status {
+  display: grid;
+  gap: 2px;
+  min-width: 220px;
+}
+
+.lens-kicker {
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8ea1ca;
+}
+
+.recall-lens-status strong {
+  font-size: 0.84rem;
+  color: #e4ecff;
+}
+
+.recall-lens-status small {
+  color: #9badd4;
+  font-size: 0.72rem;
+  max-width: 420px;
 }
 
 .recall-meta {
@@ -57,29 +82,27 @@ textarea {
   font-size: 0.74rem;
 }
 
-.view-switch {
-  display: inline-flex;
-  border: 1px solid rgba(75, 91, 126, 0.42);
+.lens-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lens-controls label {
+  display: grid;
+  gap: 4px;
+  color: #9fb1d7;
+  font-size: 0.68rem;
+}
+
+.lens-controls select {
+  min-width: 150px;
   border-radius: 999px;
-  padding: 1px;
-  gap: 2px;
-  background: rgba(11, 17, 30, 0.35);
+  border: 1px solid rgba(66, 86, 124, 0.3);
+  background: rgba(10, 15, 26, 0.45);
+  color: #d8e3fb;
+  padding: 4px 10px;
 }
-
-.view-switch button {
-  border-radius: 999px;
-  border: 0;
-  background: transparent;
-  color: #8fa2cc;
-  padding: 2px 8px;
-  font-size: 0.76rem;
-}
-
-.view-switch button.active {
-  background: rgba(58, 78, 119, 0.35);
-  color: #d8e2fb;
-}
-
 
 .reveal-controls {
   display: inline-flex;
@@ -163,6 +186,14 @@ textarea {
   transition: opacity 160ms ease, box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease, filter 180ms ease, background 180ms ease;
 }
 
+.note-card[data-lens-emphasis='context'] {
+  opacity: 0.76;
+}
+
+.note-card[data-off-scope='true'] {
+  border-color: rgba(171, 149, 223, 0.26);
+}
+
 
 .note-card[data-visual-state='hover'] {
   border-color: var(--note-hover-border);
@@ -244,6 +275,13 @@ textarea {
 }
 
 
+.note-card .scope-cue {
+  margin: 0 0 6px;
+  color: #9caed6;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
 .note-card .trace {
   margin: 8px 0 5px;
   color: rgba(200, 212, 241, 0.74);
@@ -314,6 +352,24 @@ textarea {
 .expanded-note textarea {
   min-height: 190px;
   resize: vertical;
+}
+
+.scope-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.scope-editor label {
+  display: grid;
+  gap: 4px;
+  color: #95a7cf;
+  font-size: 0.68rem;
+}
+
+.scope-editor label span {
+  padding-left: 2px;
 }
 
 .archive-head h2 {
