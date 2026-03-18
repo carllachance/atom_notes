@@ -1,3 +1,9 @@
+export type QueryPrototypeAction = {
+  id: string;
+  label: string;
+  hint: string;
+};
+
 export type QueryPrototypeItem = {
   id: string;
   title: string;
@@ -6,10 +12,12 @@ export type QueryPrototypeItem = {
   noteType: 'task' | 'reference' | 'concept' | 'history';
   project: string;
   focus: string;
+  isFocus: boolean;
   recencyLabel: string;
   recencyHours: number;
   score: number;
   tags: string[];
+  actions: QueryPrototypeAction[];
   relationships: Array<{
     id: string;
     label: string;
@@ -36,10 +44,15 @@ export const queryPrototypeItems: QueryPrototypeItem[] = [
     noteType: 'task',
     project: 'Launch cockpit',
     focus: 'Demo readiness',
+    isFocus: true,
     recencyLabel: 'Touched 18m ago',
     recencyHours: 0.3,
     score: 0.96,
     tags: ['launch', 'review', 'blockers', 'demo'],
+    actions: [
+      { id: 'open-blocker-chain', label: 'Open blocker chain', hint: 'Mock: centers the active task path.' },
+      { id: 'show-source-proof', label: 'Show source proof', hint: 'Mock: reveals the supporting evidence notes.' }
+    ],
     relationships: [
       {
         id: 'launch-source',
@@ -75,10 +88,15 @@ export const queryPrototypeItems: QueryPrototypeItem[] = [
     noteType: 'concept',
     project: 'Query layer',
     focus: 'Demo flow',
+    isFocus: false,
     recencyLabel: 'Touched 2h ago',
     recencyHours: 2,
     score: 0.92,
     tags: ['query', 'demo', 'prototype', 'navigation'],
+    actions: [
+      { id: 'inspect-ranking', label: 'Inspect ranking', hint: 'Mock: opens the current scoring rationale.' },
+      { id: 'peek-history', label: 'Peek history', hint: 'Mock: fades in the earlier modal-first prototype.' }
+    ],
     relationships: [
       {
         id: 'query-related',
@@ -114,10 +132,15 @@ export const queryPrototypeItems: QueryPrototypeItem[] = [
     noteType: 'history',
     project: 'Query layer',
     focus: 'Migration',
+    isFocus: true,
     recencyLabel: 'Touched yesterday',
     recencyHours: 26,
     score: 0.87,
     tags: ['focus', 'migration', 'prototype', 'notes'],
+    actions: [
+      { id: 'mark-focus-behavior', label: 'Mark focus behavior', hint: 'Mock: records the current Focus filter decision.' },
+      { id: 'compare-before-after', label: 'Compare before / after', hint: 'Mock: opens the prior interaction notes beside this plan.' }
+    ],
     relationships: [
       {
         id: 'focus-history',
@@ -153,10 +176,15 @@ export const queryPrototypeItems: QueryPrototypeItem[] = [
     noteType: 'reference',
     project: 'Launch cockpit',
     focus: 'Evidence',
+    isFocus: false,
     recencyLabel: 'Touched 4h ago',
     recencyHours: 4,
     score: 0.84,
     tags: ['evidence', 'sources', 'graph', 'demo'],
+    actions: [
+      { id: 'open-reference-set', label: 'Open references', hint: 'Mock: stages the supporting note set.' },
+      { id: 'trace-dependency', label: 'Trace dependency', hint: 'Mock: follows the task chain back to evidence.' }
+    ],
     relationships: [
       {
         id: 'evidence-source',

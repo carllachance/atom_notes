@@ -86,7 +86,7 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
             <button
               key={note.id}
               className="related-node"
-              title={relationship.explanation}
+              title={`${visual.label}${visual.structure === 'structural' ? ' · structural' : relationship.directional ? ' · directional' : ''} · ${relationship.explicitness === 'inferred' ? relationship.explanation : visual.description}`}
               data-type={relationship.type}
               data-explicitness={relationship.explicitness}
               data-relationship-category={visual.category}

@@ -25,6 +25,18 @@ type RecallBandProps = {
   }>;
 };
 
+function describeFocusState(focusMode: FocusMode, focusCount: number) {
+  if (focusMode.isolate) {
+    return `${focusCount} Focus notes shown globally. Non-Focus notes are hidden until Focus only is turned off.`;
+  }
+
+  if (focusMode.highlight) {
+    return `${focusCount} Focus notes stay visibly marked across the canvas. Turn off Highlight Focus to soften the extra emphasis, not to remove the Focus state.`;
+  }
+
+  return `${focusCount} Focus notes remain tagged, but without extra canvas emphasis.`;
+}
+
 export function RecallBand({
   count,
   archivedCount,
@@ -49,6 +61,7 @@ export function RecallBand({
   const activeProjectId = lens.kind === 'project' || lens.kind === 'reveal' ? lens.projectId ?? '' : '';
   const activeWorkspaceId = lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.workspaceId ?? '' : '';
   const scopeMode = lens.kind === 'project' || lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.mode : 'context';
+  const focusState = describeFocusState(focusMode, focusCount);
 
   return (
     <header className="recall-band">
@@ -84,6 +97,12 @@ export function RecallBand({
           Focus only
         </button>
         <span className="focus-count-chip">{focusCount} Focus</span>
+      </div>
+
+      <div className="focus-state-indicator" aria-live="polite">
+        <span className="active-lens-label">Focus filter</span>
+        <strong>{focusMode.isolate ? 'Focus only' : focusMode.highlight ? 'Highlight Focus' : 'Focus tags only'}</strong>
+        <small>{focusState}</small>
       </div>
 
       <div className="project-reveal-controls">
