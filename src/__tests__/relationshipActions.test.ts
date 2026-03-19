@@ -4,7 +4,9 @@ import {
   confirmRelationshipInScene,
   createExplicitRelationshipInScene,
   createInlineLinkedNoteInScene,
+  promoteNoteFragmentToTaskInScene,
   restoreRelationshipInScene,
+  setTaskStateInScene,
   traverseToRelatedInScene,
   updateRelationshipInScene
 } from '../relationships/relationshipActions';
@@ -135,9 +137,69 @@ test('relationshipActions creates a new linked note inline and inherits the acti
     projectIds: ['project-1'],
     inferredProjectIds: [],
     workspaceId: 'workspace-1',
+    taskState: undefined,
+    taskSource: null,
+    promotedTaskFragments: [],
     intent: undefined,
     intentConfidence: undefined,
     inferredRelationships: []
   });
   assert.equal(result.scene.relationships.some((relationship) => relationship.fromId === 'a' && relationship.toId === 'inline-note' && relationship.type === 'supports'), true);
+});
+
+test('relationshipActions promotes a source fragment into a task with provenance and derived link', (t: any) => {
+  t.mock.method(Date, 'now', () => 700);
+  const uuids = ['task-note', 'promotion-id'];
+  t.mock.method(globalThis.crypto, 'randomUUID', () => uuids.shift() as string);
+  const scene = {
+    ...baseScene(),
+    notes: [
+      { ...baseScene().notes[0], body: 'Review the release checklist before ship.', projectIds: ['project-1'], workspaceId: 'workspace-1', x: 40, y: 60 },
+      baseScene().notes[1]
+    ]
+  };
+
+  const promoted = promoteNoteFragmentToTaskInScene(scene, 'a', {
+    start: 11,
+    end: 32,
+    text: 'release checklist'
+  });
+
+  assert.equal(promoted.taskNoteId, 'task-note');
+  assert.equal(promoted.promotionId, 'promotion-id');
+  assert.deepEqual(promoted.scene.notes.find((note) => note.id === 'task-note')?.taskSource, {
+    sourceNoteId: 'a',
+    promotionId: 'promotion-id',
+    start: 11,
+    end: 32,
+    text: 'release checklist',
+    createdAt: 700
+  });
+  assert.deepEqual(promoted.scene.notes.find((note) => note.id === 'a')?.promotedTaskFragments, [{
+    id: 'promotion-id',
+    taskNoteId: 'task-note',
+    start: 11,
+    end: 32,
+    text: 'release checklist',
+    createdAt: 700
+  }]);
+  assert.equal(promoted.scene.relationships.some((relationship) => relationship.fromId === 'task-note' && relationship.toId === 'a' && relationship.type === 'derived_from'), true);
+});
+
+test('relationshipActions updates task state without breaking linked context', (t: any) => {
+  t.mock.method(Date, 'now', () => 910);
+  const scene = {
+    ...baseScene(),
+    notes: [
+      { ...baseScene().notes[0], intent: 'task' as const, taskState: 'open' as const },
+      baseScene().notes[1]
+    ],
+    relationships: [
+      { id: 'rel-task', fromId: 'a', toId: 'b', type: 'derived_from' as const, state: 'confirmed' as const, explicitness: 'explicit' as const, directional: true, confidence: 1, isInferred: false, explanation: 'Promoted from source fragment.', heuristicSupported: true, createdAt: 12, lastActiveAt: 12 }
+    ]
+  };
+
+  const updated = setTaskStateInScene(scene, 'a', 'done');
+  assert.equal(updated.notes[0].taskState, 'done');
+  assert.equal(updated.relationships[0].lastActiveAt, 910);
 });

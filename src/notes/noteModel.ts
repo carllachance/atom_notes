@@ -55,6 +55,45 @@ function normalizeSuggestedRelationships(value: unknown): SuggestedRelationship[
     .filter((value): value is SuggestedRelationship => Boolean(value));
 }
 
+function normalizeTaskState(value: unknown): NoteCardModel['taskState'] {
+  return value === 'done' ? 'done' : value === 'open' ? 'open' : undefined;
+}
+
+function normalizeTaskSource(value: unknown): NoteCardModel['taskSource'] {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as NonNullable<NoteCardModel['taskSource']>;
+  if (typeof candidate.sourceNoteId !== 'string' || typeof candidate.text !== 'string') return null;
+
+  return {
+    sourceNoteId: candidate.sourceNoteId,
+    promotionId: String(candidate.promotionId ?? crypto.randomUUID()),
+    start: Number(candidate.start ?? 0),
+    end: Number(candidate.end ?? Number(candidate.start ?? 0) + candidate.text.length),
+    text: candidate.text,
+    createdAt: Number(candidate.createdAt ?? now())
+  };
+}
+
+function normalizePromotedTaskFragments(value: unknown): NoteCardModel['promotedTaskFragments'] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      const candidate = item as NonNullable<NonNullable<NoteCardModel['promotedTaskFragments']>[number]>;
+      if (typeof candidate.taskNoteId !== 'string' || typeof candidate.text !== 'string') return null;
+      return {
+        id: String(candidate.id ?? `promotion-${index + 1}`),
+        taskNoteId: candidate.taskNoteId,
+        start: Number(candidate.start ?? 0),
+        end: Number(candidate.end ?? Number(candidate.start ?? 0) + candidate.text.length),
+        text: candidate.text,
+        createdAt: Number(candidate.createdAt ?? now())
+      };
+    })
+    .filter((value): value is NonNullable<NoteCardModel['promotedTaskFragments']>[number] => Boolean(value));
+}
+
 export function createNote(
   text: string,
   z: number,
@@ -84,6 +123,9 @@ export function createNote(
     workspaceId: typeof workspaceId === 'string' && workspaceId.trim() ? workspaceId : null,
     intent: undefined,
     intentConfidence: undefined,
+    taskState: undefined,
+    taskSource: null,
+    promotedTaskFragments: [],
     inferredRelationships: []
   };
 }
@@ -117,6 +159,9 @@ export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: strin
     workspaceId: rawWorkspaceId && rawWorkspaceId.trim() ? rawWorkspaceId : null,
     intent: normalizeIntent(note.intent),
     intentConfidence: note.intentConfidence == null ? undefined : Number(note.intentConfidence),
+    taskState: normalizeTaskState(note.taskState),
+    taskSource: normalizeTaskSource(note.taskSource),
+    promotedTaskFragments: normalizePromotedTaskFragments(note.promotedTaskFragments),
     inferredRelationships: normalizeSuggestedRelationships(note.inferredRelationships)
   };
 }

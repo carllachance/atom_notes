@@ -18,9 +18,13 @@ test('inferNoteTitleAndBody uses first non-empty line as title', () => {
 
 test('normalizeNote preserves contract defaults and coercions', (t: any) => {
   t.mock.method(Date, 'now', () => 1234);
-  const normalized = normalizeNote({ id: 99 as unknown as string, title: '   ', body: null as unknown as string, anchors: [1, 'x'] as unknown as string[], trace: undefined, x: '8' as unknown as number, y: undefined, z: undefined, archived: 0 as unknown as boolean, projectIds: ['proj-1', 'proj-1', 9] as unknown as string[], workspaceId: 'ws-1', isFocus: true }, 4);
+  t.mock.method(globalThis.crypto, 'randomUUID', () => 'task-source-id');
+  const normalized = normalizeNote({ id: 99 as unknown as string, title: '   ', body: null as unknown as string, anchors: [1, 'x'] as unknown as string[], trace: undefined, x: '8' as unknown as number, y: undefined, z: undefined, archived: 0 as unknown as boolean, projectIds: ['proj-1', 'proj-1', 9] as unknown as string[], workspaceId: 'ws-1', isFocus: true, taskState: 'done', taskSource: { sourceNoteId: 'source-1', text: 'fragment', start: 2 } as any, promotedTaskFragments: [{ taskNoteId: 'task-1', text: 'fragment', start: 2 } as any] }, 4);
   assert.deepEqual(normalized.id, '99');
   assert.equal(normalized.isFocus, true);
   assert.deepEqual(normalized.projectIds, ['proj-1', '9']);
   assert.equal(normalized.workspaceId, 'ws-1');
+  assert.equal(normalized.taskState, 'done');
+  assert.deepEqual(normalized.taskSource, { sourceNoteId: 'source-1', promotionId: 'task-source-id', text: 'fragment', start: 2, end: 10, createdAt: 1234 });
+  assert.deepEqual(normalized.promotedTaskFragments, [{ id: 'promotion-1', taskNoteId: 'task-1', text: 'fragment', start: 2, end: 10, createdAt: 1234 }]);
 });

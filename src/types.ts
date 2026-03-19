@@ -31,6 +31,7 @@ export type ArchiveLens = {
 export type Lens = UniverseLens | ProjectLens | WorkspaceLens | RevealLens | ArchiveLens;
 
 export type NoteIntent = 'task' | 'link' | 'code' | 'note';
+export type TaskState = 'open' | 'done';
 
 export type RelationshipType =
   | 'related'
@@ -95,6 +96,23 @@ export type NoteCardModel = {
   workspaceId: string | null;
   intent?: NoteIntent;
   intentConfidence?: number;
+  taskState?: TaskState;
+  taskSource?: {
+    sourceNoteId: string;
+    promotionId: string;
+    start: number;
+    end: number;
+    text: string;
+    createdAt: number;
+  } | null;
+  promotedTaskFragments?: Array<{
+    id: string;
+    taskNoteId: string;
+    start: number;
+    end: number;
+    text: string;
+    createdAt: number;
+  }>;
   inferredRelationships?: SuggestedRelationship[];
 };
 

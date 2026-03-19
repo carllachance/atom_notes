@@ -1,22 +1,70 @@
 import { Fragment, useMemo, type ReactNode } from 'react';
 import { InlineToken, parseMarkdownProjection } from '../markdownProjection';
+import { getResolvedTaskFragments } from '../tasks/taskPromotions';
+import { NoteCardModel, TaskState } from '../types';
 
 type MarkdownProjectionViewProps = {
   source: string;
+  note?: Pick<NoteCardModel, 'body' | 'promotedTaskFragments'>;
+  taskStatesById?: Map<string, TaskState | undefined>;
+  activeTaskId?: string | null;
+  onOpenTask?: (taskNoteId: string) => void;
   onToggleCheckbox?: (lineIndex: number, checked: boolean) => void;
 };
 
-function renderInline(tokens: InlineToken[]) {
+type InlineTaskFragment = ReturnType<typeof getResolvedTaskFragments>[number];
+
+function renderTokenValue(token: InlineToken, value: string, key: string) {
+  if (token.type === 'code') return <code key={key}>{value}</code>;
+  if (token.type === 'link') {
+    return (
+      <a key={key} href={token.href} target="_blank" rel="noreferrer noopener">
+        {value}
+      </a>
+    );
+  }
+  return <Fragment key={key}>{value}</Fragment>;
+}
+
+function renderInline(tokens: InlineToken[], taskFragments: InlineTaskFragment[] = [], taskStatesById?: Map<string, TaskState | undefined>, activeTaskId?: string | null, onOpenTask?: (taskNoteId: string) => void) {
   return tokens.map((token, index) => {
-    if (token.type === 'code') return <code key={`c-${index}`}>{token.value}</code>;
-    if (token.type === 'link') {
-      return (
-        <a key={`l-${index}`} href={token.href} target="_blank" rel="noreferrer noopener">
-          {token.value}
-        </a>
-      );
+    const matchingFragments = token.type === 'text'
+      ? taskFragments.filter((fragment) => fragment.start < token.end && fragment.end > token.start)
+      : [];
+
+    if (!matchingFragments.length) {
+      return renderTokenValue(token, token.value, `${token.type}-${index}`);
     }
-    return <Fragment key={`t-${index}`}>{token.value}</Fragment>;
+
+    const segments: ReactNode[] = [];
+    let cursor = token.start;
+    matchingFragments.forEach((fragment, fragmentIndex) => {
+      const fragmentStart = Math.max(fragment.start, token.start);
+      const fragmentEnd = Math.min(fragment.end, token.end);
+      if (fragmentStart > cursor) {
+        segments.push(renderTokenValue(token, token.value.slice(cursor - token.start, fragmentStart - token.start), `t-${index}-${fragmentIndex}-lead`));
+      }
+      const taskState = taskStatesById?.get(fragment.taskNoteId);
+      const segmentValue = token.value.slice(fragmentStart - token.start, fragmentEnd - token.start);
+      segments.push(
+        <button
+          key={`task-${fragment.id}-${fragmentIndex}`}
+          type="button"
+          className={`inline-task-fragment inline-task-fragment--${taskState ?? 'open'} ${activeTaskId === fragment.taskNoteId ? 'is-active' : ''} ${fragment.stale ? 'is-stale' : ''}`}
+          onClick={() => onOpenTask?.(fragment.taskNoteId)}
+          title={taskState === 'done' ? 'Open linked task · done' : 'Open linked task'}
+        >
+          {segmentValue}
+        </button>
+      );
+      cursor = fragmentEnd;
+    });
+
+    if (cursor < token.end) {
+      segments.push(renderTokenValue(token, token.value.slice(cursor - token.start), `t-${index}-tail`));
+    }
+
+    return <Fragment key={`token-${index}`}>{segments}</Fragment>;
   });
 }
 
@@ -58,8 +106,9 @@ function CheckboxRow({ checked, disabled, children, onToggle }: CheckboxRowProps
   );
 }
 
-export function MarkdownProjectionView({ source, onToggleCheckbox }: MarkdownProjectionViewProps) {
+export function MarkdownProjectionView({ source, note, taskStatesById, activeTaskId = null, onOpenTask, onToggleCheckbox }: MarkdownProjectionViewProps) {
   const blocks = useMemo(() => parseMarkdownProjection(source), [source]);
+  const taskFragments = useMemo(() => (note ? getResolvedTaskFragments(note) : []), [note]);
 
   if (!blocks.length) return <p className="markdown-empty">No content yet.</p>;
 
@@ -68,18 +117,18 @@ export function MarkdownProjectionView({ source, onToggleCheckbox }: MarkdownPro
       {blocks.map((block, index) => {
         if (block.type === 'heading') {
           const HeadingTag = `h${Math.min(4, block.level)}` as 'h1' | 'h2' | 'h3' | 'h4';
-          return <HeadingTag key={`h-${index}`}>{renderInline(block.tokens)}</HeadingTag>;
+          return <HeadingTag key={`h-${index}`}>{renderInline(block.tokens, taskFragments, taskStatesById, activeTaskId, onOpenTask)}</HeadingTag>;
         }
 
         if (block.type === 'paragraph') {
-          return <p key={`p-${index}`}>{renderInline(block.tokens)}</p>;
+          return <p key={`p-${index}`}>{renderInline(block.tokens, taskFragments, taskStatesById, activeTaskId, onOpenTask)}</p>;
         }
 
         if (block.type === 'blockquote') {
           return (
             <blockquote key={`q-${index}`}>
               {block.lines.map((line, lineIndex) => (
-                <p key={`ql-${lineIndex}`}>{renderInline(line)}</p>
+                <p key={`ql-${lineIndex}`}>{renderInline(line, taskFragments, taskStatesById, activeTaskId, onOpenTask)}</p>
               ))}
             </blockquote>
           );
@@ -97,10 +146,10 @@ export function MarkdownProjectionView({ source, onToggleCheckbox }: MarkdownPro
                       disabled={!onToggleCheckbox}
                       onToggle={(checked) => onToggleCheckbox?.(item.lineIndex, checked)}
                     >
-                      {renderInline(item.tokens)}
+                      {renderInline(item.tokens, taskFragments, taskStatesById, activeTaskId, onOpenTask)}
                     </CheckboxRow>
                   ) : (
-                    <span>{renderInline(item.tokens)}</span>
+                    <span>{renderInline(item.tokens, taskFragments, taskStatesById, activeTaskId, onOpenTask)}</span>
                   )}
                 </li>
               ))}

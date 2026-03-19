@@ -11,6 +11,7 @@ import { toggleMarkdownCheckbox } from '../markdownProjection';
 import { getCompactDisplayTitle } from '../noteText';
 import { isRelationshipTypeDirectional } from '../relationshipLogic';
 import { getProactiveLinkSuggestions, ProactiveLinkSuggestion } from '../relationships/inlineLinking';
+import { getResolvedTaskFragments, getTaskStateLabel } from '../tasks/taskPromotions';
 import { ProjectDraft } from '../projects/projectModel';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } from '../types';
@@ -53,6 +54,8 @@ type ExpandedNoteProps = {
   onCreateExplicitLink: (fromId: string, toId: string, type: RelationshipType) => void;
   onCreateInlineLinkedNote: (sourceNoteId: string, title: string, type: RelationshipType) => string | null;
   onConfirmRelationship: (relationshipId: string) => void;
+  onPromoteFragmentToTask: (sourceNoteId: string, selection: { start: number; end: number; text: string }) => { taskNoteId: string | null; promotionId: string | null };
+  onSetTaskState: (noteId: string, taskState: 'open' | 'done') => void;
   onUpdateRelationship: (relationshipId: string, type: RelationshipType, fromId: string, toId: string) => void;
   onUndoRelationshipEdit: () => void;
   onToggleFocus: (id: string) => void;
@@ -205,6 +208,14 @@ function getWorkspaceMeta(workspaces: Workspace[], workspaceId: string | null) {
   };
 }
 
+function sceneRelationshipForTask(taskNoteId: string, sourceNoteId: string, relationships: VisibleRelationship[]) {
+  return relationships.find((relationship) => (
+    (relationship.fromId === taskNoteId && relationship.toId === sourceNoteId) ||
+    (relationship.fromId === sourceNoteId && relationship.toId === taskNoteId) ||
+    relationship.targetId === taskNoteId
+  )) ?? null;
+}
+
 export function ExpandedNote({
   note,
   notes,
@@ -229,6 +240,8 @@ export function ExpandedNote({
   onCreateExplicitLink,
   onCreateInlineLinkedNote,
   onConfirmRelationship,
+  onPromoteFragmentToTask,
+  onSetTaskState,
   onUpdateRelationship,
   onUndoRelationshipEdit,
   onToggleFocus,
@@ -318,6 +331,8 @@ export function ExpandedNote({
   }, [dragState]);
 
   const notesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate])), [notes]);
+  const taskStatesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate.taskState])), [notes]);
+  const resolvedPromotedFragments = useMemo(() => (note ? getResolvedTaskFragments(note) : []), [note]);
   const relationshipsByTargetId = useMemo(
     () => new Map(relationships.map((relationship) => [relationship.targetId, { relationshipId: relationship.id, type: relationship.type }])),
     [relationships]
@@ -344,6 +359,15 @@ export function ExpandedNote({
 
   const suggestionDockIntro = useMemo(() => getSuggestionDockIntro(visibleProactiveSuggestions), [visibleProactiveSuggestions]);
   const suggestionSignature = useMemo(() => visibleProactiveSuggestions.map((suggestion) => suggestion.id).join('|'), [visibleProactiveSuggestions]);
+  const sourceNote = note?.taskSource ? notesById.get(note.taskSource.sourceNoteId) ?? null : null;
+  const sourceSnippet = useMemo(() => {
+    if (!note?.taskSource || !sourceNote) return null;
+    const direct = sourceNote.body.slice(note.taskSource.start, note.taskSource.end);
+    if (direct === note.taskSource.text) return direct;
+    const exactIndex = sourceNote.body.indexOf(note.taskSource.text);
+    if (exactIndex !== -1) return sourceNote.body.slice(exactIndex, exactIndex + note.taskSource.text.length);
+    return note.taskSource.text;
+  }, [note, sourceNote]);
 
   useEffect(() => {
     if (!visibleProactiveSuggestions.length) {
@@ -450,6 +474,14 @@ export function ExpandedNote({
                 {noteWorkspace ? (
                   <button className={`project-pill workspace-pill ${activeWorkspaceLensId === noteWorkspace.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: noteWorkspace.color }} onClick={() => onSetWorkspaceLens(activeWorkspaceLensId === noteWorkspace.id ? null : noteWorkspace.id)}>{noteWorkspace.key}</button>
                 ) : <span className="workspace-inline-label workspace-inline-label--empty">No workspace assigned</span>}
+                {note.intent === 'task' ? (
+                  <button
+                    className={`project-pill project-pill--utility ${note.taskState === 'done' ? 'active' : ''}`}
+                    onClick={() => onSetTaskState(note.id, note.taskState === 'done' ? 'open' : 'done')}
+                  >
+                    {getTaskStateLabel(note.taskState)}
+                  </button>
+                ) : null}
                 <button className={`project-pill project-pill--utility ${isFocus ? 'active' : ''}`} onClick={() => onToggleFocus(note.id)}>{isFocus ? 'Focus' : 'Mark Focus'}</button>
                 <button className="project-pill project-pill--utility" onClick={() => onArchive(note.id)}>Archive</button>
               </div>
@@ -471,7 +503,22 @@ export function ExpandedNote({
           <div className="expanded-note-main">
             <div className="note-body-surface" data-mode={bodyMode}>
               {bodyMode === 'read' ? (
-                <MarkdownProjectionView source={note.body} onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })} />
+                <MarkdownProjectionView
+                  source={note.body}
+                  note={note}
+                  taskStatesById={taskStatesById}
+                  activeTaskId={note.intent === 'task' ? note.id : null}
+                  onOpenTask={(taskNoteId) => {
+                    const relationship = sceneRelationshipForTask(taskNoteId, note.id, relationships);
+                    if (relationship) {
+                      onOpenRelated(taskNoteId, relationship.id);
+                      return;
+                    }
+                    onHoverRelatedNote(taskNoteId);
+                    window.setTimeout(() => onClearRelatedHover(taskNoteId), 900);
+                  }}
+                  onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })}
+                />
               ) : (
                 <InlineNoteLinkEditor
                   note={note}
@@ -480,6 +527,11 @@ export function ExpandedNote({
                   highlightedTargetId={inlineHighlightedTargetId}
                   proactiveSuggestions={visibleProactiveSuggestions}
                   onBodyChange={(body) => onChange(note.id, { body })}
+                  onPromoteSelectionToTask={(selection) => {
+                    const result = onPromoteFragmentToTask(note.id, selection);
+                    if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
+                    setBodyMode('read');
+                  }}
                   onCreateLink={({ targetId, type }) => {
                     onCreateExplicitLink(note.id, targetId, type);
                     flashInlineTarget(targetId);
@@ -517,9 +569,54 @@ export function ExpandedNote({
                 />
               )}
             </div>
+            {resolvedPromotedFragments.length ? (
+              <div className="inline-task-strip" aria-label="Inline task links">
+                {resolvedPromotedFragments.map((fragment) => {
+                  const taskNote = notesById.get(fragment.taskNoteId);
+                  const taskState = taskStatesById.get(fragment.taskNoteId);
+                  return (
+                    <button
+                      key={fragment.id}
+                      type="button"
+                      className={`inline-task-strip-chip inline-task-strip-chip--${taskState ?? 'open'}`}
+                      onClick={() => {
+                        const relationship = sceneRelationshipForTask(fragment.taskNoteId, note.id, relationships);
+                        if (relationship) onOpenRelated(fragment.taskNoteId, relationship.id);
+                      }}
+                    >
+                      <strong>{taskNote ? getCompactDisplayTitle(taskNote, 28) : fragment.text}</strong>
+                      <small>{getTaskStateLabel(taskState)}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
           <aside className="expanded-note-sidebar">
+            {note.intent === 'task' && sourceNote && note.taskSource ? (
+              <section className="detail-section detail-section--constellation-subsection" aria-label="Origin">
+                <div className="section-head">
+                  <div>
+                    <strong>Origin</strong>
+                    <small className="section-hint">This task stays tethered to the note fragment it came from.</small>
+                  </div>
+                  <span className="section-meta">{getTaskStateLabel(note.taskState)}</span>
+                </div>
+                <button
+                  type="button"
+                  className="task-origin-card"
+                  onClick={() => {
+                    const relationship = sceneRelationshipForTask(note.id, sourceNote.id, relationships);
+                    if (relationship) onOpenRelated(sourceNote.id, relationship.id);
+                  }}
+                >
+                  <strong>{getCompactDisplayTitle(sourceNote, 38)}</strong>
+                  <p>{sourceSnippet}</p>
+                  <small>Open source note</small>
+                </button>
+              </section>
+            ) : null}
             <section className="detail-section detail-section--constellation" aria-label="Constellation">
               <div className="section-head">
                 <div>
