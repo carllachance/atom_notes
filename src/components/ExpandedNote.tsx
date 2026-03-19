@@ -54,6 +54,7 @@ type ExpandedNoteProps = {
   thinkingActive: boolean;
   hasFreshInsights: boolean;
   initialPosition?: { x: number; y: number };
+  rightInset?: number;
   onClose: () => void;
   onThinkAboutNote: () => void;
   onArchive: (id: string) => void;
@@ -240,6 +241,7 @@ export function ExpandedNote({
   thinkingActive,
   hasFreshInsights,
   initialPosition,
+  rightInset = 24,
   onClose,
   onThinkAboutNote,
   onArchive,
@@ -348,7 +350,8 @@ export function ExpandedNote({
     const onPointerMove = (event: globalThis.PointerEvent) => {
       if (!panelRef.current) return;
       const rect = panelRef.current.getBoundingClientRect();
-      const maxX = window.innerWidth / 2 - rect.width / 2 - 18;
+      const availableWidth = Math.max(360, window.innerWidth - rightInset);
+      const maxX = availableWidth / 2 - rect.width / 2 - 18;
       const minX = -maxX;
       const maxY = window.innerHeight / 2 - rect.height / 2 - 18;
       const minY = -maxY;
@@ -364,7 +367,7 @@ export function ExpandedNote({
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [dragState, note, onPositionChange, position]);
+  }, [dragState, note, onPositionChange, position, rightInset]);
 
   const notesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate])), [notes]);
   const taskStatesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate.taskState])), [notes]);
@@ -555,7 +558,7 @@ export function ExpandedNote({
     : 'No shared threads';
 
   return (
-    <section className="expanded-note-shell">
+    <section className="expanded-note-shell" style={{ ['--thinking-rail-reserved' as string]: `${rightInset}px` }}>
       <aside ref={panelRef} className="expanded-note" style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
         <header className="expanded-note-header" onPointerDown={(event: PointerEvent<HTMLElement>) => {
           const target = event.target as HTMLElement;

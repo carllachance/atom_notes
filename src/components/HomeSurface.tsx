@@ -3,14 +3,10 @@ import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
 import { NoteCardModel } from '../types';
 
 type HomeSurfaceProps = {
-  draft: string;
   notes: NoteCardModel[];
   deletedNotes: NoteCardModel[];
   lastCreatedNoteId: string | null;
-  onDraftChange: (value: string) => void;
-  onCommit: () => void;
   onOpenNote: (noteId: string) => void;
-  onOpenCaptureComposer: () => void;
   onRestoreDeletedNote: (noteId: string) => void;
 };
 
@@ -42,14 +38,10 @@ function summarizeRecentNotes(notes: NoteCardModel[], lastCreatedNoteId: string 
 }
 
 export function HomeSurface({
-  draft,
   notes,
   deletedNotes,
   lastCreatedNoteId,
-  onDraftChange,
-  onCommit,
   onOpenNote,
-  onOpenCaptureComposer,
   onRestoreDeletedNote
 }: HomeSurfaceProps) {
   const [showOverview, setShowOverview] = useState(false);
@@ -57,33 +49,16 @@ export function HomeSurface({
   const recentNotes = summarizeRecentNotes(notes, lastCreatedNoteId);
 
   return (
-    <section className="home-surface home-surface--light" aria-label="Quick start surface">
+    <section className="home-surface home-surface--light" aria-label="Workspace overview">
       <div className="home-surface__capture home-surface__capture--compact">
         <div className="home-surface__capture-head">
           <div>
-            <span className="home-surface__eyebrow">Quick capture</span>
-            <h1>Start with the next note.</h1>
-            <p>Capture first, then open overview only when you need more context.</p>
+            <span className="home-surface__eyebrow">Workspace overview</span>
+            <h1>Capture stays light. Context stays nearby.</h1>
+            <p>Use the top capture bar for quick notes, then open overview only when you want more structure.</p>
           </div>
           <button type="button" className="ghost-button" onClick={() => setShowOverview((current) => !current)}>
             {showOverview ? 'Hide overview' : 'Show overview'}
-          </button>
-        </div>
-        <label className="home-surface__capture-label" htmlFor="home-capture">
-          Capture anything messy
-        </label>
-        <textarea
-          id="home-capture"
-          placeholder="Write naturally. The first line becomes the title."
-          value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
-        />
-        <div className="home-surface__capture-actions">
-          <button type="button" className="ghost-button" onClick={onOpenCaptureComposer}>
-            Full capture
-          </button>
-          <button type="button" onClick={onCommit} disabled={!draft.trim()}>
-            Capture note
           </button>
         </div>
       </div>

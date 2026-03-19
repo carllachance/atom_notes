@@ -7,50 +7,93 @@ type CaptureComposerProps = {
   onCommit: () => void;
   onCancel: () => void;
   onUndo: () => void;
+  onExpand: () => void;
   canUndo: boolean;
 };
 
-export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, onUndo, canUndo }: CaptureComposerProps) {
-  if (!isOpen) return null;
-
+export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, onUndo, onExpand, canUndo }: CaptureComposerProps) {
   return (
-    <section className="capture-composer-shell" aria-label="Capture composer">
-      <div className="capture-composer">
-        <header>
-          <strong>Capture</strong>
-          <small>Enter for newline · Ctrl+Enter to commit</small>
-        </header>
-        <textarea
-          id="quick-capture"
-          autoFocus
-          placeholder="Write naturally. The first line becomes the title."
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
-            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-              event.preventDefault();
-              onCommit();
-            }
-            if (event.key === 'Escape' && !value.trim()) {
-              event.preventDefault();
-              onCancel();
-            }
-          }}
-        />
-        <footer>
-          <button className="ghost-button" onClick={onCancel}>
-            Cancel
-          </button>
-          {canUndo ? (
-            <button className="ghost-button" onClick={onUndo}>
-              Undo last capture
+    <section className="capture-composer-shell" aria-label="Capture composer" data-state={isOpen ? 'open' : 'compact'}>
+      {isOpen ? (
+        <div className="capture-composer capture-composer--expanded">
+          <header>
+            <div>
+              <strong>Capture</strong>
+              <small>Keep it light. Expand only when the note needs more room.</small>
+            </div>
+            <button type="button" className="ghost-button" onClick={onCancel} aria-label="Close capture panel">
+              Close
             </button>
-          ) : null}
-          <button onClick={onCommit} disabled={!value.trim()}>
-            Commit
-          </button>
-        </footer>
-      </div>
+          </header>
+          <textarea
+            id="quick-capture"
+            autoFocus
+            placeholder="Write the note you want to keep."
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                onCommit();
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                onCancel();
+              }
+            }}
+          />
+          <footer>
+            <span>Ctrl+Enter to capture · ESC to collapse</span>
+            <div className="capture-composer__actions">
+              {canUndo ? (
+                <button type="button" className="ghost-button" onClick={onUndo}>
+                  Undo last capture
+                </button>
+              ) : null}
+              <button type="button" onClick={onCommit} disabled={!value.trim()}>
+                Capture note
+              </button>
+            </div>
+          </footer>
+        </div>
+      ) : (
+        <div className="capture-composer capture-composer--compact-bar">
+          <div className="capture-composer__compact-copy">
+            <strong>Capture</strong>
+            <small>Always available, never in the way.</small>
+          </div>
+          <div className="capture-composer__compact-row">
+            <input
+              aria-label="Quick capture"
+              placeholder="Capture a note…"
+              value={value}
+              onFocus={onExpand}
+              onChange={(event) => onChange(event.target.value)}
+              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                if (event.key === 'Enter' && value.trim()) {
+                  event.preventDefault();
+                  onCommit();
+                }
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  onCancel();
+                }
+              }}
+            />
+            <button type="button" className="ghost-button" onClick={onExpand}>
+              Expand
+            </button>
+            {canUndo ? (
+              <button type="button" className="ghost-button" onClick={onUndo}>
+                Undo
+              </button>
+            ) : null}
+            <button type="button" onClick={onCommit} disabled={!value.trim()}>
+              Capture
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
