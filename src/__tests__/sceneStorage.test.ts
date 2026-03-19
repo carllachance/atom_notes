@@ -28,7 +28,7 @@ test('sceneStorage loads the synthetic demo scene when no persisted data exists'
   assert.equal(scene.notes[0].title, 'Daily Fed Report Overview');
   assert.match(scene.notes[0].body, /Reference portal/);
   assert.equal(scene.relationships.filter((relationship) => relationship.explicitness === 'explicit').length, demoRelationships.length);
-  assert.deepEqual(scene.captureComposer, { open: true, draft: '', lastCreatedNoteId: null });
+  assert.deepEqual(scene.captureComposer, { open: false, draft: '', lastCreatedNoteId: null });
   assert.deepEqual(scene.focusMode, { highlight: true, isolate: false });
   assert.equal(scene.aiPanel.state, 'hidden');
 });
