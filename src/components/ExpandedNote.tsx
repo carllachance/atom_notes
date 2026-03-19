@@ -113,6 +113,20 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function getClampedPanelPosition(position: { x: number; y: number }, panel: HTMLElement | null, rightInset: number) {
+  const panelWidth = panel?.offsetWidth ?? 760;
+  const panelHeight = panel?.offsetHeight ?? 760;
+  const availableWidth = Math.max(360, window.innerWidth - rightInset);
+  const maxX = availableWidth / 2 - panelWidth / 2 - 18;
+  const minX = -maxX;
+  const maxY = window.innerHeight / 2 - panelHeight / 2 - 18;
+  const minY = -maxY;
+  return {
+    x: clamp(position.x, minX, maxX),
+    y: clamp(position.y, minY, maxY)
+  };
+}
+
 function ToolIcon({ kind }: { kind: IconButtonKind }) {
   if (kind === 'workspace') {
     return (
@@ -346,16 +360,27 @@ export function ExpandedNote({
   }, [inspectedRelationship]);
 
   useEffect(() => {
+    if (!thinkingActive) return;
+    setLinkSuggestionsExpanded(false);
+  }, [thinkingActive]);
+
+  useEffect(() => {
+    if (!note) return;
+    const nextPosition = getClampedPanelPosition(position, panelRef.current, rightInset);
+    if (nextPosition.x === position.x && nextPosition.y === position.y) return;
+    setPosition(nextPosition);
+    onPositionChange?.(note.id, nextPosition);
+  }, [note, onPositionChange, position, rightInset]);
+
+  useEffect(() => {
     if (!dragState || !panelRef.current) return;
     const onPointerMove = (event: globalThis.PointerEvent) => {
-      if (!panelRef.current) return;
-      const rect = panelRef.current.getBoundingClientRect();
-      const availableWidth = Math.max(360, window.innerWidth - rightInset);
-      const maxX = availableWidth / 2 - rect.width / 2 - 18;
-      const minX = -maxX;
-      const maxY = window.innerHeight / 2 - rect.height / 2 - 18;
-      const minY = -maxY;
-      setPosition({ x: clamp(event.clientX - dragState.dx, minX, maxX), y: clamp(event.clientY - dragState.dy, minY, maxY) });
+      const nextPosition = getClampedPanelPosition(
+        { x: event.clientX - dragState.dx, y: event.clientY - dragState.dy },
+        panelRef.current,
+        rightInset
+      );
+      setPosition(nextPosition);
     };
     const onPointerUp = () => {
       setDragState(null);
@@ -633,19 +658,21 @@ export function ExpandedNote({
                 />
               ) : (
                 <div className="note-edit-stack">
-                  <RefinementComposer
-                    selectionActive={Boolean(selectedTextRange?.text.trim())}
-                    preview={refinementPreview}
-                    previewDraft={refinementPreviewDraft}
-                    customInstruction={customRefinementInstruction}
-                    onSelectPreset={runRefinement}
-                    onCustomInstructionChange={setCustomRefinementInstruction}
-                    onRunCustom={() => runRefinement('custom')}
-                    onPreviewDraftChange={setRefinementPreviewDraft}
-                    onApplyReplace={applyRefinementReplace}
-                    onApplyInsertBelow={applyRefinementInsertBelow}
-                    onCancelPreview={clearRefinementPreview}
-                  />
+                  {!thinkingActive ? (
+                    <RefinementComposer
+                      selectionActive={Boolean(selectedTextRange?.text.trim())}
+                      preview={refinementPreview}
+                      previewDraft={refinementPreviewDraft}
+                      customInstruction={customRefinementInstruction}
+                      onSelectPreset={runRefinement}
+                      onCustomInstructionChange={setCustomRefinementInstruction}
+                      onRunCustom={() => runRefinement('custom')}
+                      onPreviewDraftChange={setRefinementPreviewDraft}
+                      onApplyReplace={applyRefinementReplace}
+                      onApplyInsertBelow={applyRefinementInsertBelow}
+                      onCancelPreview={clearRefinementPreview}
+                    />
+                  ) : null}
 
                   <InlineNoteLinkEditor
                     note={note}
@@ -1072,7 +1099,7 @@ export function ExpandedNote({
         </footer>
       </aside>
 
-      {visibleProactiveSuggestions.length ? (
+      {visibleProactiveSuggestions.length && !thinkingActive ? (
         <aside
           className={`link-suggestions-dock ${linkSuggestionsExpanded ? 'is-expanded' : 'is-collapsed'} ${freshSuggestionsVisible ? 'is-fresh' : ''}`}
           aria-label="Link Suggestions"

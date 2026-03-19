@@ -44,24 +44,42 @@ export function HomeSurface({
   onOpenNote,
   onRestoreDeletedNote
 }: HomeSurfaceProps) {
-  const [showOverview, setShowOverview] = useState(false);
   const openWork = summarizeOpenWork(notes);
   const recentNotes = summarizeRecentNotes(notes, lastCreatedNoteId);
+  const [showResume, setShowResume] = useState(false);
+  const resumeItems = [...recentNotes.slice(0, 3), ...openWork.filter((note) => !recentNotes.some((recent) => recent.id === note.id)).slice(0, 1)].slice(0, 4);
+  const leadResume = resumeItems[0] ?? null;
+  const hasResume = resumeItems.length > 0;
 
   return (
     <section className="home-surface home-surface--light" aria-label="Workspace overview">
-      <div className="home-surface__capture home-surface__capture--compact">
-        <div className="home-surface__capture-head">
-          <div>
-            <span className="home-surface__eyebrow">Workspace overview</span>
-            <h1>Capture stays light. Context stays nearby.</h1>
-            <p>Use the top capture bar for quick notes, then open overview only when you want more structure.</p>
-          </div>
-          <button type="button" className="ghost-button" onClick={() => setShowOverview((current) => !current)}>
-            {showOverview ? 'Hide overview' : 'Show overview'}
+      {hasResume ? (
+        <section className="home-surface__resume" aria-label="Where was I">
+          <button type="button" className="home-surface__resume-chip" onClick={() => setShowResume((current) => !current)} aria-expanded={showResume}>
+            <span className="home-surface__resume-label">Where was I</span>
+            <strong>{leadResume ? getCompactDisplayTitle(leadResume, 42) : 'Recent work'}</strong>
           </button>
-        </div>
-      </div>
+          {showResume ? (
+            <div className="home-surface__resume-popover">
+              {resumeItems.map((note) => (
+                <button key={note.id} type="button" className="home-surface__note-row" onClick={() => onOpenNote(note.id)}>
+                  <div>
+                    <small>{note.kicker}</small>
+                    <strong>{getCompactDisplayTitle(note, 42)}</strong>
+                    <p>{getSummaryPreview(note, 92)}</p>
+                  </div>
+                  <span>Open</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : (
+        <section className="home-surface__empty-prompt" aria-label="Start capturing">
+          <span className="home-surface__eyebrow">Start here</span>
+          <strong>Your first note can stay small.</strong>
+        </section>
+      )}
 
       {deletedNotes.length ? (
         <section className="home-surface__panel" aria-label="Recently deleted notes">
@@ -87,62 +105,6 @@ export function HomeSurface({
             ))}
           </div>
         </section>
-      ) : null}
-
-      {showOverview ? (
-        <div className="home-surface__sections">
-          <section className="home-surface__panel" aria-label="Needs attention">
-            <div className="home-surface__panel-head">
-              <div>
-                <strong>Needs attention</strong>
-                <p>Active tasks stay close without turning this into a dashboard.</p>
-              </div>
-              <span>{openWork.length} open</span>
-            </div>
-            {openWork.length ? (
-              <div className="home-surface__list">
-                {openWork.map((note) => (
-                  <button key={note.id} type="button" className="home-surface__note-row" onClick={() => onOpenNote(note.id)}>
-                    <div>
-                      <small>{note.kicker}</small>
-                      <strong>{getCompactDisplayTitle(note, 42)}</strong>
-                      <p>{getSummaryPreview(note, 92)}</p>
-                    </div>
-                    <span>Open</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="home-surface__empty">No open tasks yet.</div>
-            )}
-          </section>
-
-          <section className="home-surface__panel" aria-label="Recently touched">
-            <div className="home-surface__panel-head">
-              <div>
-                <strong>Recently touched</strong>
-                <p>Pick up where you left off in a single click.</p>
-              </div>
-              <span>{recentNotes.length} shown</span>
-            </div>
-            {recentNotes.length ? (
-              <div className="home-surface__list">
-                {recentNotes.map((note) => (
-                  <button key={note.id} type="button" className="home-surface__note-row" onClick={() => onOpenNote(note.id)}>
-                    <div>
-                      <small>{note.kicker}</small>
-                      <strong>{getCompactDisplayTitle(note, 42)}</strong>
-                      <p>{getSummaryPreview(note, 92)}</p>
-                    </div>
-                    <span>{note.intent === 'task' ? 'Task' : 'Note'}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="home-surface__empty">Your recent notes will gather here.</div>
-            )}
-          </section>
-        </div>
       ) : null}
     </section>
   );

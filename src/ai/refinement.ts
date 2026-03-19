@@ -37,12 +37,12 @@ export type RefinementSuggestion = {
 
 export const REFINEMENT_PRESETS: RefinementPreset[] = [
   { id: 'clarify', label: 'Clarify', shortLabel: 'Clarify', description: 'Tighten rough language without changing scope.', category: 'refine' },
-  { id: 'executive_summary', label: 'Executive Summary', shortLabel: 'Exec Summary', description: 'Reshape notes into a concise executive-ready readout.', category: 'format' },
-  { id: 'summarize', label: 'Summarize', shortLabel: 'Summarize', description: 'Surface the main takeaway quickly.', category: 'refine' },
-  { id: 'bulletize', label: 'Bulletize', shortLabel: 'Bulletize', description: 'Turn rough prose into scannable bullets.', category: 'refine' },
+  { id: 'executive_summary', label: 'Executive Summary', shortLabel: 'Exec', description: 'Reshape notes into a concise executive-ready readout.', category: 'format' },
+  { id: 'summarize', label: 'Summarize', shortLabel: 'Summary', description: 'Surface the main takeaway quickly.', category: 'refine' },
+  { id: 'bulletize', label: 'Bulletize', shortLabel: 'Bullets', description: 'Turn rough prose into scannable bullets.', category: 'refine' },
   { id: 'meeting_minutes', label: 'Meeting Minutes', shortLabel: 'Minutes', description: 'Reframe the note as agenda, decisions, and follow-ups.', category: 'format' },
-  { id: 'study_guide', label: 'Study Guide', shortLabel: 'Study Guide', description: 'Turn notes into review prompts and key ideas.', category: 'format' },
-  { id: 'legal_brief', label: 'Legal Brief', shortLabel: 'Legal Brief', description: 'Reframe content into issue, facts, analysis, and next steps.', category: 'format' },
+  { id: 'study_guide', label: 'Study Guide', shortLabel: 'Study', description: 'Turn notes into review prompts and key ideas.', category: 'format' },
+  { id: 'legal_brief', label: 'Legal Brief', shortLabel: 'Brief', description: 'Reframe content into issue, facts, analysis, and next steps.', category: 'format' },
   { id: 'custom', label: 'Custom', shortLabel: 'Custom', description: 'Apply a user-specified restructuring instruction.', category: 'format' }
 ];
 
