@@ -1,5 +1,6 @@
 import { normalizeOptionalTitle } from '../noteText';
 import { normalizeProjectIds } from '../projects/projectModel';
+import { normalizeAttachment } from '../attachments/attachmentModel';
 import { NoteCardModel, NoteIntent, SuggestedRelationship } from '../types';
 
 export const now = () => Date.now();
@@ -53,6 +54,18 @@ function normalizeSuggestedRelationships(value: unknown): SuggestedRelationship[
       } satisfies SuggestedRelationship;
     })
     .filter((value): value is SuggestedRelationship => Boolean(value));
+}
+
+
+function normalizeAttachments(value: unknown): NoteCardModel['attachments'] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      return normalizeAttachment(item, index);
+    })
+    .filter((value): value is NonNullable<NoteCardModel['attachments']>[number] => Boolean(value));
 }
 
 function normalizeTaskState(value: unknown): NoteCardModel['taskState'] {
@@ -126,7 +139,8 @@ export function createNote(
     taskState: undefined,
     taskSource: null,
     promotedTaskFragments: [],
-    inferredRelationships: []
+    inferredRelationships: [],
+    attachments: []
   };
 }
 
@@ -162,6 +176,7 @@ export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: strin
     taskState: normalizeTaskState(note.taskState),
     taskSource: normalizeTaskSource(note.taskSource),
     promotedTaskFragments: normalizePromotedTaskFragments(note.promotedTaskFragments),
-    inferredRelationships: normalizeSuggestedRelationships(note.inferredRelationships)
+    inferredRelationships: normalizeSuggestedRelationships(note.inferredRelationships),
+    attachments: normalizeAttachments(note.attachments)
   };
 }

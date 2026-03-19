@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { inferNoteMetadata } from '../ai/inference';
 import { runConnectedInsights } from '../ai/connectedInsights';
 import { appendInsightTimelineEntries, createAIInsightTimelineEntry } from '../insights/insightTimeline';
@@ -13,6 +13,7 @@ import { getLensPresentation } from './lens';
 import { resolveCapturePlacement } from './capturePlacement';
 import { useAmbientGuidance } from './useAmbientGuidance';
 import { useSceneMutations } from './useSceneMutations';
+import { createAttachmentFromFile, processAttachment } from '../attachments/attachmentProcessing';
 
 const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
@@ -44,6 +45,7 @@ export function useSceneController() {
   const [streamingResponse, setStreamingResponse] = useState<InsightsResponse | null>(null);
   const [isStreamingResponse, setIsStreamingResponse] = useState(false);
   const streamingTimerRef = useRef<number | null>(null);
+  const processingAttachmentRef = useRef<string | null>(null);
 
   const liveLensPresentation = useMemo(() => getLensPresentation(scene), [scene]);
   const stableLensPresentationRef = useRef(liveLensPresentation);
@@ -146,6 +148,49 @@ export function useSceneController() {
       if (streamingTimerRef.current) window.clearTimeout(streamingTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const pending = scene.notes.flatMap((note) =>
+      (note.attachments ?? [])
+        .filter((attachment) => attachment.processing.status === 'uploaded')
+        .map((attachment) => ({ noteId: note.id, attachment }))
+    )[0];
+
+    if (!pending) {
+      processingAttachmentRef.current = null;
+      return;
+    }
+
+    const key = `${pending.noteId}:${pending.attachment.id}`;
+    if (processingAttachmentRef.current === key) return;
+    processingAttachmentRef.current = key;
+    let cancelled = false;
+
+    mutations.markAttachmentProcessing(pending.noteId, pending.attachment.id);
+    void processAttachment(pending.attachment)
+      .then((result) => {
+        if (cancelled) return;
+        mutations.markAttachmentProcessed(pending.noteId, pending.attachment.id, {
+          method: result.method,
+          extractedAt: now(),
+          contentHash: result.contentHash,
+          text: result.text,
+          chunks: result.chunks
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : 'Processing failed.';
+        mutations.markAttachmentFailed(pending.noteId, pending.attachment.id, message);
+      })
+      .finally(() => {
+        if (!cancelled) processingAttachmentRef.current = null;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mutations, scene.notes]);
 
   useEffect(() => {
     setActiveRevealMatchIndex((index) => (lensPresentation.revealMatchIds.length === 0 ? 0 : index % lensPresentation.revealMatchIds.length));
@@ -495,6 +540,25 @@ export function useSceneController() {
     setPendingAction(null);
   }, [appendTextToActiveNote, mutations, openAIReference, pendingAction, pinInsightToNewNote, scene.notes]);
 
+  const addAttachmentsToActiveNote = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    if (!scene.activeNoteId) return;
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+    const prepared = await Promise.all(files.map((file) => createAttachmentFromFile(file)));
+    mutations.addAttachments(scene.activeNoteId, prepared);
+    event.target.value = '';
+  }, [mutations, scene.activeNoteId]);
+
+  const removeAttachment = useCallback((attachmentId: string) => {
+    if (!scene.activeNoteId) return;
+    mutations.removeAttachment(scene.activeNoteId, attachmentId);
+  }, [mutations, scene.activeNoteId]);
+
+  const retryAttachmentProcessing = useCallback((attachmentId: string) => {
+    if (!scene.activeNoteId) return;
+    mutations.retryAttachmentProcessing(scene.activeNoteId, attachmentId);
+  }, [mutations, scene.activeNoteId]);
+
   return {
     scene,
     activeNote,
@@ -552,6 +616,9 @@ export function useSceneController() {
     createProjectForNote: mutations.createProjectForNote,
     setNoteWorkspace: mutations.setNoteWorkspace,
     createWorkspaceForNote: mutations.createWorkspaceForNote,
+    addAttachmentsToActiveNote,
+    removeAttachment,
+    retryAttachmentProcessing,
     onCanvasScroll: mutations.onCanvasScroll,
     onViewportCenterChange,
     onOpenNote: mutations.onOpenNote,

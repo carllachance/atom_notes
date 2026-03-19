@@ -71,6 +71,9 @@ export function App() {
     createProjectForNote,
     setNoteWorkspace,
     createWorkspaceForNote,
+    addAttachmentsToActiveNote,
+    removeAttachment,
+    retryAttachmentProcessing,
     onCanvasScroll,
     onViewportCenterChange,
     onOpenNote,
@@ -257,6 +260,9 @@ export function App() {
         onCreateWorkspace={createWorkspaceForNote}
         onSetProjectLens={(projectId) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' })}
         onSetWorkspaceLens={(workspaceId) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' })}
+        onAddAttachments={addAttachmentsToActiveNote}
+        onRemoveAttachment={removeAttachment}
+        onRetryAttachment={retryAttachmentProcessing}
         onHoverRelatedNote={onHoverStart}
         onClearRelatedHover={onHoverEnd}
       />

@@ -5461,3 +5461,169 @@ samp,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.attachment-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.attachment-panel-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.attachment-panel-supported {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: #95a6ca;
+}
+
+.attachment-empty-state {
+  border: 1px dashed rgba(118, 142, 189, 0.28);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(14, 20, 34, 0.34);
+  color: #9eb0d5;
+}
+
+.attachment-empty-state strong {
+  display: block;
+  color: #e2eaff;
+  margin-bottom: 4px;
+}
+
+.attachment-empty-state p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.attachment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(87, 108, 151, 0.18);
+  background: rgba(10, 16, 28, 0.42);
+}
+
+.attachment-card--failed {
+  border-color: rgba(173, 95, 95, 0.34);
+}
+
+.attachment-card__header,
+.attachment-card__actions,
+.attachment-card__summary,
+.attachment-text-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.attachment-card__header strong,
+.attachment-text-view__header strong {
+  color: #edf3ff;
+}
+
+.attachment-card__meta,
+.attachment-card__summary,
+.attachment-text-view__summary,
+.attachment-chunk-card__meta,
+.attachment-card__error {
+  font-size: 0.75rem;
+}
+
+.attachment-card__meta,
+.attachment-card__summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #97a8ce;
+}
+
+.attachment-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  border: 1px solid rgba(106, 128, 171, 0.25);
+  background: rgba(17, 24, 39, 0.6);
+  color: #d4def8;
+}
+
+.attachment-status--processing {
+  border-color: rgba(122, 162, 247, 0.34);
+  color: #dce6ff;
+}
+
+.attachment-status--processed {
+  border-color: rgba(95, 191, 151, 0.32);
+  color: #d7f5e8;
+}
+
+.attachment-status--failed {
+  border-color: rgba(208, 111, 111, 0.35);
+  color: #ffd9d9;
+}
+
+.attachment-card__error {
+  margin: 0;
+  color: #f2c0c0;
+}
+
+.attachment-text-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.attachment-text-view__summary {
+  margin: 0;
+  color: #9fb0d4;
+  line-height: 1.5;
+}
+
+.attachment-chunk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.attachment-chunk-card {
+  border-radius: 12px;
+  border: 1px solid rgba(86, 108, 149, 0.16);
+  background: rgba(15, 21, 34, 0.6);
+  padding: 10px 11px;
+}
+
+.attachment-chunk-card__meta {
+  color: #90a2cb;
+  margin-bottom: 6px;
+}
+
+.attachment-chunk-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #d7e2fb;
+  font-family: inherit;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}

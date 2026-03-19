@@ -6,7 +6,7 @@ import { createDemoScene } from '../data/demoScene';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { normalizeLens } from './lens';
 
-export const SCENE_KEY = 'atom-notes.scene.v7';
+export const SCENE_KEY = 'atom-notes.scene.v8';
 
 function normalizeRelationshipType(raw: unknown): RelationshipType {
   switch (raw) {
@@ -153,6 +153,7 @@ export function loadScene(): SceneState {
 
   const raw =
     localStorage.getItem(SCENE_KEY) ??
+    localStorage.getItem('atom-notes.scene.v7') ??
     localStorage.getItem('atom-notes.scene.v6') ??
     localStorage.getItem('atom-notes.scene.v5') ??
     localStorage.getItem('atom-notes.scene.v4') ??
