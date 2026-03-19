@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AIPanel } from './components/AIPanel';
 import { CaptureComposer } from './components/CaptureComposer';
 import { ExpandedNote } from './components/ExpandedNote';
+import { HomeSurface } from './components/HomeSurface';
 import { RecallBand } from './components/RecallBand';
 import { RecallPrompt } from './components/RecallPrompt';
 import { RelationshipWeb } from './components/RelationshipWeb';
@@ -132,6 +133,17 @@ export function App() {
 
       <section className="workspace-shell">
         <section className="view-stack" data-lens={scene.lens.kind}>
+          {!activeNote ? (
+            <HomeSurface
+              draft={scene.captureComposer.draft}
+              notes={scene.notes}
+              lastCreatedNoteId={scene.captureComposer.lastCreatedNoteId}
+              onDraftChange={onCaptureDraftChange}
+              onCommit={commitCapture}
+              onOpenNote={onOpenNote}
+              onOpenCaptureComposer={() => onCaptureDraftChange(scene.captureComposer.draft)}
+            />
+          ) : null}
           <div className="view-layer view-layer-canvas">
             <SpatialCanvas
               notes={visibleNotes}
@@ -198,7 +210,7 @@ export function App() {
       {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} /> : null}
 
       <CaptureComposer
-        isOpen={scene.captureComposer.open}
+        isOpen={scene.captureComposer.open && activeNote !== null}
         value={scene.captureComposer.draft}
         onChange={onCaptureDraftChange}
         onCommit={commitCapture}

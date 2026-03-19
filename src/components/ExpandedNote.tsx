@@ -19,6 +19,7 @@ import { getCompactDisplayTitle } from '../noteText';
 import { isRelationshipTypeDirectional } from '../relationshipLogic';
 import { getProactiveLinkSuggestions, ProactiveLinkSuggestion } from '../relationships/inlineLinking';
 import { getResolvedTaskFragments, getTaskStateLabel } from '../tasks/taskPromotions';
+import { getLikelyActionFragments } from '../tasks/actionFragmentSuggestions';
 import { ProjectDraft } from '../projects/projectModel';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } from '../types';
@@ -349,6 +350,7 @@ export function ExpandedNote({
   const notesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate])), [notes]);
   const taskStatesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate.taskState])), [notes]);
   const resolvedPromotedFragments = useMemo(() => (note ? getResolvedTaskFragments(note) : []), [note]);
+  const likelyActionFragments = useMemo(() => (note ? getLikelyActionFragments(note) : []), [note]);
   const relationshipsByTargetId = useMemo(
     () => new Map(relationships.map((relationship) => [relationship.targetId, { relationshipId: relationship.id, type: relationship.type }])),
     [relationships]
@@ -523,6 +525,11 @@ export function ExpandedNote({
     setDismissedSuggestionIds((current) => [...new Set([...current, suggestion.id])]);
   };
 
+  const runOutcomeRefinement = (presetId: RefinementPresetId) => {
+    setBodyMode('edit');
+    window.setTimeout(() => runRefinement(presetId), 0);
+  };
+
   return (
     <section className="expanded-note-shell">
       <aside ref={panelRef} className="expanded-note" style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
@@ -573,6 +580,21 @@ export function ExpandedNote({
 
         <div className="expanded-note-layout">
           <div className="expanded-note-main">
+            <section className="outcomes-strip" aria-label="Next-step actions">
+              <div className="outcomes-strip__copy">
+                <strong>Next step</strong>
+                <p>Use one click to tighten the note, make it presentable, or pull out action items.</p>
+              </div>
+              <div className="outcomes-strip__actions">
+                <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('clarify')}>Clarify</button>
+                <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('executive_summary')}>Executive Summary</button>
+                <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('summarize')}>Summarize</button>
+                <button type="button" className={`ghost-button ${bodyMode === 'edit' ? 'active' : ''}`} onClick={() => setBodyMode(bodyMode === 'edit' ? 'read' : 'edit')}>
+                  {bodyMode === 'edit' ? 'Back to reading' : 'Open editor'}
+                </button>
+              </div>
+            </section>
+
             <div className="note-body-surface" data-mode={bodyMode}>
               {bodyMode === 'read' ? (
                 <MarkdownProjectionView
@@ -658,6 +680,37 @@ export function ExpandedNote({
                 </div>
               )}
             </div>
+            {likelyActionFragments.length ? (
+              <section className="capture-followups" aria-label="Likely follow-up suggestions">
+                <div className="section-head">
+                  <div>
+                    <strong>Likely follow-ups</strong>
+                    <p className="section-hint">Optional suggestions from this capture only. Nothing becomes a task until you promote it.</p>
+                  </div>
+                  <span className="section-meta">{likelyActionFragments.length} suggestions</span>
+                </div>
+                <div className="capture-followups__list">
+                  {likelyActionFragments.map((fragment) => (
+                    <div key={fragment.id} className="capture-followups__row">
+                      <div>
+                        <strong>{fragment.text}</strong>
+                        <small>{fragment.reason}</small>
+                      </div>
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        onClick={() => {
+                          const result = onPromoteFragmentToTask(note.id, fragment);
+                          if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
+                        }}
+                      >
+                        Promote to task
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             {resolvedPromotedFragments.length ? (
               <div className="inline-task-strip" aria-label="Inline task links">
                 {resolvedPromotedFragments.map((fragment) => {
