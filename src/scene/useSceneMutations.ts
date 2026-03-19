@@ -8,9 +8,9 @@ import {
   restoreDeletedNoteInScene,
   restoreNoteInScene,
   openNoteInScene,
+  setExpandedSecondarySurface,
   setIsDraggingInScene,
   setAIPanelPayload,
-  setAIPanelState,
   setCanvasScrollInScene,
   setCaptureComposerState,
   setFocusModeInScene,
@@ -102,8 +102,8 @@ export function useSceneMutations({
     setScene((prev) => setAIPanelPayload(prev, updates));
   }, [setScene]);
 
-  const setAIPanelVisibility = useCallback((state: SceneState['aiPanel']['state']) => {
-    setScene((prev) => setAIPanelState(prev, state));
+  const setExpandedSurface = useCallback((surface: SceneState['expandedSecondarySurface']) => {
+    setScene((prev) => setExpandedSecondarySurface(prev, surface));
   }, [setScene]);
 
   const createExplicitRelationship = useCallback((fromId: string, toId: string, type: RelationshipType) => {
@@ -230,7 +230,7 @@ export function useSceneMutations({
     setFocusMode,
     setCaptureComposer,
     setAIPanel,
-    setAIPanelVisibility,
+    setExpandedSurface,
     createExplicitRelationship,
     createInlineLinkedNote,
     confirmRelationship,

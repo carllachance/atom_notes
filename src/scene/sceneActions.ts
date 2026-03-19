@@ -2,7 +2,7 @@ import { now } from '../notes/noteModel';
 import { normalizeOptionalTitle } from '../noteText';
 import { normalizeProjectIds } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
-import { AIPanelState, FocusMode, Lens, NoteCardModel, SceneState } from '../types';
+import { ExpandedSecondarySurface, FocusMode, Lens, NoteCardModel, SceneState } from '../types';
 import { createDefaultLens, normalizeLens } from './lens';
 
 export function updateNoteInScene(
@@ -86,7 +86,7 @@ export function setCanvasScrollInScene(scene: SceneState, left: number, top: num
 export function openNoteInScene(scene: SceneState, id: string): SceneState {
   const target = scene.notes.find((note) => note.id === id);
   if (!target || target.deleted) return scene;
-  return { ...scene, activeNoteId: id, aiPanel: { ...scene.aiPanel, state: 'open' } };
+  return { ...scene, activeNoteId: id };
 }
 
 export function closeActiveNoteInScene(scene: SceneState): SceneState {
@@ -105,11 +105,10 @@ export function restoreNoteInScene(scene: SceneState, id: string, highestZ: numb
 
 export function handleCtrlTapInScene(scene: SceneState, tappedAt: number, thresholdMs: number): SceneState {
   if (tappedAt - scene.lastCtrlTapTs <= thresholdMs) {
-    const open = !scene.captureComposer.open;
+    const open = scene.expandedSecondarySurface !== 'capture';
     return {
       ...scene,
-      quickCaptureOpen: open,
-      captureComposer: { ...scene.captureComposer, open },
+      expandedSecondarySurface: open ? 'capture' : 'none',
       lastCtrlTapTs: 0
     };
   }
@@ -131,11 +130,11 @@ export function setFocusModeInScene(scene: SceneState, updates: Partial<FocusMod
 }
 
 export function setCaptureComposerState(scene: SceneState, updates: Partial<SceneState['captureComposer']>): SceneState {
-  return { ...scene, captureComposer: { ...scene.captureComposer, ...updates }, quickCaptureOpen: false };
+  return { ...scene, captureComposer: { ...scene.captureComposer, ...updates } };
 }
 
-export function setAIPanelState(scene: SceneState, state: AIPanelState): SceneState {
-  return { ...scene, aiPanel: { ...scene.aiPanel, state } };
+export function setExpandedSecondarySurface(scene: SceneState, surface: ExpandedSecondarySurface): SceneState {
+  return { ...scene, expandedSecondarySurface: surface };
 }
 
 export function setAIPanelPayload(scene: SceneState, updates: Partial<SceneState['aiPanel']>): SceneState {

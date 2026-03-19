@@ -1,12 +1,12 @@
 import { normalizeNote, now } from '../notes/noteModel';
 import { normalizeProject } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
-import { AIInteractionMode, ActionSuggestion, AIPanelViewState, CaptureComposerState, FocusMode, InsightTimelineEntry, Lens, Relationship, RelationshipType, SceneState, Workspace } from '../types';
+import { AIInteractionMode, ActionSuggestion, AIPanelViewState, CaptureComposerState, ExpandedSecondarySurface, FocusMode, InsightTimelineEntry, Lens, Relationship, RelationshipType, SceneState, Workspace } from '../types';
 import { createDemoScene } from '../data/demoScene';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { normalizeLens } from './lens';
 
-export const SCENE_KEY = 'atom-notes.scene.v8';
+export const SCENE_KEY = 'atom-notes.scene.v9';
 
 function normalizeRelationshipType(raw: unknown): RelationshipType {
   switch (raw) {
@@ -58,10 +58,23 @@ function normalizeLensState(raw: unknown): Lens {
 
 function normalizeCaptureComposer(raw: Partial<CaptureComposerState> | undefined): CaptureComposerState {
   return {
-    open: Boolean(raw?.open),
     draft: String(raw?.draft ?? ''),
     lastCreatedNoteId: typeof raw?.lastCreatedNoteId === 'string' ? raw.lastCreatedNoteId : null
   };
+}
+
+function normalizeExpandedSecondarySurface(
+  raw: unknown,
+  aiPanel: Partial<AIPanelViewState> | undefined,
+  captureComposer: Partial<CaptureComposerState> | undefined,
+  quickCaptureOpen: unknown
+): ExpandedSecondarySurface {
+  const legacyAIPanelState = (aiPanel as Partial<{ state: string }> | undefined)?.state;
+  const legacyCaptureOpen = (captureComposer as Partial<{ open: boolean }> | undefined)?.open;
+  if (raw === 'thinking' || raw === 'capture' || raw === 'none') return raw;
+  if (legacyAIPanelState === 'open' || legacyAIPanelState === 'peek') return 'thinking';
+  if (legacyCaptureOpen || quickCaptureOpen) return 'capture';
+  return 'none';
 }
 
 function normalizeFocusMode(raw: Partial<FocusMode> | undefined): FocusMode {
@@ -120,9 +133,7 @@ function normalizeInsightTimeline(raw: unknown): InsightTimelineEntry[] {
 
 function normalizeAIPanel(raw: Partial<AIPanelViewState> | undefined): AIPanelViewState {
   const mode: AIInteractionMode = raw?.mode === 'explore' || raw?.mode === 'summarize' || raw?.mode === 'act' ? raw.mode : 'ask';
-  const state = raw?.state === 'peek' || raw?.state === 'open' ? raw.state : 'hidden';
   return {
-    state,
     mode,
     query: String(raw?.query ?? ''),
     response: raw?.response ?? null,
@@ -153,6 +164,7 @@ export function loadScene(): SceneState {
 
   const raw =
     localStorage.getItem(SCENE_KEY) ??
+    localStorage.getItem('atom-notes.scene.v8') ??
     localStorage.getItem('atom-notes.scene.v7') ??
     localStorage.getItem('atom-notes.scene.v6') ??
     localStorage.getItem('atom-notes.scene.v5') ??
@@ -167,6 +179,7 @@ export function loadScene(): SceneState {
       currentView?: 'canvas' | 'archive';
       workspaces?: Workspace[];
       projectReveal?: { activeProjectId?: string | null; isolate?: boolean };
+      quickCaptureOpen?: boolean;
     };
     const normalizedProjects = Array.isArray(parsed.projects)
       ? parsed.projects.map((project, index) => normalizeProject(project, index)).filter(Boolean) as SceneState['projects']
@@ -205,7 +218,7 @@ export function loadScene(): SceneState {
       insightTimeline: normalizeInsightTimeline(parsed.insightTimeline),
       isDragging: false,
       activeNoteId,
-      quickCaptureOpen: Boolean(parsed.quickCaptureOpen),
+      expandedSecondarySurface: normalizeExpandedSecondarySurface(parsed.expandedSecondarySurface, parsed.aiPanel, parsed.captureComposer, parsed.quickCaptureOpen),
       captureComposer: normalizeCaptureComposer(parsed.captureComposer),
       focusMode: normalizeFocusMode(parsed.focusMode),
       aiPanel: normalizeAIPanel(parsed.aiPanel),

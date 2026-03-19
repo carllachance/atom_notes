@@ -1,12 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getNextInsightsRailState, getRelationshipsForActiveFilter, getRelationshipSummaryItems, INSIGHTS_RAIL_MODES } from '../detailSurface/detailSurfaceModel';
-
-test('detailSurfaceModel toggles the insights rail between slim and expanded states', () => {
-  assert.equal(getNextInsightsRailState('hidden'), 'open');
-  assert.equal(getNextInsightsRailState('open'), 'hidden');
-  assert.equal(getNextInsightsRailState('peek'), 'hidden');
-});
+import { getRelationshipsForActiveFilter, getRelationshipSummaryItems, INSIGHTS_RAIL_MODES } from '../detailSurface/detailSurfaceModel';
 
 test('detailSurfaceModel returns summary-first relationship cards only for populated types', () => {
   const summaries = getRelationshipSummaryItems({

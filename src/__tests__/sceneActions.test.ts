@@ -11,10 +11,10 @@ function makeScene(): SceneState {
     workspaces: [],
     isDragging: false,
     activeNoteId: null,
-    quickCaptureOpen: false,
-    captureComposer: { open: false, draft: '', lastCreatedNoteId: null },
+    expandedSecondarySurface: 'none',
+    captureComposer: { draft: '', lastCreatedNoteId: null },
     focusMode: { highlight: true, isolate: false },
-    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, transcript: [], loading: false },
+    aiPanel: { mode: 'ask', query: '', response: null, transcript: [], loading: false },
     lastCtrlTapTs: 0,
     lens: { kind: 'universe' },
     canvasScrollLeft: 0,
@@ -31,7 +31,7 @@ test('sceneActions updates note content with normalized title, trace, project id
 test('sceneActions handle open, close, archive, restore, focus, and composer semantics', () => {
   const opened = openNoteInScene(makeScene(), 'n1');
   assert.equal(opened.activeNoteId, 'n1');
-  assert.equal(opened.aiPanel.state, 'open');
+  assert.equal(opened.expandedSecondarySurface, 'none');
   assert.equal(closeActiveNoteInScene(opened).activeNoteId, null);
   const archived = archiveNoteInScene(opened, 'n1');
   assert.deepEqual(archived.lens, { kind: 'archive' });
@@ -45,16 +45,16 @@ test('sceneActions handle open, close, archive, restore, focus, and composer sem
   const focused = toggleNoteFocusInScene(restored, 'n1');
   assert.equal(focused.notes[0].isFocus, true);
   assert.equal(setFocusModeInScene(restored, { isolate: true }).focusMode.isolate, true);
-  assert.equal(setCaptureComposerState(restored, { open: true, draft: 'hello' }).captureComposer.draft, 'hello');
+  assert.equal(setCaptureComposerState(restored, { draft: 'hello' }).captureComposer.draft, 'hello');
 });
 
 test('sceneActions open quick capture on Ctrl double-tap regardless of note state', () => {
   const once = handleCtrlTapInScene(makeScene(), 500, 320);
-  assert.equal(once.captureComposer.open, false);
+  assert.equal(once.expandedSecondarySurface, 'none');
   const twice = handleCtrlTapInScene(once, 700, 320);
-  assert.equal(twice.captureComposer.open, true);
+  assert.equal(twice.expandedSecondarySurface, 'capture');
   const closed = handleCtrlTapInScene(handleCtrlTapInScene({ ...twice, activeNoteId: 'n1' }, 1200, 320), 1400, 320);
-  assert.equal(closed.captureComposer.open, false);
+  assert.equal(closed.expandedSecondarySurface, 'none');
 });
 
 test('sceneActions soft-delete notes and restore them with their relationships intact', (t: any) => {

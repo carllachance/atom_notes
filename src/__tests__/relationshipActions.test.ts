@@ -24,10 +24,10 @@ function baseScene(): SceneState {
     workspaces: [],
     isDragging: false,
     activeNoteId: null,
-    quickCaptureOpen: false,
-    captureComposer: { open: false, draft: '', lastCreatedNoteId: null },
+    expandedSecondarySurface: 'none',
+    captureComposer: { draft: '', lastCreatedNoteId: null },
     focusMode: { highlight: true, isolate: false },
-    aiPanel: { state: 'hidden', mode: 'ask', query: '', response: null, transcript: [], loading: false },
+    aiPanel: { mode: 'ask', query: '', response: null, transcript: [], loading: false },
     lastCtrlTapTs: 0,
     lens: { kind: 'universe' },
     canvasScrollLeft: 0,
@@ -55,7 +55,7 @@ test('relationshipActions confirms and traverses relationships deterministically
   assert.deepEqual(confirmed.relationships[0], { ...scene.relationships[0], state: 'confirmed', heuristicSupported: true, isInferred: true, lastActiveAt: 200 });
   const traversed = traverseToRelatedInScene(confirmed, 'b', 'rel-x');
   assert.equal(traversed.activeNoteId, 'b');
-  assert.equal(traversed.aiPanel.state, 'open');
+  assert.equal(traversed.expandedSecondarySurface, 'none');
   assert.equal(traversed.relationships[0].lastActiveAt, 200);
 });
 

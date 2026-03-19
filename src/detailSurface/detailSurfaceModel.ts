@@ -1,4 +1,4 @@
-import { AIPanelState, AIInteractionMode, RelationshipType } from '../types';
+import { AIInteractionMode, RelationshipType } from '../types';
 
 export type RelationshipOptionGroup = 'Core context' | 'Operational flow' | 'Structure';
 
@@ -29,10 +29,6 @@ export const DETAIL_SURFACE_RELATIONSHIP_OPTIONS: DetailSurfaceRelationshipOptio
 
 export function getDetailSurfaceRelationshipOption(type: RelationshipType) {
   return DETAIL_SURFACE_RELATIONSHIP_OPTIONS.find((option) => option.type === type) ?? DETAIL_SURFACE_RELATIONSHIP_OPTIONS[0];
-}
-
-export function getNextInsightsRailState(state: AIPanelState): AIPanelState {
-  return state === 'hidden' ? 'open' : 'hidden';
 }
 
 export function getRelationshipSummaryItems(relationshipTotals: Record<RelationshipType, number>) {
