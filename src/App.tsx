@@ -60,6 +60,8 @@ export function App() {
     createExplicitRelationship,
     createInlineLinkedNote,
     confirmRelationship,
+    promoteNoteFragmentToTask,
+    setTaskState,
     updateRelationship,
     undoRelationshipEdit,
     traverseToRelated,
@@ -232,6 +234,8 @@ export function App() {
         onCreateExplicitLink={createExplicitRelationship}
         onCreateInlineLinkedNote={createInlineLinkedNote}
         onConfirmRelationship={confirmRelationship}
+        onPromoteFragmentToTask={promoteNoteFragmentToTask}
+        onSetTaskState={setTaskState}
         onUpdateRelationship={updateRelationship}
         onUndoRelationshipEdit={undoRelationshipEdit}
         onToggleFocus={toggleNoteFocus}

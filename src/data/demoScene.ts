@@ -91,6 +91,9 @@ function mapDemoNote(note: DemoNote, index: number, workspaceNoteIndex: number, 
     workspaceId: note.workspaceId,
     intent: mapIntent(note),
     intentConfidence: note.state === 'active' ? 0.78 : 0.62,
+    taskState: note.type === 'task' || note.type === 'process' || note.type === 'bug' ? 'open' : undefined,
+    taskSource: null,
+    promotedTaskFragments: [],
     inferredRelationships: []
   };
 }

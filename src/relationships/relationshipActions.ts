@@ -97,6 +97,72 @@ export function createInlineLinkedNoteInScene(
   };
 }
 
+export function promoteNoteFragmentToTaskInScene(
+  scene: SceneState,
+  sourceNoteId: string,
+  selection: { start: number; end: number; text: string }
+): { scene: SceneState; taskNoteId: string | null; promotionId: string | null } {
+  const source = scene.notes.find((note) => note.id === sourceNoteId);
+  const normalizedText = selection.text.replace(/\s+/g, ' ').trim();
+  if (!source || !normalizedText || selection.end <= selection.start) {
+    return { scene, taskNoteId: null, promotionId: null };
+  }
+
+  const task = createNote(normalizedText, scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0) + 1, source.projectIds, source.workspaceId, {
+    x: source.x + 340,
+    y: source.y + 44
+  });
+  const promotionId = crypto.randomUUID();
+  task.trace = 'linked';
+  task.intent = 'task';
+  task.intentConfidence = 1;
+  task.taskState = 'open';
+  task.taskSource = {
+    sourceNoteId,
+    promotionId,
+    start: selection.start,
+    end: selection.end,
+    text: selection.text,
+    createdAt: now()
+  };
+
+  const notes = scene.notes.map((note) =>
+    note.id === sourceNoteId
+      ? {
+          ...note,
+          promotedTaskFragments: [
+            ...(note.promotedTaskFragments ?? []),
+            {
+              id: promotionId,
+              taskNoteId: task.id,
+              start: selection.start,
+              end: selection.end,
+              text: selection.text,
+              createdAt: now()
+            }
+          ]
+        }
+      : note
+  ).concat(task);
+
+  const nextScene = createExplicitRelationshipInScene(
+    { ...scene, notes },
+    task.id,
+    sourceNoteId,
+    'derived_from',
+    'Promoted from a highlighted source fragment.'
+  );
+
+  return {
+    scene: {
+      ...nextScene,
+      activeNoteId: sourceNoteId
+    },
+    taskNoteId: task.id,
+    promotionId
+  };
+}
+
 export function updateRelationshipInScene(
   scene: SceneState,
   relationshipId: string,
@@ -152,6 +218,21 @@ export function traverseToRelatedInScene(scene: SceneState, targetNoteId: string
     aiPanel: { ...scene.aiPanel, state: 'open' },
     relationships: scene.relationships.map((relationship) =>
       relationship.id === relationshipId ? { ...relationship, lastActiveAt: now() } : relationship
+    )
+  };
+}
+
+export function setTaskStateInScene(scene: SceneState, noteId: string, taskState: 'open' | 'done'): SceneState {
+  const touchedAt = now();
+  const notes = scene.notes.map((note) =>
+    note.id === noteId ? { ...note, intent: 'task' as const, taskState, updatedAt: touchedAt, trace: 'refined' } : note
+  );
+
+  return {
+    ...scene,
+    notes,
+    relationships: scene.relationships.map((relationship) =>
+      relationship.fromId === noteId || relationship.toId === noteId ? { ...relationship, lastActiveAt: touchedAt } : relationship
     )
   };
 }

@@ -21,7 +21,9 @@ import {
   createExplicitRelationshipInScene,
   createInlineLinkedNoteInScene,
   confirmRelationshipInScene,
+  promoteNoteFragmentToTaskInScene,
   restoreRelationshipInScene,
+  setTaskStateInScene,
   traverseToRelatedInScene,
   updateRelationshipInScene
 } from '../relationships/relationshipActions';
@@ -114,6 +116,16 @@ export function useSceneMutations({
     setScene((prev) => confirmRelationshipInScene(prev, relationshipId));
   }, [setScene]);
 
+  const promoteNoteFragmentToTask = useCallback((sourceNoteId: string, selection: { start: number; end: number; text: string }) => {
+    let result: { taskNoteId: string | null; promotionId: string | null } = { taskNoteId: null, promotionId: null };
+    setScene((prev) => {
+      const next = promoteNoteFragmentToTaskInScene(prev, sourceNoteId, selection);
+      result = { taskNoteId: next.taskNoteId, promotionId: next.promotionId };
+      return next.scene;
+    });
+    return result;
+  }, [setScene]);
+
   const updateRelationship = useCallback((relationshipId: string, type: RelationshipType, fromId: string, toId: string) => {
     setScene((prev) => updateRelationshipInScene(prev, relationshipId, type, fromId, toId));
   }, [setScene]);
@@ -126,6 +138,10 @@ export function useSceneMutations({
     onNoteTraversed(targetNoteId);
     setScene((prev) => traverseToRelatedInScene(prev, targetNoteId, relationshipId));
   }, [onNoteTraversed, setScene]);
+
+  const setTaskState = useCallback((noteId: string, taskState: 'open' | 'done') => {
+    setScene((prev) => setTaskStateInScene(prev, noteId, taskState));
+  }, [setScene]);
 
   const onCanvasScroll = useCallback((left: number, top: number) => {
     setScene((prev) => setCanvasScrollInScene(prev, left, top));
@@ -177,9 +193,11 @@ export function useSceneMutations({
     createExplicitRelationship,
     createInlineLinkedNote,
     confirmRelationship,
+    promoteNoteFragmentToTask,
     updateRelationship,
     restoreRelationship,
     traverseToRelated,
+    setTaskState,
     onCanvasScroll,
     onOpenNote,
     onArchiveNote,

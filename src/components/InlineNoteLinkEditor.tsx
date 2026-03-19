@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDetailSurfaceRelationshipOption } from '../detailSurface/detailSurfaceModel';
 import { getCompactDisplayTitle, getDisplayTitle } from '../noteText';
+import { getResolvedTaskFragments } from '../tasks/taskPromotions';
 import { NoteCardModel, RelationshipType } from '../types';
 import {
   extractResolvedInlineLinks,
@@ -23,6 +24,7 @@ type InlineNoteLinkEditorProps = {
   highlightedTargetId: string | null;
   proactiveSuggestions: Array<ProactiveLinkSuggestion & { selectedType: RelationshipType }>;
   onBodyChange: (body: string) => void;
+  onPromoteSelectionToTask: (selection: { start: number; end: number; text: string }) => void;
   onCreateLink: (target: InlineLinkTarget) => void;
   onCreateLinkedNote: (title: string, type: RelationshipType) => string | null;
   onUpdateRelationshipType: (relationshipId: string, type: RelationshipType, targetId: string) => void;
@@ -44,6 +46,7 @@ export function InlineNoteLinkEditor({
   highlightedTargetId,
   proactiveSuggestions,
   onBodyChange,
+  onPromoteSelectionToTask,
   onCreateLink,
   onCreateLinkedNote,
   onUpdateRelationshipType,
@@ -57,6 +60,7 @@ export function InlineNoteLinkEditor({
   const [activeCursor, setActiveCursor] = useState<number | null>(null);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [pendingCaret, setPendingCaret] = useState<number | null>(null);
+  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number; text: string } | null>(null);
 
   const activeMatch = useMemo(() => {
     if (activeCursor == null) return null;
@@ -88,6 +92,15 @@ export function InlineNoteLinkEditor({
   }, [activeMatch, matchingNotes]);
 
   const resolvedLinks = useMemo(() => extractResolvedInlineLinks(note.body, notes), [note.body, notes]);
+  const promotedFragments = useMemo(() => getResolvedTaskFragments(note), [note]);
+
+  const canPromoteSelection = Boolean(
+    selectionRange &&
+    selectionRange.start !== selectionRange.end &&
+    !selectionRange.text.includes('\n') &&
+    selectionRange.text.trim().length >= 3 &&
+    !/[`\[\]]/.test(selectionRange.text)
+  );
 
   useEffect(() => {
     if (pendingCaret == null || !textareaRef.current) return;
@@ -126,6 +139,10 @@ export function InlineNoteLinkEditor({
   const handleTextareaSelection = () => {
     if (!textareaRef.current) return;
     setActiveCursor(textareaRef.current.selectionStart);
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const text = note.body.slice(start, end);
+    setSelectionRange(start === end ? null : { start, end, text });
   };
 
   return (
@@ -294,6 +311,33 @@ export function InlineNoteLinkEditor({
               </div>
             );
           })}
+        </div>
+      ) : null}
+
+      {(selectionRange || promotedFragments.length) ? (
+        <div className="inline-task-editor-bar" aria-label="Promoted task fragments">
+          <div className="inline-task-editor-copy">
+            <strong>Task fragments</strong>
+            <small>
+              {canPromoteSelection
+                ? 'Selection ready to promote without removing it from the note.'
+                : promotedFragments.length
+                  ? `${promotedFragments.length} linked ${promotedFragments.length === 1 ? 'fragment' : 'fragments'} in this note.`
+                  : 'Select a short fragment to promote it into a task.'}
+            </small>
+          </div>
+          <button
+            type="button"
+            className="ghost-button"
+            disabled={!canPromoteSelection}
+            onClick={() => {
+              if (!selectionRange || !canPromoteSelection) return;
+              onPromoteSelectionToTask(selectionRange);
+              setSelectionRange(null);
+            }}
+          >
+            Promote to Task
+          </button>
         </div>
       ) : null}
     </div>

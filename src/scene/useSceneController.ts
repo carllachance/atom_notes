@@ -542,6 +542,8 @@ export function useSceneController() {
     createExplicitRelationship: mutations.createExplicitRelationship,
     createInlineLinkedNote: mutations.createInlineLinkedNote,
     confirmRelationship: mutations.confirmRelationship,
+    promoteNoteFragmentToTask: mutations.promoteNoteFragmentToTask,
+    setTaskState: mutations.setTaskState,
     updateRelationship,
     undoRelationshipEdit,
     traverseToRelated: mutations.traverseToRelated,
