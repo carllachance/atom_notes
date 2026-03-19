@@ -7,6 +7,13 @@ import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
 import { ThinkingGlyph } from './ThinkingGlyph';
 import { InlineNoteLinkEditor } from './InlineNoteLinkEditor';
+import { RefinementComposer } from './RefinementComposer';
+import {
+  buildInsertedRefinementBlock,
+  generateRefinementSuggestion,
+  RefinementPresetId,
+  RefinementSuggestion
+} from '../ai/refinement';
 import { toggleMarkdownCheckbox } from '../markdownProjection';
 import { getCompactDisplayTitle } from '../noteText';
 import { isRelationshipTypeDirectional } from '../relationshipLogic';
@@ -71,6 +78,7 @@ type ExpandedNoteProps = {
 
 type DragState = { dx: number; dy: number };
 type BodyMode = 'read' | 'edit';
+type TextSelection = { start: number; end: number; text: string };
 type SuggestedLinkRow = ProactiveLinkSuggestion & {
   selectedType: RelationshipType;
   workspaceLabel: string | null;
@@ -268,6 +276,10 @@ export function ExpandedNote({
   const [suggestionTypeOverrides, setSuggestionTypeOverrides] = useState<Record<string, RelationshipType>>({});
   const [linkSuggestionsExpanded, setLinkSuggestionsExpanded] = useState(false);
   const [freshSuggestionsVisible, setFreshSuggestionsVisible] = useState(false);
+  const [selectedTextRange, setSelectedTextRange] = useState<TextSelection | null>(null);
+  const [customRefinementInstruction, setCustomRefinementInstruction] = useState('');
+  const [refinementPreview, setRefinementPreview] = useState<RefinementSuggestion | null>(null);
+  const [refinementPreviewDraft, setRefinementPreviewDraft] = useState('');
   const panelRef = useRef<HTMLElement | null>(null);
   const inlineHighlightTimerRef = useRef<number | null>(null);
   const freshSuggestionsTimerRef = useRef<number | null>(null);
@@ -294,6 +306,10 @@ export function ExpandedNote({
     setSuggestionTypeOverrides({});
     setLinkSuggestionsExpanded(false);
     setFreshSuggestionsVisible(false);
+    setSelectedTextRange(null);
+    setCustomRefinementInstruction('');
+    setRefinementPreview(null);
+    setRefinementPreviewDraft('');
     previousSuggestionSignatureRef.current = '';
   }, [note?.id, note?.trace]);
 
@@ -445,6 +461,62 @@ export function ExpandedNote({
     flashInlineTarget(targetId);
   };
 
+  const runRefinement = (presetId: RefinementPresetId) => {
+    const activeSelection = selectedTextRange && selectedTextRange.text.trim() ? selectedTextRange : null;
+    const scope = activeSelection ? 'selection' as const : 'note' as const;
+    const sourceText = activeSelection ? activeSelection.text : note.body;
+    if (!sourceText.trim()) return;
+    const preview = generateRefinementSuggestion({
+      presetId,
+      scope,
+      sourceText,
+      noteTitle: note.title,
+      customInstruction: presetId === 'custom' ? customRefinementInstruction : undefined
+    });
+    setRefinementPreview(preview);
+    setRefinementPreviewDraft(preview.suggestedText);
+  };
+
+  const clearRefinementPreview = () => {
+    setRefinementPreview(null);
+    setRefinementPreviewDraft('');
+  };
+
+  const applyRefinementReplace = () => {
+    if (!refinementPreview) return;
+    const nextText = refinementPreviewDraft.trim();
+    if (!nextText) return;
+
+    if (refinementPreview.scope === 'selection' && selectedTextRange) {
+      const nextBody = `${note.body.slice(0, selectedTextRange.start)}${nextText}${note.body.slice(selectedTextRange.end)}`;
+      onChange(note.id, { body: nextBody });
+      setSelectedTextRange(null);
+    } else {
+      onChange(note.id, { body: nextText });
+    }
+
+    clearRefinementPreview();
+  };
+
+  const applyRefinementInsertBelow = () => {
+    if (!refinementPreview) return;
+    const nextText = refinementPreviewDraft.trim();
+    if (!nextText) return;
+    const insertedBlock = buildInsertedRefinementBlock(refinementPreview.label, nextText);
+
+    if (refinementPreview.scope === 'selection' && selectedTextRange) {
+      const insertionPoint = selectedTextRange.end;
+      const nextBody = `${note.body.slice(0, insertionPoint)}\n\n${insertedBlock}${note.body.slice(insertionPoint)}`;
+      onChange(note.id, { body: nextBody });
+      setSelectedTextRange(null);
+    } else {
+      const nextBody = [note.body.trim(), insertedBlock].filter(Boolean).join('\n\n');
+      onChange(note.id, { body: nextBody });
+    }
+
+    clearRefinementPreview();
+  };
+
   const acceptSuggestedLink = (suggestion: SuggestedLinkRow) => {
     onCreateExplicitLink(note.id, suggestion.targetId, suggestion.selectedType);
     flashInlineTarget(suggestion.targetId);
@@ -520,53 +592,70 @@ export function ExpandedNote({
                   onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })}
                 />
               ) : (
-                <InlineNoteLinkEditor
-                  note={note}
-                  notes={notes}
-                  relationshipsByTargetId={relationshipsByTargetId}
-                  highlightedTargetId={inlineHighlightedTargetId}
-                  proactiveSuggestions={visibleProactiveSuggestions}
-                  onBodyChange={(body) => onChange(note.id, { body })}
-                  onPromoteSelectionToTask={(selection) => {
-                    const result = onPromoteFragmentToTask(note.id, selection);
-                    if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
-                    setBodyMode('read');
-                  }}
-                  onCreateLink={({ targetId, type }) => {
-                    onCreateExplicitLink(note.id, targetId, type);
-                    flashInlineTarget(targetId);
-                  }}
-                  onCreateLinkedNote={(title, type) => {
-                    const targetId = onCreateInlineLinkedNote(note.id, title, type);
-                    if (targetId) flashInlineTarget(targetId);
-                    return targetId;
-                  }}
-                  onUpdateRelationshipType={(relationshipId, type, targetId) => {
-                    const relationship = relationships.find((item) => item.id === relationshipId);
-                    if (!relationship) return;
-                    onUpdateRelationship(relationshipId, type, relationship.fromId, relationship.toId);
-                    flashInlineTarget(targetId);
-                  }}
-                  onHighlightTarget={(targetId) => {
-                    setInlineHighlightedTargetId(targetId);
-                    onHoverRelatedNote(targetId);
-                  }}
-                  onClearHighlight={(targetId) => {
-                    onClearRelatedHover(targetId);
-                    setInlineHighlightedTargetId((current) => (current === targetId ? null : current));
-                  }}
-                  onAcceptProactiveSuggestion={(suggestionId) => {
-                    const suggestion = visibleProactiveSuggestions.find((item) => item.id === suggestionId);
-                    if (!suggestion) return;
-                    acceptSuggestedLink(suggestion);
-                  }}
-                  onDismissProactiveSuggestion={(suggestionId) => {
-                    setDismissedSuggestionIds((current) => [...new Set([...current, suggestionId])]);
-                  }}
-                  onChangeProactiveSuggestionType={(suggestionId, type) => {
-                    setSuggestionTypeOverrides((current) => ({ ...current, [suggestionId]: type }));
-                  }}
-                />
+                <div className="note-edit-stack">
+                  <RefinementComposer
+                    selectionActive={Boolean(selectedTextRange?.text.trim())}
+                    preview={refinementPreview}
+                    previewDraft={refinementPreviewDraft}
+                    customInstruction={customRefinementInstruction}
+                    onSelectPreset={runRefinement}
+                    onCustomInstructionChange={setCustomRefinementInstruction}
+                    onRunCustom={() => runRefinement('custom')}
+                    onPreviewDraftChange={setRefinementPreviewDraft}
+                    onApplyReplace={applyRefinementReplace}
+                    onApplyInsertBelow={applyRefinementInsertBelow}
+                    onCancelPreview={clearRefinementPreview}
+                  />
+
+                  <InlineNoteLinkEditor
+                    note={note}
+                    notes={notes}
+                    relationshipsByTargetId={relationshipsByTargetId}
+                    highlightedTargetId={inlineHighlightedTargetId}
+                    proactiveSuggestions={visibleProactiveSuggestions}
+                    onBodyChange={(body) => onChange(note.id, { body })}
+                    onPromoteSelectionToTask={(selection) => {
+                      const result = onPromoteFragmentToTask(note.id, selection);
+                      if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
+                      setBodyMode('read');
+                    }}
+                    onCreateLink={({ targetId, type }) => {
+                      onCreateExplicitLink(note.id, targetId, type);
+                      flashInlineTarget(targetId);
+                    }}
+                    onCreateLinkedNote={(title, type) => {
+                      const targetId = onCreateInlineLinkedNote(note.id, title, type);
+                      if (targetId) flashInlineTarget(targetId);
+                      return targetId;
+                    }}
+                    onUpdateRelationshipType={(relationshipId, type, targetId) => {
+                      const relationship = relationships.find((item) => item.id === relationshipId);
+                      if (!relationship) return;
+                      onUpdateRelationship(relationshipId, type, relationship.fromId, relationship.toId);
+                      flashInlineTarget(targetId);
+                    }}
+                    onHighlightTarget={(targetId) => {
+                      setInlineHighlightedTargetId(targetId);
+                      onHoverRelatedNote(targetId);
+                    }}
+                    onClearHighlight={(targetId) => {
+                      onClearRelatedHover(targetId);
+                      setInlineHighlightedTargetId((current) => (current === targetId ? null : current));
+                    }}
+                    onAcceptProactiveSuggestion={(suggestionId) => {
+                      const suggestion = visibleProactiveSuggestions.find((item) => item.id === suggestionId);
+                      if (!suggestion) return;
+                      acceptSuggestedLink(suggestion);
+                    }}
+                    onDismissProactiveSuggestion={(suggestionId) => {
+                      setDismissedSuggestionIds((current) => [...new Set([...current, suggestionId])]);
+                    }}
+                    onChangeProactiveSuggestionType={(suggestionId, type) => {
+                      setSuggestionTypeOverrides((current) => ({ ...current, [suggestionId]: type }));
+                    }}
+                    onSelectionChange={setSelectedTextRange}
+                  />
+                </div>
               )}
             </div>
             {resolvedPromotedFragments.length ? (

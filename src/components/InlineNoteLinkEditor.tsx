@@ -33,6 +33,7 @@ type InlineNoteLinkEditorProps = {
   onAcceptProactiveSuggestion: (suggestionId: string) => void;
   onDismissProactiveSuggestion: (suggestionId: string) => void;
   onChangeProactiveSuggestionType: (suggestionId: string, type: RelationshipType) => void;
+  onSelectionChange?: (selection: { start: number; end: number; text: string } | null) => void;
 };
 
 type SuggestionItem =
@@ -54,7 +55,8 @@ export function InlineNoteLinkEditor({
   onClearHighlight,
   onAcceptProactiveSuggestion,
   onDismissProactiveSuggestion,
-  onChangeProactiveSuggestionType
+  onChangeProactiveSuggestionType,
+  onSelectionChange
 }: InlineNoteLinkEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [activeCursor, setActiveCursor] = useState<number | null>(null);
@@ -142,7 +144,9 @@ export function InlineNoteLinkEditor({
     const start = textareaRef.current.selectionStart;
     const end = textareaRef.current.selectionEnd;
     const text = note.body.slice(start, end);
-    setSelectionRange(start === end ? null : { start, end, text });
+    const nextSelection = start === end ? null : { start, end, text };
+    setSelectionRange(nextSelection);
+    onSelectionChange?.(nextSelection);
   };
 
   return (
