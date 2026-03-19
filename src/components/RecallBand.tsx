@@ -2,6 +2,7 @@ import { FocusMode, Lens, Project, Workspace } from '../types';
 
 type RecallBandProps = {
   count: number;
+  totalCount: number;
   archivedCount: number;
   lens: Lens;
   lensLabel: string;
@@ -18,6 +19,12 @@ type RecallBandProps = {
   onReveal: () => void;
   onRevealNext: () => void;
   onRevealPrev: () => void;
+  onResetView: () => void;
+  onFitAllNotes: () => void;
+  onClearFocus: () => void;
+  onClearFilters: () => void;
+  canClearFocus: boolean;
+  canClearFilters: boolean;
   recallCue: { noteTitle: string; suggestedNextStep: string } | null;
   onAdvanceRecallCue: () => void;
   onClearRecallCue: () => void;
@@ -49,6 +56,7 @@ function CaptureIcon() {
 
 export function RecallBand({
   count,
+  totalCount,
   archivedCount,
   lens,
   lensLabel,
@@ -65,6 +73,12 @@ export function RecallBand({
   onReveal,
   onRevealNext,
   onRevealPrev,
+  onResetView,
+  onFitAllNotes,
+  onClearFocus,
+  onClearFilters,
+  canClearFocus,
+  canClearFilters,
   recallCue,
   onAdvanceRecallCue,
   onClearRecallCue,
@@ -79,6 +93,7 @@ export function RecallBand({
     <header className="recall-band">
       <div className="recall-meta">
         <span>{count} notes</span>
+        {totalCount !== count ? <span>{totalCount} total in universe</span> : null}
         <span>{archivedCount} archived</span>
       </div>
       <nav className="view-switch" aria-label="Lens selection">
@@ -167,6 +182,13 @@ export function RecallBand({
         <button className="ghost-button" onClick={onReveal}>Reveal</button>
         <button className="ghost-button" onClick={onRevealPrev} disabled={revealMatchCount < 2}>‹</button>
         <button className="ghost-button" onClick={onRevealNext} disabled={revealMatchCount < 2}>›</button>
+      </div>
+
+      <div className="project-reveal-controls canvas-recovery-controls" aria-label="Canvas recovery">
+        <button className="ghost-button" onClick={onResetView}>Reset view</button>
+        <button className="ghost-button" onClick={onFitAllNotes}>Fit all notes</button>
+        <button className="ghost-button" onClick={onClearFocus} disabled={!canClearFocus}>Clear focus</button>
+        <button className="ghost-button" onClick={onClearFilters} disabled={!canClearFilters}>Show all notes</button>
       </div>
 
       {demoLinks.map((link) => (

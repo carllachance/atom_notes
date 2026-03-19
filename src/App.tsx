@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AIPanel } from './components/AIPanel';
 import { CaptureComposer } from './components/CaptureComposer';
 import { ExpandedNote } from './components/ExpandedNote';
@@ -8,12 +8,14 @@ import { RelationshipWeb } from './components/RelationshipWeb';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
+import { summarizeCanvasVisibility } from './scene/canvasVisibility';
 import { useSceneController } from './scene/useSceneController';
 
 export function App() {
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [thinkingRailWidth, setThinkingRailWidth] = useState(360);
+  const hasAutoRecoveredRef = useRef(false);
   const demoLinks = [{ href: '/query-prototype', label: 'Query demo' }];
 
   const {
@@ -22,6 +24,7 @@ export function App() {
     activeNoteProjects,
     activeWorkspace,
     visibleNotes,
+    totalActiveNotes,
     archivedNotes,
     deletedNotes,
     projects,
@@ -94,6 +97,10 @@ export function App() {
     onReveal,
     onRevealNext,
     onRevealPrev,
+    resetView,
+    fitAllNotes,
+    clearCanvasFocus,
+    clearCanvasFilters,
     onCaptureDraftChange,
     commitCapture,
     cancelCapture,
@@ -107,6 +114,7 @@ export function App() {
     confirmPendingAction,
     cancelPendingAction
   } = useSceneController();
+  const canvasVisibility = summarizeCanvasVisibility(scene, lensPresentation, visibleNotes, canvasMetrics);
   const thinkingRailVisible = scene.expandedSecondarySurface === 'thinking';
   const captureExpanded = scene.expandedSecondarySurface === 'capture';
   const thinkingRailReservedInset = thinkingRailVisible ? thinkingRailWidth + 24 : 24;
@@ -118,10 +126,18 @@ export function App() {
     )
   );
 
+  useEffect(() => {
+    if (hasAutoRecoveredRef.current) return;
+    if (!canvasVisibility.isBlankBecauseNotesAreOffCanvas) return;
+    hasAutoRecoveredRef.current = true;
+    fitAllNotes();
+  }, [canvasVisibility.isBlankBecauseNotesAreOffCanvas, fitAllNotes]);
+
   return (
     <ThinkingSurface>
       <RecallBand
         count={visibleNotes.length}
+        totalCount={totalActiveNotes}
         archivedCount={archivedNotes.length}
         lens={scene.lens}
         lensLabel={lensPresentation.lensLabel}
@@ -138,6 +154,12 @@ export function App() {
         onReveal={onReveal}
         onRevealPrev={onRevealPrev}
         onRevealNext={onRevealNext}
+        onResetView={resetView}
+        onFitAllNotes={fitAllNotes}
+        onClearFocus={clearCanvasFocus}
+        onClearFilters={clearCanvasFilters}
+        canClearFocus={scene.focusMode.isolate || scene.focusMode.highlight}
+        canClearFilters={scene.lens.kind !== 'universe'}
         recallCue={recallCue ? { noteTitle: recallCue.noteTitle, suggestedNextStep: recallCue.suggestedNextStep } : null}
         onAdvanceRecallCue={onAdvanceRecallCue}
         onClearRecallCue={onClearRecallCue}
@@ -191,6 +213,32 @@ export function App() {
               onHoverEnd={onHoverEnd}
               reservedRightInset={0}
             />
+            {canvasVisibility.shouldShowRecoveryHelper ? (
+              <div className="canvas-recovery-helper" role="status" aria-live="polite">
+                <div>
+                  <strong>
+                    {canvasVisibility.isBlankBecauseOfFocus
+                      ? 'Focus only is hiding the wider universe.'
+                      : canvasVisibility.isBlankBecauseOfFilters
+                        ? 'This lens is currently showing no notes.'
+                        : 'Your notes are present, but the viewport missed them.'}
+                  </strong>
+                  <p>
+                    {canvasVisibility.isBlankBecauseOfFocus
+                      ? `${canvasVisibility.hiddenByFocusCount} notes remain in scope. Turn off Focus only to restore the shared field.`
+                      : canvasVisibility.isBlankBecauseOfFilters
+                        ? `${canvasVisibility.totalActiveNotes} notes still exist in the universe. Clear the active scope or reset the view.`
+                        : `${canvasVisibility.visibleNotes} notes are mounted, but none are inside the current viewport. Recenter without moving saved note positions.`}
+                  </p>
+                </div>
+                <div className="canvas-recovery-helper__actions">
+                  <button type="button" className="ghost-button" onClick={resetView}>Reset view</button>
+                  <button type="button" className="ghost-button" onClick={fitAllNotes}>Fit all notes</button>
+                  <button type="button" className="ghost-button" onClick={clearCanvasFocus} disabled={!scene.focusMode.isolate && !scene.focusMode.highlight}>Clear focus</button>
+                  <button type="button" className="ghost-button" onClick={clearCanvasFilters} disabled={scene.lens.kind === 'universe'}>Show all notes</button>
+                </div>
+              </div>
+            ) : null}
             {scene.lens.kind === 'workspace' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are anchored in this workspace yet. Keep the scope, then capture or assign notes into it.</div> : null}
             {scene.lens.kind === 'project' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are attached to this project yet. Add a project inside a note to give it a calm shared cluster.</div> : null}
           </div>

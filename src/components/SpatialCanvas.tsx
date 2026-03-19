@@ -223,7 +223,9 @@ export function SpatialCanvas({
       left: rect.left,
       top: rect.top,
       scrollLeft: node.scrollLeft,
-      scrollTop: node.scrollTop
+      scrollTop: node.scrollTop,
+      width: node.clientWidth,
+      height: node.clientHeight
     });
   };
 
@@ -300,6 +302,7 @@ export function SpatialCanvas({
       ref={canvasRef}
       className="spatial-canvas"
       data-project-reveal={activeProject ? 'active' : 'idle'}
+      data-note-count={notes.length}
       onPointerMove={(event) => {
         if (!dragState.current) return;
 
