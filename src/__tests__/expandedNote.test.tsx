@@ -86,3 +86,13 @@ test('expanded note keeps organization disclosures collapsed by default in read 
   assert.match(markup, /aria-expanded="false"/);
   assert.equal(markup.includes('No workspace assigned'), false);
 });
+
+test('expanded note separates source, AI, and note control footer rows', () => {
+  const markup = render();
+  assert.match(markup, /aria-label="Source material footer"/);
+  assert.match(markup, /No source files attached yet\./);
+  assert.match(markup, /aria-label="AI tools"/);
+  assert.match(markup, />Brief</);
+  assert.match(markup, /aria-label="Note controls"/);
+  assert.match(markup, />Close</);
+});

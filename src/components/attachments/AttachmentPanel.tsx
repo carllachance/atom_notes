@@ -38,21 +38,28 @@ export function AttachmentPanel({ attachments, onAddAttachments, onRemoveAttachm
       <div className="section-head">
         <div>
           <strong>Source material</strong>
-          <p className="section-hint">Attach PDFs, text, markdown, JSON, CSV, or image files. Raw files stay separate from extracted text.</p>
+          <p className="section-hint">Keep raw files and extracted text together so the note stays inspectable without crowding the main reading flow.</p>
         </div>
         <span className="section-meta">{processedCount}/{attachments.length} ready</span>
       </div>
 
       <div className="attachment-panel-toolbar">
         <button type="button" className="ghost-button" onClick={() => inputRef.current?.click()}>Add attachments</button>
-        <span className="attachment-panel-supported">v1 supports {SUPPORTED_ATTACHMENT_TYPE_LABELS.join(' · ')}</span>
+        <button
+          type="button"
+          className="ghost-button attachment-panel-supported"
+          title={`Supported file types: ${SUPPORTED_ATTACHMENT_TYPE_LABELS.join(', ')}`}
+          aria-label={`Supported file types: ${SUPPORTED_ATTACHMENT_TYPE_LABELS.join(', ')}`}
+        >
+          File types
+        </button>
         <input ref={inputRef} type="file" multiple accept={SUPPORTED_ATTACHMENT_ACCEPT} hidden onChange={onAddAttachments} />
       </div>
 
       {attachments.length === 0 ? (
         <div className="attachment-empty-state">
           <strong>No files attached yet.</strong>
-          <p>Add source material here so notes can keep the original file, extraction state, and inspectable text together.</p>
+          <p>Add source material here so notes can keep the original file, extraction state, and inspectable text together. Supported types: {SUPPORTED_ATTACHMENT_TYPE_LABELS.join(', ')}.</p>
         </div>
       ) : (
         <div className="attachment-list">

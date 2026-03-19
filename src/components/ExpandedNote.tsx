@@ -240,6 +240,21 @@ function sceneRelationshipForTask(taskNoteId: string, sourceNoteId: string, rela
   )) ?? null;
 }
 
+function describeAttachmentSummary(attachments: NoteCardModel['attachments']) {
+  const total = attachments?.length ?? 0;
+  if (!total) return 'No source files attached yet.';
+
+  const ready = attachments?.filter((attachment) => attachment.processing.status === 'processed').length ?? 0;
+  const processing = attachments?.filter((attachment) => attachment.processing.status === 'processing').length ?? 0;
+  const failed = attachments?.filter((attachment) => attachment.processing.status === 'failed').length ?? 0;
+
+  const parts = [`${total} ${total === 1 ? 'file' : 'files'}`];
+  if (ready) parts.push(`${ready} ready`);
+  if (processing) parts.push(`${processing} processing`);
+  if (failed) parts.push(`${failed} need attention`);
+  return parts.join(' · ');
+}
+
 export function ExpandedNote({
   note,
   notes,
@@ -425,6 +440,7 @@ export function ExpandedNote({
   const suggestionDockIntro = useMemo(() => getSuggestionDockIntro(visibleProactiveSuggestions), [visibleProactiveSuggestions]);
   const suggestionSignature = useMemo(() => visibleProactiveSuggestions.map((suggestion) => suggestion.id).join('|'), [visibleProactiveSuggestions]);
   const sourceNote = note?.taskSource ? notesById.get(note.taskSource.sourceNoteId) ?? null : null;
+  const attachmentSummary = useMemo(() => describeAttachmentSummary(note?.attachments), [note?.attachments]);
   const sourceSnippet = useMemo(() => {
     if (!note?.taskSource || !sourceNote) return null;
     const direct = sourceNote.body.slice(note.taskSource.start, note.taskSource.end);
@@ -1058,44 +1074,85 @@ export function ExpandedNote({
           </aside>
         </div>
         <footer className="note-footer-toolbar">
-          <div className="note-footer-toolbar__primary">
-            <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('clarify')}>Clarify</button>
-            <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('executive_summary')}>Executive Summary</button>
-            <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('summarize')}>Summarize</button>
-            <button
-              type="button"
-              className={`ghost-button ${workspaceSectionOpen || projectSectionOpen ? 'active' : ''}`}
-              onClick={() => {
-                setWorkspaceSectionOpen(true);
-                setProjectSectionOpen(true);
-                organizationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-              }}
-            >
-              Organize
-            </button>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => constellationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
-            >
-              Relationships
-            </button>
-          </div>
-          <div className="note-footer-toolbar__secondary">
-            <button type="button" className={`ghost-button ${bodyMode === 'edit' ? 'active' : ''}`} onClick={() => setBodyMode(bodyMode === 'edit' ? 'read' : 'edit')}>
-              {bodyMode === 'edit' ? 'Back to reading' : 'Open editor'}
-            </button>
-            <button type="button" className="ghost-button" onClick={() => (note.archived ? onRestoreArchive(note.id) : onArchive(note.id))}>
-              {note.archived ? 'Restore from archive' : 'Archive'}
-            </button>
-            <button type="button" className="ghost-button" onClick={onClose}>Close</button>
-            <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
-              <summary className="ghost-button">More</summary>
-              <div className="note-danger-menu__panel">
-                <button type="button" className="ghost-button note-danger-action" onClick={() => onDelete(note.id)}>Delete</button>
-              </div>
-            </details>
-          </div>
+          <section className="note-footer-toolbar__section note-footer-toolbar__section--source" aria-label="Source material footer">
+            <div className="note-footer-toolbar__section-copy">
+              <span className="note-footer-toolbar__eyebrow">Source material</span>
+              <strong>{attachmentSummary}</strong>
+            </div>
+            <div className="note-footer-toolbar__section-actions">
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => {
+                  const attachmentSection = document.querySelector('.attachment-panel');
+                  if (attachmentSection instanceof HTMLElement) {
+                    attachmentSection.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                  }
+                }}
+              >
+                {note.attachments?.length ? 'Review sources' : 'Add sources'}
+              </button>
+            </div>
+          </section>
+          <section className="note-footer-toolbar__section note-footer-toolbar__section--ai" aria-label="AI tools">
+            <div className="note-footer-toolbar__section-copy">
+              <span className="note-footer-toolbar__eyebrow">AI tools</span>
+              <strong>Quiet drafting help</strong>
+            </div>
+            <div className="note-footer-toolbar__section-actions note-footer-toolbar__section-actions--compact">
+              <button type="button" className="ghost-button note-footer-ai-action" onClick={() => runOutcomeRefinement('clarify')}>
+                <span aria-hidden="true">✦</span>
+                <span>Clarify</span>
+              </button>
+              <button type="button" className="ghost-button note-footer-ai-action" onClick={() => runOutcomeRefinement('executive_summary')}>
+                <span aria-hidden="true">≡</span>
+                <span>Brief</span>
+              </button>
+              <button type="button" className="ghost-button note-footer-ai-action" onClick={() => runOutcomeRefinement('summarize')}>
+                <span aria-hidden="true">⊙</span>
+                <span>Summarize</span>
+              </button>
+            </div>
+          </section>
+          <section className="note-footer-toolbar__section note-footer-toolbar__section--quiet" aria-label="Note controls">
+            <div className="note-footer-toolbar__section-copy">
+              <span className="note-footer-toolbar__eyebrow">Note controls</span>
+              <strong>Keep the note in flow</strong>
+            </div>
+            <div className="note-footer-toolbar__section-actions note-footer-toolbar__section-actions--quiet">
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => constellationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
+              >
+                Relationships
+              </button>
+              <button
+                type="button"
+                className={`ghost-button ${workspaceSectionOpen || projectSectionOpen ? 'active' : ''}`}
+                onClick={() => {
+                  setWorkspaceSectionOpen(true);
+                  setProjectSectionOpen(true);
+                  organizationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }}
+              >
+                Organize
+              </button>
+              <button type="button" className={`ghost-button ${bodyMode === 'edit' ? 'active' : ''}`} onClick={() => setBodyMode(bodyMode === 'edit' ? 'read' : 'edit')}>
+                {bodyMode === 'edit' ? 'Back to reading' : 'Open editor'}
+              </button>
+              <button type="button" className="ghost-button" onClick={() => (note.archived ? onRestoreArchive(note.id) : onArchive(note.id))}>
+                {note.archived ? 'Restore from archive' : 'Archive'}
+              </button>
+              <button type="button" className="ghost-button" onClick={onClose}>Close</button>
+              <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
+                <summary className="ghost-button">More</summary>
+                <div className="note-danger-menu__panel">
+                  <button type="button" className="ghost-button note-danger-action" onClick={() => onDelete(note.id)}>Delete</button>
+                </div>
+              </details>
+            </div>
+          </section>
         </footer>
       </aside>
 

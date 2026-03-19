@@ -5470,14 +5470,17 @@ samp,
 
 .attachment-panel-toolbar {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .attachment-panel-supported {
+  min-height: 30px;
+  padding-inline: 10px;
   font-size: 0.72rem;
-  line-height: 1.45;
+  line-height: 1.2;
   color: #95a6ca;
 }
 
@@ -5676,22 +5679,81 @@ samp,
 }
 
 .note-footer-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  gap: 10px;
   padding-top: 14px;
   margin-top: 12px;
   border-top: 1px solid rgba(148, 164, 196, 0.12);
+}
+
+.note-footer-toolbar__section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 164, 196, 0.08);
+}
+
+.note-footer-toolbar__section--source {
+  background: rgba(12, 18, 30, 0.42);
+}
+
+.note-footer-toolbar__section--ai {
+  background: rgba(14, 21, 35, 0.5);
+}
+
+.note-footer-toolbar__section--quiet {
+  background: rgba(10, 15, 24, 0.34);
+  border-color: rgba(148, 164, 196, 0.06);
+}
+
+.note-footer-toolbar__section-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.note-footer-toolbar__section-copy strong {
+  font-size: 0.82rem;
+  color: #dfe8ff;
+}
+
+.note-footer-toolbar__eyebrow {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(149, 166, 202, 0.78);
+}
+
+.note-footer-toolbar__section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.note-footer-toolbar__primary,
-.note-footer-toolbar__secondary {
-  display: flex;
+.note-footer-toolbar__section-actions--compact {
+  gap: 6px;
+}
+
+.note-footer-toolbar__section-actions--quiet {
+  opacity: 0.84;
+}
+
+.note-footer-ai-action {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  padding-inline: 12px;
+}
+
+.note-footer-ai-action span[aria-hidden='true'] {
+  font-size: 0.8rem;
+  color: rgba(180, 198, 238, 0.8);
 }
 
 .note-danger-menu {
@@ -5779,8 +5841,13 @@ samp,
     justify-content: center;
   }
 
-  .note-footer-toolbar {
+  .note-footer-toolbar__section {
+    grid-template-columns: minmax(0, 1fr);
     align-items: flex-start;
+  }
+
+  .note-footer-toolbar__section-actions {
+    justify-content: flex-start;
   }
 }
 
