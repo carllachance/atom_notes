@@ -146,6 +146,9 @@ npm test
 npm run build
 ```
 
+### Planning artifact
+- Product planning artifact: `docs/codex_epics_and_stories.json`
+
 ## Direction
 Atomic Notes is being shaped around three principles:
 - calm capture

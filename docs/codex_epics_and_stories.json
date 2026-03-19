@@ -1,0 +1,445 @@
+{
+  "project": "atomic_notes",
+  "artifact_type": "codex_epics_and_stories",
+  "version": "1.0",
+  "generated_from": "UI refinement discussion covering note view, thinking panel, graph interaction, organization controls, relationship management, deletion model, and default/home experience",
+  "guiding_principles": [
+    "Content first, controls second, structure third",
+    "The system should feel calm, legible, and trustworthy",
+    "The user should always know where to read, where to type, and what happens next",
+    "Everything does not need to be hidden, but everything needs rank",
+    "Graph and note should feel like one spatial system, not competing layers",
+    "Use progressive disclosure rather than persistent explanation",
+    "Primary UI should use plain language, not internal abbreviations or initialisms"
+  ],
+  "epics": [
+    {
+      "epic_id": "EPIC-001",
+      "title": "Reduce note view to a minimal, hierarchy-first reading experience",
+      "goal": "Make open notes feel quiet, legible, and intentional by prioritizing reading and demoting secondary controls.",
+      "priority": "P0",
+      "stories": [
+        {
+          "story_id": "STORY-001",
+          "title": "Move note tools to a bottom toolbar",
+          "user_story": "As a user opening a note, I want note tools to live at the bottom so the content is visually primary and the note feels calmer.",
+          "description": "Relocate note-level actions from top and corner emphasis areas into a footer toolbar within the note shell. The footer should contain only the most common note actions.",
+          "acceptance_criteria": [
+            "The note header contains title, mode, and only minimal metadata/actions.",
+            "The note body is the most visually dominant area in both Read and Edit modes.",
+            "Primary note actions are rendered in a footer toolbar below the content.",
+            "No floating or corner control visually outweighs the note body."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-002",
+          "title": "Simplify Read view to remove persistent visual competition",
+          "user_story": "As a user in Read view, I want the interface to stop competing with the note so I can understand the note immediately.",
+          "description": "Reduce visible non-essential elements in Read mode. Keep note content, minimal metadata, and a subtle footer toolbar. Hide or collapse secondary panels by default.",
+          "acceptance_criteria": [
+            "Read view shows note content first with no large explanatory blocks around it.",
+            "AI prompts, organization controls, and relationship panels are hidden or collapsed by default.",
+            "A user can identify where to read within 3 seconds of opening the note.",
+            "A user can distinguish primary content from optional controls at a glance."
+          ],
+          "priority": "P0",
+          "dependencies": [
+            "STORY-001"
+          ]
+        },
+        {
+          "story_id": "STORY-003",
+          "title": "Make workspace assignment directly clickable from the note header",
+          "user_story": "As a user, I want the workspace status in the note header to be actionable so it feels intentional and consistent with other note actions.",
+          "description": "Replace inert workspace status text with a clickable chip or pill in both assigned and unassigned states.",
+          "acceptance_criteria": [
+            "Unassigned state renders as a clear action such as 'Assign workspace'.",
+            "Assigned state renders as a clickable workspace chip such as 'Workspace: Data'.",
+            "The control matches the interaction style of adjacent note actions like Focus and Archive.",
+            "Clicking the control opens workspace selection without requiring the user to hunt elsewhere."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-004",
+          "title": "Convert organization sections into progressive disclosures",
+          "user_story": "As a user, I want Anchored In and Shared Threads to stay out of the way until I need them.",
+          "description": "Turn always-expanded organization panels into compact disclosure sections with collapsed summaries.",
+          "acceptance_criteria": [
+            "Anchored In is collapsed by default in Read view.",
+            "Shared Threads is collapsed by default in Read view.",
+            "Collapsed state shows concise summaries such as current workspace and linked thread count.",
+            "Expanding these sections does not resize unrelated canvas regions."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-005",
+          "title": "Remove clipped corner arrow from the note shell",
+          "user_story": "As a user, I want the note shell to feel polished, without clipped or awkward corner controls.",
+          "description": "Eliminate the current arrow control from the note corner and rehome any related behavior to a stable navigation location outside the card.",
+          "acceptance_criteria": [
+            "No clipped or partially inset arrow remains in the note corner.",
+            "The note shell corners render cleanly at all supported sizes.",
+            "Any displaced navigation behavior remains accessible elsewhere in the interface."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-006",
+          "title": "Remove unexplained initialisms from visible note UI",
+          "user_story": "As a user, I want visible labels to use plain language so the product feels polished and self-explanatory.",
+          "description": "Replace initialisms and prototype-style abbreviations in note-visible UI with readable labels.",
+          "acceptance_criteria": [
+            "No unexplained initialisms appear in primary note UI.",
+            "Shared thread labels show readable names rather than internal abbreviations.",
+            "Visible terminology is consistent across note, side panels, and related controls."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        }
+      ]
+    },
+    {
+      "epic_id": "EPIC-002",
+      "title": "Rebuild the Thinking panel into a safe, obvious interaction surface",
+      "goal": "Make the Thinking panel feel usable, calm, and unmistakably interactive by establishing a clear place to type and reducing preloaded explanation.",
+      "priority": "P0",
+      "stories": [
+        {
+          "story_id": "STORY-007",
+          "title": "Create a single obvious input at the top of Thinking",
+          "user_story": "As a user, I want to immediately know where to type when I open Thinking.",
+          "description": "Add a top-level input field with clear placeholder text. The input becomes the primary focus target for the panel.",
+          "acceptance_criteria": [
+            "The first visible interactive element in Thinking is a text input.",
+            "The placeholder clearly invites action, for example 'Ask about this note or your work...'.",
+            "A user can identify where to type without reading surrounding copy.",
+            "Input focus behavior is predictable on open and accessible by keyboard."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-008",
+          "title": "Reduce Thinking to shortcuts plus results-after-action",
+          "user_story": "As a user, I want Thinking to present a clear next action rather than a wall of explanation and preloaded content.",
+          "description": "Strip explanatory copy and preloaded result blocks from the default panel state. Present only the input and a few shortcut actions. Render results only after the user acts.",
+          "acceptance_criteria": [
+            "Default Thinking state contains the input and no more than three optional shortcut actions.",
+            "There are no large explanatory paragraphs in the default state.",
+            "Preloaded result cards do not render before user interaction.",
+            "Results appear below the input only after the user types, selects a shortcut, or submits a request."
+          ],
+          "priority": "P0",
+          "dependencies": [
+            "STORY-007"
+          ]
+        },
+        {
+          "story_id": "STORY-009",
+          "title": "Replace internal or developer-like language in Thinking",
+          "user_story": "As a user, I want the Thinking panel to speak plainly instead of explaining itself with system terminology.",
+          "description": "Remove copy such as 'graph-aware, note-aware, and action-oriented' and replace it with short human language or no copy at all.",
+          "acceptance_criteria": [
+            "No system-self-descriptive jargon appears in the default panel state.",
+            "Any remaining helper copy is one line or less and directly supports action.",
+            "The panel no longer requires reading explanatory prose before use."
+          ],
+          "priority": "P1",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-010",
+          "title": "Replace the current brain icon with a more legible metaphor",
+          "user_story": "As a user, I want the Thinking icon to be recognizable and polished.",
+          "description": "Swap the current brain glyph for a more legible icon aligned to the feature's actual semantics, such as insight, constellation, refinement, or assistance.",
+          "acceptance_criteria": [
+            "The replacement icon is visually distinct and legible at toolbar size.",
+            "The icon no longer reads as an ambiguous or malformed brain.",
+            "The icon is consistent wherever Thinking appears in the UI."
+          ],
+          "priority": "P1",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-011",
+          "title": "Fix Thinking collapse so it does not resize the entire canvas",
+          "user_story": "As a user, I want collapsing Thinking to affect only that module so the rest of the workspace feels stable.",
+          "description": "Decouple Thinking panel expansion and collapse from global canvas height and unrelated layout regions.",
+          "acceptance_criteria": [
+            "Collapsing Thinking does not shrink the entire canvas vertically.",
+            "The note body and graph surface remain dimensionally stable.",
+            "No layout jump occurs when expanding or collapsing Thinking."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-012",
+          "title": "Preserve contextual color behavior for Thinking",
+          "user_story": "As a user, I want Thinking to feel contextually ready when a note is active.",
+          "description": "Keep and refine the behavior where the panel changes color or accent when a note is opened, reinforcing that Thinking is scoped to current context.",
+          "acceptance_criteria": [
+            "Opening a note changes Thinking panel accenting in a way tied to current context.",
+            "The contextual color treatment feels subtle and intentional rather than loud.",
+            "The color change does not reduce readability or suggest unrelated state changes."
+          ],
+          "priority": "P1",
+          "dependencies": []
+        }
+      ]
+    },
+    {
+      "epic_id": "EPIC-003",
+      "title": "Preserve graph visibility and spatial trust when notes open",
+      "goal": "Make notes and graph relationships feel like one shared plane so the user does not need to fight layout, dragging, or obscured structure.",
+      "priority": "P0",
+      "stories": [
+        {
+          "story_id": "STORY-013",
+          "title": "Keep graph relationships visible when a note opens",
+          "user_story": "As a user, I want to keep seeing the surrounding graph when I open a note so I do not lose the relationship context I was inspecting.",
+          "description": "Change note-open behavior so graph relationships remain visible through dimming, anchored expansion, or another shared-plane treatment rather than being fully obscured.",
+          "acceptance_criteria": [
+            "Opening a note does not fully hide the nearby graph context.",
+            "At least the most relevant local relationships remain visible while the note is open.",
+            "The treatment feels spatially consistent with the graph rather than like a modal covering it."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-014",
+          "title": "Persist note open position or eliminate the need to reposition",
+          "user_story": "As a user, I want the system to respect where I move an open note so I do not have to drag it out of the way repeatedly.",
+          "description": "Remember user-adjusted note position per session or adopt a smarter anchored layout that removes the need for manual repositioning.",
+          "acceptance_criteria": [
+            "If a user repositions an open note, reopening it during the session restores the adjusted position.",
+            "If anchored layout is used instead, opening the note does not require manual dragging to reveal graph content.",
+            "The user no longer experiences repeated resets to an obstructive default position."
+          ],
+          "priority": "P1",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-015",
+          "title": "Create a shared-plane visual treatment for note plus graph",
+          "user_story": "As a user, I want note focus and graph context to feel coordinated, not like separate layers fighting for space.",
+          "description": "Establish a visual model where the active note and its nearby graph context coexist through dimming, soft highlight, or anchored expansion.",
+          "acceptance_criteria": [
+            "The active note feels integrated with the graph rather than floating above it as a blocking layer.",
+            "Nearby graph content remains discoverable without overwhelming note readability.",
+            "The active note state is visually clear without causing the graph to disappear."
+          ],
+          "priority": "P1",
+          "dependencies": [
+            "STORY-013"
+          ]
+        },
+        {
+          "story_id": "STORY-016",
+          "title": "Restore missing double-tap interaction control",
+          "user_story": "As a user, I want double-tap behavior to work consistently so common note and canvas actions feel responsive and complete.",
+          "description": "Implement or restore the missing double-tap control behavior for the intended note or canvas action. Use the existing product interaction model to determine exact behavior if already defined elsewhere.",
+          "acceptance_criteria": [
+            "Double-tap triggers the intended action reliably on supported targets.",
+            "Double-tap does not conflict with single-click, drag, or pointer-up open behavior.",
+            "The interaction feels deliberate rather than accidental.",
+            "If platform constraints require limits, those limits are documented and consistent."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        }
+      ]
+    },
+    {
+      "epic_id": "EPIC-004",
+      "title": "Give the graph gently enforced order without hiding everything",
+      "goal": "Keep the surface rich and alive while introducing calm hierarchy so the system feels ordered rather than chaotic.",
+      "priority": "P1",
+      "stories": [
+        {
+          "story_id": "STORY-017",
+          "title": "Establish ranked visual layers across the workspace",
+          "user_story": "As a user, I want the interface to tell me what matters most right now without hiding the rest of the system.",
+          "description": "Define a hierarchy of always-visible content, quiet secondary context, and intent-driven controls. Apply it consistently across note, graph, and panel surfaces.",
+          "acceptance_criteria": [
+            "Primary content surfaces are visually dominant over metadata and controls.",
+            "Secondary context such as workspace and thread summaries is visible but visually quieter.",
+            "Action-heavy or AI-heavy regions appear only on intent or remain clearly subordinate.",
+            "The surface feels ordered without becoming sparse or empty."
+          ],
+          "priority": "P1",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-018",
+          "title": "Create calmer defaults for graph-side assistance and metadata",
+          "user_story": "As a user, I want the interface to start calm and then become richer only when I ask for it.",
+          "description": "Default nonessential panels and assistive modules to quiet or collapsed states, while preserving rapid access.",
+          "acceptance_criteria": [
+            "The default workspace state does not present multiple equally loud panels at once.",
+            "Hidden or collapsed items remain quickly accessible.",
+            "The user can move from calm default to rich exploration without feeling blocked."
+          ],
+          "priority": "P1",
+          "dependencies": [
+            "STORY-017"
+          ]
+        }
+      ]
+    },
+    {
+      "epic_id": "EPIC-005",
+      "title": "Support explicit relationship management with trust and clarity",
+      "goal": "Make it obvious how to remove relationships and preserve confidence in the graph as a user-controlled structure.",
+      "priority": "P0",
+      "stories": [
+        {
+          "story_id": "STORY-019",
+          "title": "Expose relationship removal affordance where relationships are shown",
+          "user_story": "As a user, I want to remove a relationship from the place I can see it so the graph feels controllable.",
+          "description": "Add a contextual remove affordance to relationship list items, chips, or cards, exposed on hover, selection, or overflow rather than permanently loud.",
+          "acceptance_criteria": [
+            "Each visible explicit relationship has a discoverable remove affordance.",
+            "The affordance is contextual and does not clutter the default UI.",
+            "A user can remove a relationship from either linked note context or a shared relationship panel.",
+            "Relationship removal updates the UI immediately without confusing animation."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-020",
+          "title": "Differentiate explicit relationship removal from inferred relationship dismissal",
+          "user_story": "As a user, I want system-suggested links to behave differently from links I created intentionally.",
+          "description": "Treat explicit relationships as removable edges and inferred relationships as dismissible or ignorable suggestions to avoid reappearing confusion.",
+          "acceptance_criteria": [
+            "Explicit relationships use language such as 'Remove link'.",
+            "Inferred relationships use language such as 'Dismiss' or 'Don't suggest again'.",
+            "The system does not silently recreate a user-removed explicit edge.",
+            "Dismissed inferred suggestions respect the user's intent according to product rules."
+          ],
+          "priority": "P1",
+          "dependencies": [
+            "STORY-019"
+          ]
+        }
+      ]
+    },
+    {
+      "epic_id": "EPIC-006",
+      "title": "Implement a safe, reversible deletion model distinct from archive",
+      "goal": "Clarify archive versus delete so users can manage notes confidently without fearing accidental loss of structure.",
+      "priority": "P0",
+      "stories": [
+        {
+          "story_id": "STORY-021",
+          "title": "Separate Archive and Delete into clearly named actions",
+          "user_story": "As a user, I want Archive and Delete to be distinct actions so I understand the consequence before I click.",
+          "description": "Present archive as the reversible, everyday cleanup action and delete as a separate destructive action with distinct placement and language.",
+          "acceptance_criteria": [
+            "Archive and Delete are shown as separate actions with distinct labels.",
+            "Archive is described as reversible and suitable for hiding notes from the active canvas.",
+            "Delete is visually subordinate until intentionally invoked.",
+            "The UI never implies that Archive permanently removes a note."
+          ],
+          "priority": "P0",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-022",
+          "title": "Add a deletion confirmation with structure impact summary",
+          "user_story": "As a user, I want to understand what else will be affected before a note is permanently deleted.",
+          "description": "Before deletion, show a concise confirmation state that summarizes linked relationships, project/workspace membership, and whether recovery is still possible for a short window.",
+          "acceptance_criteria": [
+            "Delete requires an explicit confirmation step.",
+            "The confirmation summarizes affected links or structural context in plain language.",
+            "The confirmation does not overwhelm the user with raw metadata.",
+            "If undo is supported, the recovery window is stated clearly."
+          ],
+          "priority": "P0",
+          "dependencies": [
+            "STORY-021"
+          ]
+        },
+        {
+          "story_id": "STORY-023",
+          "title": "Preserve a calm undo path for destructive actions",
+          "user_story": "As a user, I want one last easy way back after deleting so I can act confidently without fearing irreversible mistakes.",
+          "description": "Provide a short-lived undo or recovery affordance after delete that is clear, unobtrusive, and consistent with the product's trust model.",
+          "acceptance_criteria": [
+            "After deletion, the UI provides a clear but quiet undo path when product policy allows it.",
+            "Undo feedback appears near the active workflow rather than as a disruptive modal chain.",
+            "Expired undo states are communicated plainly.",
+            "The deletion model stays distinct from Archive at every step."
+          ],
+          "priority": "P1",
+          "dependencies": [
+            "STORY-022"
+          ]
+        }
+      ]
+    },
+    {
+      "epic_id": "EPIC-007",
+      "title": "Refine the default and home experience into a clear next-step surface",
+      "goal": "Make the first view feel immediately useful by presenting capture, recent momentum, and likely next actions without turning the home surface into a dashboard.",
+      "priority": "P1",
+      "stories": [
+        {
+          "story_id": "STORY-024",
+          "title": "Make the home surface answer 'Where should I start?'",
+          "user_story": "As a user returning to the app, I want the default view to quickly orient me toward my next meaningful action.",
+          "description": "Refine the home surface so its primary message, capture area, and recent work sections clearly answer what to do now.",
+          "acceptance_criteria": [
+            "The default home state communicates a clear first action or next step.",
+            "Capture remains immediately available without dominating everything else.",
+            "Recent and active work are easy to scan at a glance.",
+            "The home surface feels like orientation, not a dashboard overload."
+          ],
+          "priority": "P1",
+          "dependencies": []
+        },
+        {
+          "story_id": "STORY-025",
+          "title": "Rank home sections by usefulness rather than equal visual weight",
+          "user_story": "As a user, I want the most relevant recent work to stand out so I can resume momentum without scanning noisy lists.",
+          "description": "Introduce stronger visual hierarchy across home modules so recent work, open tasks, and useful context do not all compete equally.",
+          "acceptance_criteria": [
+            "The most relevant home section is visually primary.",
+            "Secondary summaries remain available but quieter.",
+            "Lists are short, ranked, and easy to scan.",
+            "The surface preserves calmness while still feeling informative."
+          ],
+          "priority": "P1",
+          "dependencies": [
+            "STORY-024"
+          ]
+        },
+        {
+          "story_id": "STORY-026",
+          "title": "Use plain-language empty and onboarding states on home",
+          "user_story": "As a user new to the space, I want the default experience to guide me with plain language instead of product jargon.",
+          "description": "Rewrite empty and early-use states so they explain capture, recent work, and next steps in human language with minimal copy.",
+          "acceptance_criteria": [
+            "Home empty states use plain language and avoid internal terminology.",
+            "Helper text is brief and action-oriented.",
+            "A new user can tell where to type and what happens next without reading a long explanation.",
+            "Onboarding cues remain visually subordinate to actual actions."
+          ],
+          "priority": "P1",
+          "dependencies": [
+            "STORY-024"
+          ]
+        }
+      ]
+    }
+  ]
+}
