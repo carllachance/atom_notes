@@ -110,6 +110,14 @@ export function AIPanel({
   const promptSuggestions = getIntentPrompts(panel.mode, selectedNote, scopeLabel);
   const [showOlderTimeline, setShowOlderTimeline] = useState(false);
   const timeline = useMemo(() => (selectedNote ? getInsightTimelineForNote(timelineEntries, selectedNote.id) : { nowEntries: [], visibleEarlierEntries: [], hiddenEarlierEntries: [] }), [selectedNote, timelineEntries]);
+  const hasTimeline = timeline.nowEntries.length > 0 || timeline.visibleEarlierEntries.length > 0 || timeline.hiddenEarlierEntries.length > 0;
+  const hasActivity = Boolean(
+    pendingAction ||
+    panel.transcript.length ||
+    activeResponse ||
+    streaming ||
+    hasTimeline
+  );
 
   useEffect(() => {
     setShowOlderTimeline(false);
@@ -144,7 +152,7 @@ export function AIPanel({
         </button>
 
         <nav className="ai-mode-switch" aria-label="AI mode">
-          {INSIGHTS_RAIL_MODES.map(({ mode, label, shortLabel }) => (
+          {INSIGHTS_RAIL_MODES.map(({ mode, label }) => (
             <button
               key={mode}
               className={panel.mode === mode ? 'active' : ''}
@@ -152,7 +160,6 @@ export function AIPanel({
               aria-label={label}
               title={label}
             >
-              <span className="ai-mode-short" aria-hidden="true">{shortLabel}</span>
               <span className="ai-mode-label">{label}</span>
             </button>
           ))}
@@ -163,220 +170,211 @@ export function AIPanel({
         <div className="ai-panel-body">
           <div className="ai-panel-scroll">
             <header className="ai-panel-header ai-panel-header--context">
-            <div className="ai-context-headline">
-              <strong>Thinking</strong>
-              <small>{streaming ? 'Streaming grounded response…' : 'Graph-aware, note-aware, and action-oriented.'}</small>
-            </div>
-            <div className="ai-context-pills">
-              <span className="ai-context-pill"><strong>Note</strong>{selectedNote?.title ?? 'Canvas-wide'}</span>
-              <span className="ai-context-pill"><strong>Scope</strong>{scopeLabel}</span>
-              <span className="ai-context-pill"><strong>Workspace</strong>{activeWorkspace?.key ?? activeProject?.key ?? `${visibleNotesCount} visible`}</span>
-            </div>
-          </header>
-
-          {!panel.transcript.length && !panel.query.trim() ? (
-            <section className="ai-idle-prompts" aria-label="Suggested prompts">
-              <div className="ai-section-heading">
-                <span className="ai-block-label">Start from intent</span>
-                <small>Quiet prompts grounded in the current note and scope</small>
+              <div className="ai-context-headline">
+                <strong>Thinking</strong>
+                <small>{selectedNote?.title ?? activeWorkspace?.name ?? activeProject?.name ?? `${visibleNotesCount} visible notes`}</small>
               </div>
+            </header>
+
+            {!hasActivity ? (
+              <section className="ai-idle-prompts" aria-label="Suggested prompts">
               <div className="ai-prompt-grid">
-                {promptSuggestions.map((prompt) => (
+                {promptSuggestions.slice(0, 3).map((prompt) => (
                   <button key={prompt} className="ai-prompt-card" onClick={() => onQueryChange(prompt)}>
                     {prompt}
                   </button>
                 ))}
               </div>
-            </section>
-          ) : null}
+              </section>
+            ) : null}
 
-          {pendingAction ? (
-            <div className="ai-action-preview">
-              <strong>Ready to apply</strong>
-              <p>{pendingAction.label}</p>
-              <div>
-                <button className="ghost-button" onClick={onCancelAction} type="button">Keep as suggestion</button>
-                <button onClick={onConfirmAction} type="button">Apply now</button>
-              </div>
-            </div>
-          ) : null}
-
-          <section className="ai-timeline" aria-label="Insight timeline">
-            <div className="ai-section-heading">
-              <span className="ai-block-label">Insight timeline</span>
-              <small>{selectedNote ? 'Meaningful shifts only' : 'Open a note to track how understanding evolves'}</small>
-            </div>
-
-            {selectedNote ? (
-              <div className="ai-timeline-groups">
-                <div className="ai-timeline-group">
-                  <span className="ai-timeline-label">Now</span>
-                  {timeline.nowEntries.length ? (
-                    <ul className="ai-timeline-list">
-                      {timeline.nowEntries.map((entry) => (
-                        <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
-                          <div className="ai-timeline-copy">
-                            <div className="ai-timeline-row">
-                              <strong>{entry.title}</strong>
-                              <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
-                            </div>
-                            <p>{entry.detail}</p>
-                          </div>
-                          {entry.actions.length ? (
-                            <div className="ai-inline-actions ai-inline-actions--timeline">
-                              {entry.actions.map((action) => (
-                                <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
-                                  {action.label}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="ai-empty-state ai-empty-state--timeline">High-value insight changes will gather here as links, projects, and grounded outputs accumulate.</div>
-                  )}
+            {pendingAction ? (
+              <div className="ai-action-preview">
+                <strong>Ready to apply</strong>
+                <p>{pendingAction.label}</p>
+                <div>
+                  <button className="ghost-button" onClick={onCancelAction} type="button">Keep as suggestion</button>
+                  <button onClick={onConfirmAction} type="button">Apply now</button>
                 </div>
+              </div>
+            ) : null}
 
-                {(visibleEarlierEntries.length || timeline.hiddenEarlierEntries.length) ? (
-                  <div className="ai-timeline-group">
-                    <div className="ai-timeline-heading-row">
-                      <span className="ai-timeline-label">Earlier</span>
-                      {timeline.hiddenEarlierEntries.length ? (
-                        <button className="ghost-button ai-timeline-toggle" onClick={() => setShowOlderTimeline((value) => !value)} type="button">
-                          {showOlderTimeline ? 'Show less' : `Show ${timeline.hiddenEarlierEntries.length} older`}
-                        </button>
-                      ) : null}
+            {hasActivity ? (
+              <>
+                {hasTimeline && selectedNote ? (
+                  <section className="ai-timeline" aria-label="Insight timeline">
+                    <div className="ai-section-heading">
+                      <span className="ai-block-label">Timeline</span>
+                      <small>Meaningful shifts only</small>
                     </div>
-                    <ul className="ai-timeline-list">
-                      {visibleEarlierEntries.map((entry) => (
-                        <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
-                          <div className="ai-timeline-copy">
-                            <div className="ai-timeline-row">
-                              <strong>{entry.title}</strong>
-                              <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
-                            </div>
-                            <p>{entry.detail}</p>
-                          </div>
-                          {entry.actions.length ? (
-                            <div className="ai-inline-actions ai-inline-actions--timeline">
-                              {entry.actions.map((action) => (
-                                <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
-                                  {action.label}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="ai-empty-state ai-empty-state--timeline">Select a note to see its evolving timeline of structural changes, project moves, and grounded AI outputs.</div>
-            )}
-          </section>
 
-          <div className="ai-transcript" aria-live="polite">
-            {panel.transcript.length ? panel.transcript.map((entry) => (
-              <section key={entry.id} className={`ai-message ai-message--${entry.role}`}>
-                <div className="ai-message-meta">
-                  <span>{entry.role === 'user' ? 'You' : `Thinking · ${composerLabel(entry.mode)}`}</span>
-                </div>
-                <p>{entry.content}</p>
-              </section>
-            )) : (
-              <div className="ai-empty-state">The panel stays visible as a native thinking surface. Pick a prompt or ask directly to work from the current note and scope.</div>
-            )}
-          </div>
+                    <div className="ai-timeline-groups">
+                      <div className="ai-timeline-group">
+                        <span className="ai-timeline-label">Now</span>
+                        {timeline.nowEntries.length ? (
+                          <ul className="ai-timeline-list">
+                            {timeline.nowEntries.map((entry) => (
+                              <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
+                                <div className="ai-timeline-copy">
+                                  <div className="ai-timeline-row">
+                                    <strong>{entry.title}</strong>
+                                    <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
+                                  </div>
+                                  <p>{entry.detail}</p>
+                                </div>
+                                {entry.actions.length ? (
+                                  <div className="ai-inline-actions ai-inline-actions--timeline">
+                                    {entry.actions.map((action) => (
+                                      <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
+                                        {action.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
 
-          {activeResponse ? (
-            <div className="ai-response">
-              <section className="ai-summary-block">
-                <div className="ai-section-heading">
-                  <span className="ai-block-label">Grounded answer</span>
-                  <small>{streaming ? 'Updating live from the graph' : 'Ready for actions, linking, or pinning'}</small>
-                </div>
-                <p className="ai-answer">{activeResponse.answer || 'Thinking through the local graph…'}</p>
-              </section>
-
-              {activeResponse.results.length ? (
-                <section className="ai-section">
-                  <div className="ai-section-heading">
-                    <span className="ai-block-label">Graph-aware results</span>
-                    <small>Top notes are already highlighted on the canvas</small>
-                  </div>
-                  <div className="ai-reference-grid">
-                    {activeResponse.results.slice(0, 3).map((result) => {
-                      const note = notesById.get(result.noteId);
-                      if (!note) return null;
-                      return (
-                        <article key={result.noteId} className="ai-reference-card ai-reference-card--result">
-                          <strong>{note.title ?? 'Untitled note'}</strong>
-                          <span>{result.reasons.join(' · ')}</span>
-                          <div className="ai-inline-actions">
-                            <button className="ghost-button" onClick={() => onOpenReference(note.id)}>Open</button>
-                            {selectedNote ? (
-                              <button
-                                className="ghost-button"
-                                onClick={() =>
-                                  onPreviewAction({
-                                    id: `ai-link-${selectedNote.id}-${note.id}`,
-                                    label: `Link ${selectedNote.title ?? 'current note'} to ${note.title ?? 'this note'}`,
-                                    kind: 'create_link',
-                                    relationships: [{ fromId: selectedNote.id, toId: note.id, type: 'related' }],
-                                    requiresConfirmation: true
-                                  })
-                                }
-                              >
-                                Create link
+                      {(visibleEarlierEntries.length || timeline.hiddenEarlierEntries.length) ? (
+                        <div className="ai-timeline-group">
+                          <div className="ai-timeline-heading-row">
+                            <span className="ai-timeline-label">Earlier</span>
+                            {timeline.hiddenEarlierEntries.length ? (
+                              <button className="ghost-button ai-timeline-toggle" onClick={() => setShowOlderTimeline((value) => !value)} type="button">
+                                {showOlderTimeline ? 'Show less' : `Show ${timeline.hiddenEarlierEntries.length} older`}
                               </button>
                             ) : null}
                           </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              ) : null}
+                          <ul className="ai-timeline-list">
+                            {visibleEarlierEntries.map((entry) => (
+                              <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
+                                <div className="ai-timeline-copy">
+                                  <div className="ai-timeline-row">
+                                    <strong>{entry.title}</strong>
+                                    <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
+                                  </div>
+                                  <p>{entry.detail}</p>
+                                </div>
+                                {entry.actions.length ? (
+                                  <div className="ai-inline-actions ai-inline-actions--timeline">
+                                    {entry.actions.map((action) => (
+                                      <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
+                                        {action.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
+                ) : null}
 
-              {activeResponse.sections.map((section) => (
-                <section key={section.id} className="ai-section">
-                  <span className="ai-block-label">{section.title}</span>
-                  <p>{section.body || '…'}</p>
-                </section>
-              ))}
-
-              {resolvedReferences?.length ? (
-                <section className="ai-grounded-references">
-                  <div className="ai-section-heading">
-                    <span className="ai-block-label">Grounded references</span>
-                    <small>Open notes from the current graph context</small>
-                  </div>
-                  <div className="ai-reference-grid">
-                    {resolvedReferences.map((reference) => (
-                      <button key={reference.id} className="ai-reference-card" onClick={() => onOpenReference(reference.id)}>
-                        <strong>{reference.title ?? 'Untitled note'}</strong>
-                        <span>{reference.projectIds.length ? `${reference.projectIds.length} project link${reference.projectIds.length === 1 ? '' : 's'}` : 'No project links'}</span>
-                      </button>
+                {panel.transcript.length ? (
+                  <div className="ai-transcript" aria-live="polite">
+                    {panel.transcript.map((entry) => (
+                      <section key={entry.id} className={`ai-message ai-message--${entry.role}`}>
+                        <div className="ai-message-meta">
+                          <span>{entry.role === 'user' ? 'You' : `Thinking · ${composerLabel(entry.mode)}`}</span>
+                        </div>
+                        <p>{entry.content}</p>
+                      </section>
                     ))}
                   </div>
-                </section>
-              ) : null}
+                ) : null}
 
-              {activeResponse.actions?.length ? (
-                <div className="ai-action-chips">
-                  {activeResponse.actions.map((action) => (
-                    <button key={action.id} className="ghost-button" onClick={() => onPreviewAction(action)}>
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+                {activeResponse ? (
+                  <div className="ai-response">
+                    <section className="ai-summary-block">
+                      <div className="ai-section-heading">
+                        <span className="ai-block-label">Answer</span>
+                        <small>{streaming ? 'Updating live' : 'Grounded in the current graph'}</small>
+                      </div>
+                      <p className="ai-answer">{activeResponse.answer || 'Thinking through the local graph…'}</p>
+                    </section>
+
+                    {activeResponse.results.length ? (
+                      <section className="ai-section">
+                        <div className="ai-section-heading">
+                          <span className="ai-block-label">Related notes</span>
+                          <small>Top notes are already highlighted on the canvas</small>
+                        </div>
+                        <div className="ai-reference-grid">
+                          {activeResponse.results.slice(0, 3).map((result) => {
+                            const note = notesById.get(result.noteId);
+                            if (!note) return null;
+                            return (
+                              <article key={result.noteId} className="ai-reference-card ai-reference-card--result">
+                                <strong>{note.title ?? 'Untitled note'}</strong>
+                                <span>{result.reasons.join(' · ')}</span>
+                                <div className="ai-inline-actions">
+                                  <button className="ghost-button" onClick={() => onOpenReference(note.id)}>Open</button>
+                                  {selectedNote ? (
+                                    <button
+                                      className="ghost-button"
+                                      onClick={() =>
+                                        onPreviewAction({
+                                          id: `ai-link-${selectedNote.id}-${note.id}`,
+                                          label: `Link ${selectedNote.title ?? 'current note'} to ${note.title ?? 'this note'}`,
+                                          kind: 'create_link',
+                                          relationships: [{ fromId: selectedNote.id, toId: note.id, type: 'related' }],
+                                          requiresConfirmation: true
+                                        })
+                                      }
+                                    >
+                                      Create link
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    {activeResponse.sections.map((section) => (
+                      <section key={section.id} className="ai-section">
+                        <span className="ai-block-label">{section.title}</span>
+                        <p>{section.body || '…'}</p>
+                      </section>
+                    ))}
+
+                    {resolvedReferences?.length ? (
+                      <section className="ai-grounded-references">
+                        <div className="ai-section-heading">
+                          <span className="ai-block-label">References</span>
+                          <small>Open notes from the current graph context</small>
+                        </div>
+                        <div className="ai-reference-grid">
+                          {resolvedReferences.map((reference) => (
+                            <button key={reference.id} className="ai-reference-card" onClick={() => onOpenReference(reference.id)}>
+                              <strong>{reference.title ?? 'Untitled note'}</strong>
+                              <span>{reference.projectIds.length ? `${reference.projectIds.length} project link${reference.projectIds.length === 1 ? '' : 's'}` : 'No project links'}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    {activeResponse.actions?.length ? (
+                      <div className="ai-action-chips">
+                        {activeResponse.actions.map((action) => (
+                          <button key={action.id} className="ghost-button" onClick={() => onPreviewAction(action)}>
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </div>
 
           <form className="ai-chat-shell" onSubmit={handleSubmit}>

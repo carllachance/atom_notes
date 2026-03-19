@@ -13,6 +13,7 @@ import { useSceneController } from './scene/useSceneController';
 
 export function App() {
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
+  const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
   const demoLinks = [{ href: '/query-prototype', label: 'Query demo' }];
 
   const {
@@ -22,6 +23,7 @@ export function App() {
     activeWorkspace,
     visibleNotes,
     archivedNotes,
+    deletedNotes,
     projects,
     workspaces,
     lensPresentation,
@@ -64,6 +66,7 @@ export function App() {
     promoteNoteFragmentToTask,
     setTaskState,
     updateRelationship,
+    removeRelationship,
     undoRelationshipEdit,
     traverseToRelated,
     toggleNoteFocus,
@@ -78,6 +81,7 @@ export function App() {
     onViewportCenterChange,
     onOpenNote,
     onArchiveNote,
+    restoreArchivedNote,
     onHoverStart,
     onHoverEnd,
     onAdvanceRecallCue,
@@ -90,6 +94,10 @@ export function App() {
     commitCapture,
     cancelCapture,
     undoLastCapture,
+    deleteActiveNote,
+    restoreDeletedNote,
+    undoDelete,
+    recentlyDeletedNoteId,
     openAIReference,
     runInsights,
     confirmPendingAction,
@@ -140,11 +148,13 @@ export function App() {
             <HomeSurface
               draft={scene.captureComposer.draft}
               notes={scene.notes}
+              deletedNotes={deletedNotes}
               lastCreatedNoteId={scene.captureComposer.lastCreatedNoteId}
               onDraftChange={onCaptureDraftChange}
               onCommit={commitCapture}
               onOpenNote={onOpenNote}
               onOpenCaptureComposer={() => onCaptureDraftChange(scene.captureComposer.draft)}
+              onRestoreDeletedNote={restoreDeletedNote}
             />
           ) : null}
           <div className="view-layer view-layer-canvas">
@@ -213,7 +223,7 @@ export function App() {
       {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} /> : null}
 
       <CaptureComposer
-        isOpen={scene.captureComposer.open && activeNote !== null}
+        isOpen={scene.captureComposer.open}
         value={scene.captureComposer.draft}
         onChange={onCaptureDraftChange}
         onCommit={commitCapture}
@@ -236,13 +246,16 @@ export function App() {
         activeWorkspaceLensId={lensPresentation.activeWorkspace?.id ?? null}
         thinkingActive={scene.aiPanel.state !== 'hidden'}
         hasFreshInsights={hasFreshInsights}
+        initialPosition={activeNote ? notePanelPositions[activeNote.id] : undefined}
         onClose={closeActiveNote}
         onThinkAboutNote={() => setAIPanelVisibility('open')}
+        onDelete={deleteActiveNote}
         onChange={(id, updates) => {
           const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
           updateNote(id, updates, trace);
         }}
         onArchive={onArchiveNote}
+        onRestoreArchive={restoreArchivedNote}
         onOpenRelated={traverseToRelated}
         onInspectRelationship={inspectRelationship}
         onCloseRelationshipInspector={closeRelationshipInspector}
@@ -252,6 +265,7 @@ export function App() {
         onPromoteFragmentToTask={promoteNoteFragmentToTask}
         onSetTaskState={setTaskState}
         onUpdateRelationship={updateRelationship}
+        onRemoveRelationship={removeRelationship}
         onUndoRelationshipEdit={undoRelationshipEdit}
         onToggleFocus={toggleNoteFocus}
         onSetProjectIds={setNoteProjects}
@@ -265,7 +279,14 @@ export function App() {
         onRetryAttachment={retryAttachmentProcessing}
         onHoverRelatedNote={onHoverStart}
         onClearRelatedHover={onHoverEnd}
+        onPositionChange={(noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position }))}
       />
+      {recentlyDeletedNoteId ? (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <span>Note moved to trash.</span>
+          <button type="button" className="ghost-button" onClick={undoDelete}>Undo</button>
+        </div>
+      ) : null}
     </ThinkingSurface>
   );
 }

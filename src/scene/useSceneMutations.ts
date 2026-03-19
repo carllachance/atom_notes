@@ -5,6 +5,8 @@ import {
   bringNoteToFrontInScene,
   closeActiveNoteInScene,
   deleteNoteInScene,
+  restoreDeletedNoteInScene,
+  restoreNoteInScene,
   openNoteInScene,
   setIsDraggingInScene,
   setAIPanelPayload,
@@ -22,6 +24,7 @@ import {
   createInlineLinkedNoteInScene,
   confirmRelationshipInScene,
   promoteNoteFragmentToTaskInScene,
+  removeRelationshipInScene,
   restoreRelationshipInScene,
   setTaskStateInScene,
   traverseToRelatedInScene,
@@ -66,6 +69,10 @@ export function useSceneMutations({
 
   const deleteNote = useCallback((id: string) => {
     setScene((prev) => deleteNoteInScene(prev, id));
+  }, [setScene]);
+
+  const restoreDeletedNote = useCallback((id: string) => {
+    setScene((prev) => restoreDeletedNoteInScene(prev, id, prev.notes.reduce((acc, note) => Math.max(acc, note.z), 0)));
   }, [setScene]);
 
   const bringToFront = useCallback((id: string) => {
@@ -135,6 +142,10 @@ export function useSceneMutations({
     setScene((prev) => restoreRelationshipInScene(prev, relationship));
   }, [setScene]);
 
+  const removeRelationship = useCallback((relationshipId: string) => {
+    setScene((prev) => removeRelationshipInScene(prev, relationshipId));
+  }, [setScene]);
+
   const traverseToRelated = useCallback((targetNoteId: string, relationshipId: string) => {
     onNoteTraversed(targetNoteId);
     setScene((prev) => traverseToRelatedInScene(prev, targetNoteId, relationshipId));
@@ -159,6 +170,10 @@ export function useSceneMutations({
     onNoteArchived(id);
     setScene((prev) => archiveNoteInScene(prev, id));
   }, [onNoteArchived, setScene]);
+
+  const restoreArchivedNote = useCallback((id: string) => {
+    setScene((prev) => restoreNoteInScene(prev, id, prev.notes.reduce((acc, note) => Math.max(acc, note.z), 0)));
+  }, [setScene]);
 
   const toggleNoteFocus = useCallback((id: string) => {
     setScene((prev) => toggleNoteFocusInScene(prev, id));
@@ -208,6 +223,7 @@ export function useSceneMutations({
     closeActiveNote,
     updateNote,
     deleteNote,
+    restoreDeletedNote,
     bringToFront,
     setIsDragging,
     setLens,
@@ -221,11 +237,13 @@ export function useSceneMutations({
     promoteNoteFragmentToTask,
     updateRelationship,
     restoreRelationship,
+    removeRelationship,
     traverseToRelated,
     setTaskState,
     onCanvasScroll,
     onOpenNote,
     onArchiveNote,
+    restoreArchivedNote,
     toggleNoteFocus,
     setNoteProjects,
     createProjectForNote,

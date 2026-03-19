@@ -6,8 +6,8 @@ import type { InsightsResponse, SceneState } from '../types';
 function makeScene(): SceneState {
   return {
     notes: [
-      { id: 'a', title: 'Alpha', body: 'alpha body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'b', title: 'Beta', body: 'beta body', anchors: [], trace: 'idle', x: 1, y: 1, z: 2, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
+      { id: 'a', title: 'Alpha', body: 'alpha body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'b', title: 'Beta', body: 'beta body', anchors: [], trace: 'idle', x: 1, y: 1, z: 2, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
     ],
     relationships: [],
     projects: [],

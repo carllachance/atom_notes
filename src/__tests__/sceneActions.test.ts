@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { archiveNoteInScene, closeActiveNoteInScene, openNoteInScene, restoreNoteInScene, setCanvasScrollInScene, setCaptureComposerState, setFocusModeInScene, setIsDraggingInScene, setLensInScene, toggleNoteFocusInScene, updateNoteInScene } from '../scene/sceneActions';
+import { archiveNoteInScene, closeActiveNoteInScene, deleteNoteInScene, handleCtrlTapInScene, openNoteInScene, restoreDeletedNoteInScene, restoreNoteInScene, setCanvasScrollInScene, setCaptureComposerState, setFocusModeInScene, setIsDraggingInScene, setLensInScene, toggleNoteFocusInScene, updateNoteInScene } from '../scene/sceneActions';
 import type { SceneState } from '../types';
 
 function makeScene(): SceneState {
   return {
-    notes: [{ id: 'n1', title: null, body: 'Body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }],
+    notes: [{ id: 'n1', title: null, body: 'Body', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }],
     relationships: [],
     projects: [],
     workspaces: [],
@@ -46,4 +46,52 @@ test('sceneActions handle open, close, archive, restore, focus, and composer sem
   assert.equal(focused.notes[0].isFocus, true);
   assert.equal(setFocusModeInScene(restored, { isolate: true }).focusMode.isolate, true);
   assert.equal(setCaptureComposerState(restored, { open: true, draft: 'hello' }).captureComposer.draft, 'hello');
+});
+
+test('sceneActions open quick capture on Ctrl double-tap regardless of note state', () => {
+  const once = handleCtrlTapInScene(makeScene(), 500, 320);
+  assert.equal(once.captureComposer.open, false);
+  const twice = handleCtrlTapInScene(once, 700, 320);
+  assert.equal(twice.captureComposer.open, true);
+  const closed = handleCtrlTapInScene(handleCtrlTapInScene({ ...twice, activeNoteId: 'n1' }, 1200, 320), 1400, 320);
+  assert.equal(closed.captureComposer.open, false);
+});
+
+test('sceneActions soft-delete notes and restore them with their relationships intact', (t: any) => {
+  t.mock.method(Date, 'now', () => 1200);
+  const scene = {
+    ...makeScene(),
+    activeNoteId: 'n1',
+    relationships: [
+      {
+        id: 'rel-1',
+        fromId: 'n1',
+        toId: 'n2',
+        type: 'references' as const,
+        state: 'confirmed' as const,
+        explicitness: 'explicit' as const,
+        directional: true,
+        confidence: 1,
+        isInferred: false,
+        explanation: 'Manual link',
+        heuristicSupported: true,
+        createdAt: 1,
+        lastActiveAt: 1
+      }
+    ],
+    notes: [
+      makeScene().notes[0],
+      { ...makeScene().notes[0], id: 'n2', body: 'Second note', z: 2 }
+    ]
+  };
+
+  const deleted = deleteNoteInScene(scene, 'n1');
+  assert.equal(deleted.notes.find((note) => note.id === 'n1')?.deleted, true);
+  assert.equal(deleted.activeNoteId, null);
+  assert.equal(deleted.relationships.some((relationship) => relationship.id === 'rel-1'), true);
+
+  const restored = restoreDeletedNoteInScene(deleted, 'n1', 3);
+  assert.equal(restored.notes.find((note) => note.id === 'n1')?.deleted, false);
+  assert.equal(restored.activeNoteId, 'n1');
+  assert.equal(restored.relationships.some((relationship) => relationship.id === 'rel-1'), true);
 });

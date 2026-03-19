@@ -7,8 +7,8 @@ import type { SceneState } from '../types';
 function makeScene(): SceneState {
   return {
     notes: [
-      { id: 'n1', title: null, body: 'alpha', anchors: [], trace: 'idle', x: 40, y: 60, z: 1, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'n2', title: null, body: 'beta', anchors: [], trace: 'idle', x: 340, y: 180, z: 2, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
+      { id: 'n1', title: null, body: 'alpha', anchors: [], trace: 'idle', x: 40, y: 60, z: 1, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'n2', title: null, body: 'beta', anchors: [], trace: 'idle', x: 340, y: 180, z: 2, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
     ],
     relationships: [],
     projects: [],

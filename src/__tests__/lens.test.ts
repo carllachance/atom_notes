@@ -6,11 +6,11 @@ import { SceneState } from '../types';
 function makeScene(): SceneState {
   return {
     notes: [
-      { id: 'a', title: 'Alpha', body: 'Launch brief policy', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 0, updatedAt: 0, archived: false, inFocus: true, isFocus: true, projectIds: ['p1'], inferredProjectIds: [], workspaceId: 'w1', inferredRelationships: [] },
-      { id: 'b', title: 'Beta', body: 'Cross-team policy mirror', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 0, updatedAt: 0, archived: false, inFocus: false, isFocus: false, projectIds: ['p2'], inferredProjectIds: [], workspaceId: 'w2', inferredRelationships: [] },
-      { id: 'c', title: 'Gamma', body: 'Project-only execution note', anchors: [], trace: 'idle', x: 0, y: 0, z: 3, createdAt: 0, updatedAt: 0, archived: false, inFocus: false, isFocus: false, projectIds: ['p1'], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'd', title: 'Delta', body: 'Loose idea with no affinities', anchors: [], trace: 'idle', x: 0, y: 0, z: 4, createdAt: 0, updatedAt: 0, archived: false, inFocus: false, isFocus: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'e', title: 'Echo', body: 'Archived', anchors: [], trace: 'idle', x: 0, y: 0, z: 5, createdAt: 0, updatedAt: 0, archived: true, inFocus: false, isFocus: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
+      { id: 'a', title: 'Alpha', body: 'Launch brief policy', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: true, isFocus: true, projectIds: ['p1'], inferredProjectIds: [], workspaceId: 'w1', inferredRelationships: [] },
+      { id: 'b', title: 'Beta', body: 'Cross-team policy mirror', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: ['p2'], inferredProjectIds: [], workspaceId: 'w2', inferredRelationships: [] },
+      { id: 'c', title: 'Gamma', body: 'Project-only execution note', anchors: [], trace: 'idle', x: 0, y: 0, z: 3, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: ['p1'], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'd', title: 'Delta', body: 'Loose idea with no affinities', anchors: [], trace: 'idle', x: 0, y: 0, z: 4, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'e', title: 'Echo', body: 'Archived', anchors: [], trace: 'idle', x: 0, y: 0, z: 5, createdAt: 0, updatedAt: 0, archived: true, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
     ],
     relationships: [
       { id: 'r1', fromId: 'a', toId: 'b', type: 'references', state: 'confirmed', explicitness: 'explicit', directional: true, confidence: 0.9, isInferred: false, explanation: 'Shared source', heuristicSupported: true, createdAt: 1, lastActiveAt: 1 },

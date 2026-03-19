@@ -156,7 +156,7 @@ function collectInferenceCandidates(notes: NoteCardModel[], nowTs: number): Rela
     for (let j = i + 1; j < notes.length; j += 1) {
       const a = notes[i];
       const b = notes[j];
-      if (a.archived || b.archived) continue;
+      if (a.archived || a.deleted || b.archived || b.deleted) continue;
 
       const urlsA = extractUrls(a);
       const urlsB = extractUrls(b);
@@ -256,7 +256,8 @@ export function getRankedRelationshipsForNote(noteId: string, scene: SceneState)
     scene.relationships.filter((relationship) => {
       if (relationship.fromId !== noteId && relationship.toId !== noteId) return false;
       const targetId = relationship.fromId === noteId ? relationship.toId : relationship.fromId;
-      return !notesById.get(targetId)?.archived;
+      const target = notesById.get(targetId);
+      return Boolean(target && !target.archived && !target.deleted);
     })
   );
 
@@ -291,7 +292,7 @@ export function inferSuggestedRelationships(source: NoteCardModel, notes: NoteCa
   const suggestions: SuggestedRelationship[] = [];
 
   for (const note of notes) {
-    if (note.id === source.id || note.archived) continue;
+    if (note.id === source.id || note.archived || note.deleted) continue;
     const targetText = `${note.title ?? ''}\n${note.body}`;
 
     if (source.title && note.title && source.title.trim().toLowerCase() === note.title.trim().toLowerCase()) {

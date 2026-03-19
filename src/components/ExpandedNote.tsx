@@ -53,9 +53,12 @@ type ExpandedNoteProps = {
   activeWorkspaceLensId: string | null;
   thinkingActive: boolean;
   hasFreshInsights: boolean;
+  initialPosition?: { x: number; y: number };
   onClose: () => void;
   onThinkAboutNote: () => void;
   onArchive: (id: string) => void;
+  onRestoreArchive: (id: string) => void;
+  onDelete: (id: string) => void;
   onChange: (id: string, updates: Partial<NoteCardModel>) => void;
   onOpenRelated: (targetNoteId: string, relationshipId: string) => void;
   onInspectRelationship: (relationshipId: string) => void;
@@ -66,6 +69,7 @@ type ExpandedNoteProps = {
   onPromoteFragmentToTask: (sourceNoteId: string, selection: { start: number; end: number; text: string }) => { taskNoteId: string | null; promotionId: string | null };
   onSetTaskState: (noteId: string, taskState: 'open' | 'done') => void;
   onUpdateRelationship: (relationshipId: string, type: RelationshipType, fromId: string, toId: string) => void;
+  onRemoveRelationship: (relationshipId: string) => void;
   onUndoRelationshipEdit: () => void;
   onToggleFocus: (id: string) => void;
   onSetProjectIds: (id: string, projectIds: string[]) => void;
@@ -79,6 +83,7 @@ type ExpandedNoteProps = {
   onRetryAttachment: (attachmentId: string) => void;
   onHoverRelatedNote: (noteId: string) => void;
   onClearRelatedHover: (noteId: string) => void;
+  onPositionChange?: (noteId: string, position: { x: number; y: number }) => void;
 };
 
 type DragState = { dx: number; dy: number };
@@ -90,7 +95,7 @@ type SuggestedLinkRow = ProactiveLinkSuggestion & {
   workspaceColor: string | null;
 };
 
-type IconButtonKind = 'back' | 'project' | 'workspace' | 'thinking';
+type IconButtonKind = 'project' | 'workspace' | 'thinking';
 
 type IconToolButtonProps = {
   label: string;
@@ -108,15 +113,6 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function ToolIcon({ kind }: { kind: IconButtonKind }) {
-  if (kind === 'back') {
-    return (
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M9.7 3.4 5.3 7.8l4.4 4.8" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.4" />
-        <path d="M6 7.8h5.2" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-      </svg>
-    );
-  }
-
   if (kind === 'workspace') {
     return (
       <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -216,7 +212,7 @@ function getSuggestionDockIntro(suggestions: SuggestedLinkRow[]) {
 function getWorkspaceMeta(workspaces: Workspace[], workspaceId: string | null) {
   const workspace = workspaceId ? workspaces.find((candidate) => candidate.id === workspaceId) ?? null : null;
   return {
-    label: workspace?.key ?? workspace?.name ?? null,
+    label: workspace?.name ?? workspace?.key ?? null,
     color: workspace?.color ?? null
   };
 }
@@ -243,9 +239,12 @@ export function ExpandedNote({
   activeWorkspaceLensId,
   thinkingActive,
   hasFreshInsights,
+  initialPosition,
   onClose,
   onThinkAboutNote,
   onArchive,
+  onRestoreArchive,
+  onDelete,
   onChange,
   onOpenRelated,
   onInspectRelationship,
@@ -256,6 +255,7 @@ export function ExpandedNote({
   onPromoteFragmentToTask,
   onSetTaskState,
   onUpdateRelationship,
+  onRemoveRelationship,
   onUndoRelationshipEdit,
   onToggleFocus,
   onSetProjectIds,
@@ -268,10 +268,14 @@ export function ExpandedNote({
   onRemoveAttachment,
   onRetryAttachment,
   onHoverRelatedNote,
-  onClearRelatedHover
+  onClearRelatedHover,
+  onPositionChange
 }: ExpandedNoteProps) {
   const [showProjectComposer, setShowProjectComposer] = useState(false);
   const [showWorkspaceComposer, setShowWorkspaceComposer] = useState(false);
+  const [workspaceSectionOpen, setWorkspaceSectionOpen] = useState(false);
+  const [projectSectionOpen, setProjectSectionOpen] = useState(false);
+  const [showDangerActions, setShowDangerActions] = useState(false);
   const [projectDraft, setProjectDraft] = useState<ProjectDraft>(DEFAULT_PROJECT_DRAFT);
   const [workspaceDraft, setWorkspaceDraft] = useState<WorkspaceDraft>(DEFAULT_WORKSPACE_DRAFT);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -289,6 +293,8 @@ export function ExpandedNote({
   const [refinementPreview, setRefinementPreview] = useState<RefinementSuggestion | null>(null);
   const [refinementPreviewDraft, setRefinementPreviewDraft] = useState('');
   const panelRef = useRef<HTMLElement | null>(null);
+  const constellationSectionRef = useRef<HTMLElement | null>(null);
+  const organizationSectionRef = useRef<HTMLElement | null>(null);
   const inlineHighlightTimerRef = useRef<number | null>(null);
   const freshSuggestionsTimerRef = useRef<number | null>(null);
   const previousSuggestionSignatureRef = useRef('');
@@ -302,11 +308,14 @@ export function ExpandedNote({
   }, []);
 
   useEffect(() => {
-    setPosition({ x: 0, y: 0 });
+    setPosition(initialPosition ?? { x: 0, y: 0 });
     setDragState(null);
     setBodyMode(note?.trace === 'captured' ? 'edit' : 'read');
     setShowProjectComposer(false);
     setShowWorkspaceComposer(false);
+    setWorkspaceSectionOpen(false);
+    setProjectSectionOpen(false);
+    setShowDangerActions(false);
     setProjectDraft(DEFAULT_PROJECT_DRAFT);
     setWorkspaceDraft(DEFAULT_WORKSPACE_DRAFT);
     setInlineHighlightedTargetId(null);
@@ -319,7 +328,7 @@ export function ExpandedNote({
     setRefinementPreview(null);
     setRefinementPreviewDraft('');
     previousSuggestionSignatureRef.current = '';
-  }, [note?.id, note?.trace]);
+  }, [initialPosition, note?.id, note?.trace]);
 
   useEffect(() => {
     return () => {
@@ -345,14 +354,17 @@ export function ExpandedNote({
       const minY = -maxY;
       setPosition({ x: clamp(event.clientX - dragState.dx, minX, maxX), y: clamp(event.clientY - dragState.dy, minY, maxY) });
     };
-    const onPointerUp = () => setDragState(null);
+    const onPointerUp = () => {
+      setDragState(null);
+      if (note) onPositionChange?.(note.id, position);
+    };
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     return () => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [dragState]);
+  }, [dragState, note, onPositionChange, position]);
 
   const notesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate])), [notes]);
   const taskStatesById = useMemo(() => new Map(notes.map((candidate) => [candidate.id, candidate.taskState])), [notes]);
@@ -537,6 +549,11 @@ export function ExpandedNote({
     window.setTimeout(() => runRefinement(presetId), 0);
   };
 
+  const workspaceSummary = noteWorkspace ? noteWorkspace.name : 'Assign workspace';
+  const threadSummary = noteProjects.length
+    ? noteProjects.slice(0, 2).map((project) => project.name).join(', ') + (noteProjects.length > 2 ? ` +${noteProjects.length - 2}` : '')
+    : 'No shared threads';
+
   return (
     <section className="expanded-note-shell">
       <aside ref={panelRef} className="expanded-note" style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
@@ -555,11 +572,19 @@ export function ExpandedNote({
               </div>
               <div className="note-project-pills">
                 {noteProjects.map((project) => (
-                  <button key={project.id} className={`project-pill ${activeProjectRevealId === project.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: project.color }} onClick={() => onSetProjectLens(activeProjectRevealId === project.id ? null : project.id)}>{project.key}</button>
+                  <button key={project.id} className={`project-pill ${activeProjectRevealId === project.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: project.color }} onClick={() => onSetProjectLens(activeProjectRevealId === project.id ? null : project.id)}>{project.name}</button>
                 ))}
-                {noteWorkspace ? (
-                  <button className={`project-pill workspace-pill ${activeWorkspaceLensId === noteWorkspace.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: noteWorkspace.color }} onClick={() => onSetWorkspaceLens(activeWorkspaceLensId === noteWorkspace.id ? null : noteWorkspace.id)}>{noteWorkspace.key}</button>
-                ) : <span className="workspace-inline-label workspace-inline-label--empty">No workspace assigned</span>}
+                <button
+                  type="button"
+                  className={`project-pill workspace-pill ${noteWorkspace ? '' : 'workspace-inline-label--empty'} ${activeWorkspaceLensId === noteWorkspace?.id ? 'active' : ''}`.trim()}
+                  style={noteWorkspace ? { ['--project-accent' as string]: noteWorkspace.color } : undefined}
+                  onClick={() => {
+                    setWorkspaceSectionOpen((open) => !open || !noteWorkspace);
+                    if (noteWorkspace) onSetWorkspaceLens(activeWorkspaceLensId === noteWorkspace.id ? null : noteWorkspace.id);
+                  }}
+                >
+                  {workspaceSummary}
+                </button>
                 {note.intent === 'task' ? (
                   <button
                     className={`project-pill project-pill--utility ${note.taskState === 'done' ? 'active' : ''}`}
@@ -569,7 +594,6 @@ export function ExpandedNote({
                   </button>
                 ) : null}
                 <button className={`project-pill project-pill--utility ${isFocus ? 'active' : ''}`} onClick={() => onToggleFocus(note.id)}>{isFocus ? 'Focus' : 'Mark Focus'}</button>
-                <button className="project-pill project-pill--utility" onClick={() => onArchive(note.id)}>Archive</button>
               </div>
             </div>
           </div>
@@ -581,27 +605,11 @@ export function ExpandedNote({
               pulse={hasFreshInsights && !thinkingActive}
               onClick={onThinkAboutNote}
             />
-            <IconToolButton label="Back to canvas" kind="back" onClick={onClose} />
           </div>
         </header>
 
         <div className="expanded-note-layout">
           <div className="expanded-note-main">
-            <section className="outcomes-strip" aria-label="Next-step actions">
-              <div className="outcomes-strip__copy">
-                <strong>Next step</strong>
-                <p>Use one click to tighten the note, make it presentable, or pull out action items.</p>
-              </div>
-              <div className="outcomes-strip__actions">
-                <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('clarify')}>Clarify</button>
-                <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('executive_summary')}>Executive Summary</button>
-                <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('summarize')}>Summarize</button>
-                <button type="button" className={`ghost-button ${bodyMode === 'edit' ? 'active' : ''}`} onClick={() => setBodyMode(bodyMode === 'edit' ? 'read' : 'edit')}>
-                  {bodyMode === 'edit' ? 'Back to reading' : 'Open editor'}
-                </button>
-              </div>
-            </section>
-
             <div className="note-body-surface" data-mode={bodyMode}>
               {bodyMode === 'read' ? (
                 <MarkdownProjectionView
@@ -773,7 +781,7 @@ export function ExpandedNote({
                 </button>
               </section>
             ) : null}
-            <section className="detail-section detail-section--constellation" aria-label="Constellation">
+            <section ref={constellationSectionRef} className="detail-section detail-section--constellation" aria-label="Constellation">
               <div className="section-head">
                 <div>
                   <strong>Constellation</strong>
@@ -815,6 +823,9 @@ export function ExpandedNote({
                               {relationship.explicitness === 'inferred' ? <p className="relation-explanation">{relationship.explanation}</p> : null}
                             </button>
                             <button className="relation-open" onClick={() => onOpenRelated(relationship.targetId, relationship.id)}>Follow</button>
+                            {relationship.explicitness === 'explicit' ? (
+                              <button className="ghost-button relation-remove" onClick={() => onRemoveRelationship(relationship.id)}>Remove link</button>
+                            ) : null}
                             {relationship.explicitness === 'inferred' && relationship.state === 'proposed' ? <button className="relation-confirm" onClick={() => onConfirmRelationship(relationship.id)}>Keep</button> : null}
                           </div>
                         ))}
@@ -909,88 +920,153 @@ export function ExpandedNote({
                     <button className="ghost-button" onClick={() => onOpenRelated(inspectedRelationship.toId === note.id ? inspectedRelationship.fromId : inspectedRelationship.toId, inspectedRelationship.id)}>
                       Follow to note
                     </button>
+                    {inspectedRelationship.explicitness === 'explicit' ? (
+                      <button className="ghost-button relation-remove" onClick={() => onRemoveRelationship(inspectedRelationship.id)}>
+                        Remove link
+                      </button>
+                    ) : null}
                   </div>
                 </section>
               ) : null}
-              <section className="detail-section detail-section--constellation-subsection" aria-label="Anchored in">
-              <div className="section-head section-head--icon-action">
-                <div>
-                  <strong>Anchored in</strong>
-                  <small className="section-hint">Give this note a home so nearby paths stay oriented.</small>
-                </div>
-                <IconToolButton
-                  label={showWorkspaceComposer ? 'Close place maker' : 'Add a new place'}
-                  kind="workspace"
-                  pressed={showWorkspaceComposer}
-                  onClick={() => setShowWorkspaceComposer((open) => !open)}
-                />
-              </div>
-              <div className="organize-choice-list">
-                <label className="project-membership-row project-membership-row--empty">
-                  <input type="radio" name={`workspace-${note.id}`} checked={!note.workspaceId} onChange={() => onSetWorkspaceId(note.id, null)} />
-                  <span><strong>No workspace assigned</strong><small>Keep this note in the shared field for now.</small></span>
-                </label>
-                {workspaces.map((workspace) => (
-                  <label key={workspace.id} className="project-membership-row" style={{ ['--project-accent' as string]: workspace.color }}>
-                    <input type="radio" name={`workspace-${note.id}`} checked={note.workspaceId === workspace.id} onChange={() => onSetWorkspaceId(note.id, workspace.id)} />
-                    <span><strong>{workspace.key}</strong><small>{workspace.name}</small></span>
-                  </label>
-                ))}
-              </div>
-              {showWorkspaceComposer ? (
-                <div className="project-compose-inline">
-                  <div className="project-compose-grid">
-                    <input aria-label="Workspace key" placeholder="Key (OPS)" value={workspaceDraft.key ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, key: event.target.value }))} />
-                    <input aria-label="Workspace name" placeholder="Place name" value={workspaceDraft.name ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, name: event.target.value }))} />
-                    <input aria-label="Workspace color" type="color" value={workspaceDraft.color ?? '#5fbf97'} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, color: event.target.value }))} />
-                  </div>
-                  <textarea aria-label="Workspace description" placeholder="What kind of place is this note settling into?" value={workspaceDraft.description ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, description: event.target.value }))} />
-                  <button onClick={() => { if (!(workspaceDraft.key ?? workspaceDraft.name ?? '').trim()) return; onCreateWorkspace(note.id, workspaceDraft); setWorkspaceDraft(DEFAULT_WORKSPACE_DRAFT); setShowWorkspaceComposer(false); }}>Create place</button>
-                </div>
-              ) : null}
-            </section>
+              <section ref={organizationSectionRef} className="detail-section detail-section--constellation-subsection" aria-label="Anchored in">
+                <button type="button" className="disclosure-summary" aria-expanded={workspaceSectionOpen} onClick={() => setWorkspaceSectionOpen((open) => !open)}>
+                  <span>
+                    <strong>Anchored in</strong>
+                    <small>{workspaceSummary}</small>
+                  </span>
+                  <span aria-hidden="true">{workspaceSectionOpen ? '−' : '+'}</span>
+                </button>
+                {workspaceSectionOpen ? (
+                  <>
+                    <div className="section-head section-head--icon-action">
+                      <div>
+                        <small className="section-hint">Give this note a home so nearby paths stay oriented.</small>
+                      </div>
+                      <IconToolButton
+                        label={showWorkspaceComposer ? 'Close place maker' : 'Add a new place'}
+                        kind="workspace"
+                        pressed={showWorkspaceComposer}
+                        onClick={() => setShowWorkspaceComposer((open) => !open)}
+                      />
+                    </div>
+                    <div className="organize-choice-list">
+                      <label className="project-membership-row project-membership-row--empty">
+                        <input type="radio" name={`workspace-${note.id}`} checked={!note.workspaceId} onChange={() => onSetWorkspaceId(note.id, null)} />
+                        <span><strong>Assign later</strong><small>Keep this note in the shared field for now.</small></span>
+                      </label>
+                      {workspaces.map((workspace) => (
+                        <label key={workspace.id} className="project-membership-row" style={{ ['--project-accent' as string]: workspace.color }}>
+                          <input type="radio" name={`workspace-${note.id}`} checked={note.workspaceId === workspace.id} onChange={() => onSetWorkspaceId(note.id, workspace.id)} />
+                          <span><strong>{workspace.name}</strong><small>{workspace.key}</small></span>
+                        </label>
+                      ))}
+                    </div>
+                    {showWorkspaceComposer ? (
+                      <div className="project-compose-inline">
+                        <div className="project-compose-grid">
+                          <input aria-label="Workspace key" placeholder="Key (OPS)" value={workspaceDraft.key ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, key: event.target.value }))} />
+                          <input aria-label="Workspace name" placeholder="Place name" value={workspaceDraft.name ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, name: event.target.value }))} />
+                          <input aria-label="Workspace color" type="color" value={workspaceDraft.color ?? '#5fbf97'} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, color: event.target.value }))} />
+                        </div>
+                        <textarea aria-label="Workspace description" placeholder="What kind of place is this note settling into?" value={workspaceDraft.description ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, description: event.target.value }))} />
+                        <button onClick={() => { if (!(workspaceDraft.key ?? workspaceDraft.name ?? '').trim()) return; onCreateWorkspace(note.id, workspaceDraft); setWorkspaceDraft(DEFAULT_WORKSPACE_DRAFT); setShowWorkspaceComposer(false); }}>Create place</button>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+              </section>
 
-            <section className="detail-section detail-section--constellation-subsection" aria-label="Shared threads">
-              <div className="section-head section-head--icon-action">
-                <div>
-                  <strong>Shared threads</strong>
-                  <small className="section-hint">Let the note join a few larger storylines when it helps.</small>
-                </div>
-                <IconToolButton
-                  label={showProjectComposer ? 'Close thread maker' : 'Add a new thread'}
-                  kind="project"
-                  pressed={showProjectComposer}
-                  onClick={() => setShowProjectComposer((open) => !open)}
-                />
-              </div>
-              {projects.length ? (
-                <div className="organize-choice-list">
-                  {projects.map((project) => (
-                    <label key={project.id} className="project-membership-row" style={{ ['--project-accent' as string]: project.color }}>
-                      <input type="checkbox" checked={noteProjectIds.has(project.id)} onChange={(event) => {
-                        const next = event.target.checked ? [...note.projectIds, project.id] : note.projectIds.filter((projectId) => projectId !== project.id);
-                        onSetProjectIds(note.id, next);
-                      }} />
-                      <span><strong>{project.key}</strong><small>{project.name}</small></span>
-                    </label>
-                  ))}
-                </div>
-              ) : <p className="relations-empty relations-empty--attention">No threads yet. Add one only when this note needs a shared storyline.</p>}
-              {showProjectComposer ? (
-                <div className="project-compose-inline">
-                  <div className="project-compose-grid">
-                    <input aria-label="Project key" placeholder="Key (SLD)" value={projectDraft.key ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, key: event.target.value }))} />
-                    <input aria-label="Project name" placeholder="Thread name" value={projectDraft.name ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, name: event.target.value }))} />
-                    <input aria-label="Project color" type="color" value={projectDraft.color ?? '#7aa2f7'} onChange={(event) => setProjectDraft((prev) => ({ ...prev, color: event.target.value }))} />
-                  </div>
-                  <textarea aria-label="Project description" placeholder="What larger thread brings these notes together?" value={projectDraft.description ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, description: event.target.value }))} />
-                  <button onClick={() => { if (!(projectDraft.key ?? projectDraft.name ?? '').trim()) return; onCreateProject(note.id, projectDraft); setProjectDraft(DEFAULT_PROJECT_DRAFT); setShowProjectComposer(false); }}>Create thread</button>
-                </div>
-              ) : null}
-            </section>
+              <section className="detail-section detail-section--constellation-subsection" aria-label="Shared threads">
+                <button type="button" className="disclosure-summary" aria-expanded={projectSectionOpen} onClick={() => setProjectSectionOpen((open) => !open)}>
+                  <span>
+                    <strong>Shared threads</strong>
+                    <small>{threadSummary}</small>
+                  </span>
+                  <span aria-hidden="true">{projectSectionOpen ? '−' : '+'}</span>
+                </button>
+                {projectSectionOpen ? (
+                  <>
+                    <div className="section-head section-head--icon-action">
+                      <div>
+                        <small className="section-hint">Let the note join a few larger storylines when it helps.</small>
+                      </div>
+                      <IconToolButton
+                        label={showProjectComposer ? 'Close thread maker' : 'Add a new thread'}
+                        kind="project"
+                        pressed={showProjectComposer}
+                        onClick={() => setShowProjectComposer((open) => !open)}
+                      />
+                    </div>
+                    {projects.length ? (
+                      <div className="organize-choice-list">
+                        {projects.map((project) => (
+                          <label key={project.id} className="project-membership-row" style={{ ['--project-accent' as string]: project.color }}>
+                            <input type="checkbox" checked={noteProjectIds.has(project.id)} onChange={(event) => {
+                              const next = event.target.checked ? [...note.projectIds, project.id] : note.projectIds.filter((projectId) => projectId !== project.id);
+                              onSetProjectIds(note.id, next);
+                            }} />
+                            <span><strong>{project.name}</strong><small>{project.key}</small></span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : <p className="relations-empty relations-empty--attention">No threads yet. Add one only when this note needs a shared storyline.</p>}
+                    {showProjectComposer ? (
+                      <div className="project-compose-inline">
+                        <div className="project-compose-grid">
+                          <input aria-label="Project key" placeholder="Key (SLD)" value={projectDraft.key ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, key: event.target.value }))} />
+                          <input aria-label="Project name" placeholder="Thread name" value={projectDraft.name ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, name: event.target.value }))} />
+                          <input aria-label="Project color" type="color" value={projectDraft.color ?? '#7aa2f7'} onChange={(event) => setProjectDraft((prev) => ({ ...prev, color: event.target.value }))} />
+                        </div>
+                        <textarea aria-label="Project description" placeholder="What larger thread brings these notes together?" value={projectDraft.description ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, description: event.target.value }))} />
+                        <button onClick={() => { if (!(projectDraft.key ?? projectDraft.name ?? '').trim()) return; onCreateProject(note.id, projectDraft); setProjectDraft(DEFAULT_PROJECT_DRAFT); setShowProjectComposer(false); }}>Create thread</button>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+              </section>
             </section>
           </aside>
         </div>
+        <footer className="note-footer-toolbar">
+          <div className="note-footer-toolbar__primary">
+            <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('clarify')}>Clarify</button>
+            <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('executive_summary')}>Executive Summary</button>
+            <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('summarize')}>Summarize</button>
+            <button
+              type="button"
+              className={`ghost-button ${workspaceSectionOpen || projectSectionOpen ? 'active' : ''}`}
+              onClick={() => {
+                setWorkspaceSectionOpen(true);
+                setProjectSectionOpen(true);
+                organizationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              }}
+            >
+              Organize
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => constellationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
+            >
+              Relationships
+            </button>
+          </div>
+          <div className="note-footer-toolbar__secondary">
+            <button type="button" className={`ghost-button ${bodyMode === 'edit' ? 'active' : ''}`} onClick={() => setBodyMode(bodyMode === 'edit' ? 'read' : 'edit')}>
+              {bodyMode === 'edit' ? 'Back to reading' : 'Open editor'}
+            </button>
+            <button type="button" className="ghost-button" onClick={() => (note.archived ? onRestoreArchive(note.id) : onArchive(note.id))}>
+              {note.archived ? 'Restore from archive' : 'Archive'}
+            </button>
+            <button type="button" className="ghost-button" onClick={onClose}>Close</button>
+            <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
+              <summary className="ghost-button">More</summary>
+              <div className="note-danger-menu__panel">
+                <button type="button" className="ghost-button note-danger-action" onClick={() => onDelete(note.id)}>Delete</button>
+              </div>
+            </details>
+          </div>
+        </footer>
       </aside>
 
       {visibleProactiveSuggestions.length ? (
