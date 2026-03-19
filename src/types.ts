@@ -137,6 +137,8 @@ export type NoteCardModel = {
   createdAt: number;
   updatedAt: number;
   archived: boolean;
+  deleted: boolean;
+  deletedAt: number | null;
   inFocus?: boolean;
   isFocus?: boolean;
   projectIds: string[];

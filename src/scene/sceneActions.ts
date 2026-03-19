@@ -30,18 +30,34 @@ export function updateNoteInScene(
 }
 
 export function deleteNoteInScene(scene: SceneState, id: string): SceneState {
-  const notes = scene.notes.filter((note) => note.id !== id);
-  const relationships = scene.relationships.filter((relationship) => relationship.fromId !== id && relationship.toId !== id);
+  const deletedAt = now();
+  const notes = scene.notes.map((note) =>
+    note.id === id
+      ? {
+          ...note,
+          deleted: true,
+          deletedAt,
+          archived: false,
+          trace: 'deleted',
+          updatedAt: deletedAt
+        }
+      : note
+  );
   return {
     ...scene,
     notes,
-    relationships: refreshInferredRelationships(notes, relationships, now()),
+    relationships: refreshInferredRelationships(notes, scene.relationships, deletedAt),
     activeNoteId: scene.activeNoteId === id ? null : scene.activeNoteId,
     captureComposer: {
       ...scene.captureComposer,
       lastCreatedNoteId: scene.captureComposer.lastCreatedNoteId === id ? null : scene.captureComposer.lastCreatedNoteId
     }
   };
+}
+
+export function restoreDeletedNoteInScene(scene: SceneState, id: string, highestZ: number): SceneState {
+  const restored = updateNoteInScene(scene, id, { deleted: false, deletedAt: null, z: highestZ + 1 }, 'restored');
+  return { ...restored, activeNoteId: id };
 }
 
 export function bringNoteToFrontInScene(scene: SceneState, id: string): SceneState {
@@ -68,6 +84,8 @@ export function setCanvasScrollInScene(scene: SceneState, left: number, top: num
 }
 
 export function openNoteInScene(scene: SceneState, id: string): SceneState {
+  const target = scene.notes.find((note) => note.id === id);
+  if (!target || target.deleted) return scene;
   return { ...scene, activeNoteId: id, aiPanel: { ...scene.aiPanel, state: 'open' } };
 }
 
@@ -83,6 +101,20 @@ export function archiveNoteInScene(scene: SceneState, id: string): SceneState {
 export function restoreNoteInScene(scene: SceneState, id: string, highestZ: number): SceneState {
   const restored = updateNoteInScene(scene, id, { archived: false, z: highestZ + 1 }, 'restored');
   return { ...restored, lens: createDefaultLens() };
+}
+
+export function handleCtrlTapInScene(scene: SceneState, tappedAt: number, thresholdMs: number): SceneState {
+  if (tappedAt - scene.lastCtrlTapTs <= thresholdMs) {
+    const open = !scene.captureComposer.open;
+    return {
+      ...scene,
+      quickCaptureOpen: open,
+      captureComposer: { ...scene.captureComposer, open },
+      lastCtrlTapTs: 0
+    };
+  }
+
+  return { ...scene, lastCtrlTapTs: tappedAt };
 }
 
 export function toggleNoteFocusInScene(scene: SceneState, id: string): SceneState {

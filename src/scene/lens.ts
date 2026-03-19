@@ -110,18 +110,18 @@ export function getLensLabel(lens: Lens, scene: Pick<SceneState, 'projects' | 'w
   if (lens.kind === 'universe') return 'Shared universe';
   if (lens.kind === 'project') {
     const project = scene.projects.find((candidate) => candidate.id === lens.projectId);
-    return project ? `${project.key} project lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}` : 'Project lens';
+    return project ? `${project.name} project lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}` : 'Project lens';
   }
   if (lens.kind === 'workspace') {
     const workspace = scene.workspaces.find((candidate) => candidate.id === lens.workspaceId);
     return workspace
-      ? `${workspace.key} workspace lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}`
+      ? `${workspace.name} workspace lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}`
       : 'Workspace lens';
   }
 
   const scopeBits = [
-    lens.projectId ? scene.projects.find((candidate) => candidate.id === lens.projectId)?.key : null,
-    lens.workspaceId ? scene.workspaces.find((candidate) => candidate.id === lens.workspaceId)?.key : null
+    lens.projectId ? scene.projects.find((candidate) => candidate.id === lens.projectId)?.name : null,
+    lens.workspaceId ? scene.workspaces.find((candidate) => candidate.id === lens.workspaceId)?.name : null
   ].filter(Boolean);
   const scope = scopeBits.length ? ` · ${scopeBits.join(' / ')}` : '';
   return `Reveal lens${scope}`;
@@ -164,11 +164,11 @@ function getScopedNotes(notes: NoteCardModel[], lens: Lens) {
 }
 
 function resolveBuckets(scene: SceneState, lens: Lens, activeNoteId: string | null): NoteBuckets {
-  const activeNotes = scene.notes.filter((note) => !note.archived);
+  const activeNotes = scene.notes.filter((note) => !note.archived && !note.deleted);
   const allowedIds = new Set(activeNotes.map((note) => note.id));
 
   if (lens.kind === 'archive') {
-    const archivedIds = new Set(scene.notes.filter((note) => note.archived).map((note) => note.id));
+    const archivedIds = new Set(scene.notes.filter((note) => note.archived && !note.deleted).map((note) => note.id));
     return { primaryIds: archivedIds, supportingIds: new Set(), revealMatchIds: [] };
   }
 
@@ -220,14 +220,14 @@ function makeContextLabel(
   if (lens.kind === 'project' && activeProject) {
     if (note.projectIds.includes(activeProject.id)) return `${activeProject.key} project`;
     if (isSupporting) {
-      const workspaceLabel = activeWorkspace && note.workspaceId === activeWorkspace.id ? ` in ${activeWorkspace.key}` : '';
-      return `Surfaced beyond ${activeProject.key}${workspaceLabel}`;
+      const workspaceLabel = activeWorkspace && note.workspaceId === activeWorkspace.id ? ` in ${activeWorkspace.name}` : '';
+      return `Surfaced beyond ${activeProject.name}${workspaceLabel}`;
     }
   }
 
   if ((lens.kind === 'workspace' || lens.kind === 'reveal') && activeWorkspace) {
-    if (note.workspaceId === activeWorkspace.id) return `${activeWorkspace.key} scope`;
-    if (note.workspaceId) return `Surfaced from ${workspacesById.get(note.workspaceId)?.key ?? 'another workspace'}`;
+    if (note.workspaceId === activeWorkspace.id) return `${activeWorkspace.name} scope`;
+    if (note.workspaceId) return `Surfaced from ${workspacesById.get(note.workspaceId)?.name ?? 'another workspace'}`;
     return 'No workspace assigned';
   }
 
@@ -238,12 +238,12 @@ function makeContextLabel(
 
 export function getLensPresentation(scene: SceneState): LensPresentation {
   const lens = normalizeLens(scene.lens);
-  const archivedNotes = scene.notes.filter((note) => note.archived);
+  const archivedNotes = scene.notes.filter((note) => note.archived && !note.deleted);
   const { primaryIds, supportingIds, revealMatchIds } = resolveBuckets(scene, lens, scene.activeNoteId);
   const visibleNotes =
     lens.kind === 'archive'
       ? archivedNotes
-      : scene.notes.filter((note) => !note.archived && (primaryIds.has(note.id) || supportingIds.has(note.id)));
+      : scene.notes.filter((note) => !note.archived && !note.deleted && (primaryIds.has(note.id) || supportingIds.has(note.id)));
   const activeProject =
     lens.kind === 'project' || lens.kind === 'reveal' ? getProjectById(scene, lens.projectId ?? null) : null;
   const activeWorkspace =

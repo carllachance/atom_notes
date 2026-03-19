@@ -14,6 +14,7 @@ import { resolveCapturePlacement } from './capturePlacement';
 import { useAmbientGuidance } from './useAmbientGuidance';
 import { useSceneMutations } from './useSceneMutations';
 import { createAttachmentFromFile, processAttachment } from '../attachments/attachmentProcessing';
+import { handleCtrlTapInScene } from './sceneActions';
 
 const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
@@ -44,6 +45,7 @@ export function useSceneController() {
   const [lastRelationshipEdit, setLastRelationshipEdit] = useState<{ before: Relationship; afterId: string } | null>(null);
   const [streamingResponse, setStreamingResponse] = useState<InsightsResponse | null>(null);
   const [isStreamingResponse, setIsStreamingResponse] = useState(false);
+  const [recentlyDeletedNoteId, setRecentlyDeletedNoteId] = useState<string | null>(null);
   const streamingTimerRef = useRef<number | null>(null);
   const processingAttachmentRef = useRef<string | null>(null);
 
@@ -58,9 +60,16 @@ export function useSceneController() {
     return scene.focusMode.isolate ? notes.filter((note) => Boolean(note.isFocus ?? note.inFocus)) : notes;
   }, [lensPresentation.visibleNotes, scene.focusMode.isolate]);
 
-  const activeNote = useMemo(() => scene.notes.find((note) => note.id === scene.activeNoteId) ?? null, [scene.activeNoteId, scene.notes]);
+  const activeNote = useMemo(
+    () => scene.notes.find((note) => note.id === scene.activeNoteId && !note.deleted) ?? null,
+    [scene.activeNoteId, scene.notes]
+  );
   const visibleNotes = focusFilteredVisibleNotes;
   const archivedNotes = lensPresentation.archivedNotes;
+  const deletedNotes = useMemo(
+    () => scene.notes.filter((note) => note.deleted).sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0)),
+    [scene.notes]
+  );
   const highestZ = scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0);
   const visibleNoteIds = useMemo(() => new Set(visibleNotes.map((note) => note.id)), [visibleNotes]);
   const focusCount = useMemo(() => scene.notes.filter((note) => !note.archived && Boolean(note.isFocus ?? note.inFocus)).length, [scene.notes]);
@@ -69,8 +78,14 @@ export function useSceneController() {
 
   const activeRelationships = useMemo(() => {
     if (!activeNote) return [];
-    return scene.relationships.filter((relationship) => relationship.fromId === activeNote.id || relationship.toId === activeNote.id);
-  }, [activeNote, scene.relationships]);
+    const notesById = new Map(scene.notes.map((note) => [note.id, note]));
+    return scene.relationships.filter((relationship) => {
+      if (relationship.fromId !== activeNote.id && relationship.toId !== activeNote.id) return false;
+      const targetId = relationship.fromId === activeNote.id ? relationship.toId : relationship.fromId;
+      const target = notesById.get(targetId);
+      return Boolean(target && !target.deleted && !target.archived);
+    });
+  }, [activeNote, scene.notes, scene.relationships]);
 
   const liveRankedRelationships = useMemo(() => (activeNote ? getRankedRelationshipsForNote(activeNote.id, scene) : []), [activeNote, scene]);
   const stableRankedRelationshipsRef = useRef(liveRankedRelationships);
@@ -231,16 +246,7 @@ export function useSceneController() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Control') {
         const t = now();
-        if (t - scene.lastCtrlTapTs <= CTRL_DOUBLE_TAP_MS) {
-          setScene((prev) => ({
-            ...prev,
-            quickCaptureOpen: !prev.captureComposer.open,
-            captureComposer: { ...prev.captureComposer, open: !prev.captureComposer.open },
-            lastCtrlTapTs: 0
-          }));
-        } else {
-          setScene((prev) => ({ ...prev, lastCtrlTapTs: t }));
-        }
+        setScene((prev) => handleCtrlTapInScene(prev, t, CTRL_DOUBLE_TAP_MS));
       }
 
       if ((event.ctrlKey || event.metaKey) && event.key === '.') {
@@ -350,8 +356,25 @@ export function useSceneController() {
     const lastId = scene.captureComposer.lastCreatedNoteId;
     if (!lastId) return;
     mutations.deleteNote(lastId);
+    setRecentlyDeletedNoteId(lastId);
     mutations.setCaptureComposer({ lastCreatedNoteId: null, open: false, draft: '' });
   }, [mutations, scene.captureComposer.lastCreatedNoteId]);
+
+  const deleteActiveNote = useCallback((noteId: string) => {
+    mutations.deleteNote(noteId);
+    setRecentlyDeletedNoteId(noteId);
+  }, [mutations]);
+
+  const restoreDeletedNote = useCallback((noteId: string) => {
+    mutations.restoreDeletedNote(noteId);
+    setRecentlyDeletedNoteId((current) => (current === noteId ? null : current));
+  }, [mutations]);
+
+  const undoDelete = useCallback(() => {
+    if (!recentlyDeletedNoteId) return;
+    mutations.restoreDeletedNote(recentlyDeletedNoteId);
+    setRecentlyDeletedNoteId(null);
+  }, [mutations, recentlyDeletedNoteId]);
 
   const inspectRelationship = useCallback((relationshipId: string) => {
     setInspectedRelationshipId(relationshipId);
@@ -376,6 +399,12 @@ export function useSceneController() {
     setInspectedRelationshipId(lastRelationshipEdit.before.id);
     setLastRelationshipEdit(null);
   }, [lastRelationshipEdit, mutations]);
+
+  const removeRelationship = useCallback((relationshipId: string) => {
+    mutations.removeRelationship(relationshipId);
+    setLastRelationshipEdit(null);
+    setInspectedRelationshipId((current) => (current === relationshipId ? null : current));
+  }, [mutations]);
 
   const openAIReference = useCallback((noteId: string) => {
     setHighlightedNoteIds([noteId]);
@@ -566,6 +595,7 @@ export function useSceneController() {
     activeWorkspace,
     visibleNotes,
     archivedNotes,
+    deletedNotes,
     projects: scene.projects,
     workspaces: scene.workspaces,
     lensPresentation,
@@ -610,6 +640,7 @@ export function useSceneController() {
     setTaskState: mutations.setTaskState,
     updateRelationship,
     undoRelationshipEdit,
+    removeRelationship,
     traverseToRelated: mutations.traverseToRelated,
     toggleNoteFocus: mutations.toggleNoteFocus,
     setNoteProjects: mutations.setNoteProjects,
@@ -623,6 +654,7 @@ export function useSceneController() {
     onViewportCenterChange,
     onOpenNote: mutations.onOpenNote,
     onArchiveNote: mutations.onArchiveNote,
+    restoreArchivedNote: mutations.restoreArchivedNote,
     onHoverStart: ambient.onHoverStart,
     onHoverEnd: ambient.onHoverEnd,
     onWhereWasI: ambient.onWhereWasI,
@@ -636,6 +668,10 @@ export function useSceneController() {
     commitCapture,
     cancelCapture,
     undoLastCapture,
+    deleteActiveNote,
+    restoreDeletedNote,
+    undoDelete,
+    recentlyDeletedNoteId,
     openAIReference,
     runInsights,
     confirmPendingAction,

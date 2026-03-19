@@ -18,7 +18,7 @@ function baseScene(): SceneState {
       z: 1,
       createdAt: 1,
       updatedAt: 1,
-      archived: false,
+      archived: false, deleted: false, deletedAt: null,
       projectIds: [],
       inferredProjectIds: [],
       workspaceId: null,

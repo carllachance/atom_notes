@@ -18,7 +18,9 @@ const active = {
   y: 160,
   trace: 'idle',
   updatedAt: 2_000,
-  archived: false
+  archived: false,
+  deleted: false,
+  deletedAt: null
 } as const;
 
 const target = {
@@ -26,7 +28,9 @@ const target = {
   y: 420,
   trace: 'captured',
   updatedAt: 2_000,
-  archived: false
+  archived: false,
+  deleted: false,
+  deletedAt: null
 } as const;
 
 test('builds edge paths directly from note centers in canvas coordinates', (t: any) => {

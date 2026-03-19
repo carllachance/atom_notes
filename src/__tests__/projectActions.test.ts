@@ -7,10 +7,10 @@ import type { SceneState } from '../types';
 function makeScene(): SceneState {
   return {
     notes: [
-      { id: 'n1', title: null, body: 'alpha', anchors: [], trace: 'idle', x: 40, y: 60, z: 1, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'n2', title: null, body: 'beta', anchors: [], trace: 'idle', x: 340, y: 180, z: 2, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'n3', title: null, body: 'gamma', anchors: [], trace: 'idle', x: 640, y: 320, z: 3, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'n4', title: null, body: 'delta', anchors: [], trace: 'idle', x: 880, y: 420, z: 4, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
+      { id: 'n1', title: null, body: 'alpha', anchors: [], trace: 'idle', x: 40, y: 60, z: 1, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'n2', title: null, body: 'beta', anchors: [], trace: 'idle', x: 340, y: 180, z: 2, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'n3', title: null, body: 'gamma', anchors: [], trace: 'idle', x: 640, y: 320, z: 3, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'n4', title: null, body: 'delta', anchors: [], trace: 'idle', x: 880, y: 420, z: 4, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
     ],
     relationships: [],
     projects: [],

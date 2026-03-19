@@ -6,8 +6,8 @@ import { SceneState } from '../types';
 function makeScene(): SceneState {
   return {
     notes: [
-      { id: 'a', title: 'Launch plan', body: 'Depends on policy and checklist', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: Date.now(), archived: false, inFocus: false, isFocus: false, projectIds: ['p1'], inferredProjectIds: [], workspaceId: 'w1', inferredRelationships: [] },
-      { id: 'b', title: 'Policy doc', body: 'Reference for launch plan', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 1, updatedAt: Date.now(), archived: false, inFocus: false, isFocus: false, projectIds: ['p1'], inferredProjectIds: [], workspaceId: 'w1', inferredRelationships: [] }
+      { id: 'a', title: 'Launch plan', body: 'Depends on policy and checklist', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: Date.now(), archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: ['p1'], inferredProjectIds: [], workspaceId: 'w1', inferredRelationships: [] },
+      { id: 'b', title: 'Policy doc', body: 'Reference for launch plan', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 1, updatedAt: Date.now(), archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: ['p1'], inferredProjectIds: [], workspaceId: 'w1', inferredRelationships: [] }
     ],
     relationships: [
       { id: 'r1', fromId: 'a', toId: 'b', type: 'depends_on', state: 'confirmed', explicitness: 'explicit', directional: true, confidence: 1, isInferred: false, explanation: 'Launch depends on policy', heuristicSupported: true, createdAt: 1, lastActiveAt: Date.now() }

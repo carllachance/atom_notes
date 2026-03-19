@@ -197,6 +197,20 @@ export function restoreRelationshipInScene(scene: SceneState, snapshot: Relation
   return reconcileRelationships(scene, snapshot);
 }
 
+export function removeRelationshipInScene(scene: SceneState, relationshipId: string): SceneState {
+  const relationship = scene.relationships.find((candidate) => candidate.id === relationshipId);
+  if (!relationship || relationship.explicitness !== 'explicit') return scene;
+
+  return {
+    ...scene,
+    relationships: refreshInferredRelationships(
+      scene.notes,
+      scene.relationships.filter((candidate) => candidate.id !== relationshipId),
+      now()
+    )
+  };
+}
+
 export function confirmRelationshipInScene(scene: SceneState, relationshipId: string): SceneState {
   const confirmedAt = now();
   const relationships: Relationship[] = scene.relationships.map((relationship) =>

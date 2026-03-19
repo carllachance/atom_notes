@@ -5,6 +5,7 @@ import {
   createExplicitRelationshipInScene,
   createInlineLinkedNoteInScene,
   promoteNoteFragmentToTaskInScene,
+  removeRelationshipInScene,
   restoreRelationshipInScene,
   setTaskStateInScene,
   traverseToRelatedInScene,
@@ -15,8 +16,8 @@ import type { SceneState } from '../types';
 function baseScene(): SceneState {
   return {
     notes: [
-      { id: 'a', title: null, body: 'A', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
-      { id: 'b', title: null, body: 'B', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 1, updatedAt: 1, archived: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
+      { id: 'a', title: null, body: 'A', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
+      { id: 'b', title: null, body: 'B', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 1, updatedAt: 1, archived: false, deleted: false, deletedAt: null, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
     ],
     relationships: [],
     projects: [],
@@ -100,6 +101,21 @@ test('relationshipActions can restore the prior relationship snapshot for undo',
   assert.equal(restored.relationships.some((relationship) => relationship.id === 'rel-edit' && relationship.type === 'references' && relationship.explicitness === 'inferred'), true);
 });
 
+test('relationshipActions removes explicit links without touching inferred relationships', (t: any) => {
+  t.mock.method(Date, 'now', () => 450);
+  const scene = {
+    ...baseScene(),
+    relationships: [
+      { id: 'rel-explicit', fromId: 'a', toId: 'b', type: 'references' as const, state: 'confirmed' as const, explicitness: 'explicit' as const, directional: true, confidence: 1, isInferred: false, explanation: 'Manual link', heuristicSupported: true, createdAt: 10, lastActiveAt: 10 },
+      { id: 'rel-inferred', fromId: 'a', toId: 'b', type: 'related' as const, state: 'proposed' as const, explicitness: 'inferred' as const, directional: false, confidence: 0.6, isInferred: true, explanation: 'Shared keyword', heuristicSupported: true, createdAt: 11, lastActiveAt: 11 }
+    ]
+  };
+
+  const removed = removeRelationshipInScene(scene, 'rel-explicit');
+  assert.equal(removed.relationships.some((relationship) => relationship.id === 'rel-explicit'), false);
+  assert.equal(removed.relationships.some((relationship) => relationship.explicitness === 'explicit'), false);
+});
+
 test('relationshipActions creates a new linked note inline and inherits the active context', (t: any) => {
   t.mock.method(Date, 'now', () => 500);
   t.mock.method(globalThis.crypto, 'randomUUID', () => 'inline-note');
@@ -131,7 +147,7 @@ test('relationshipActions creates a new linked note inline and inherits the acti
     z: 3,
     createdAt: 500,
     updatedAt: 500,
-    archived: false,
+    archived: false, deleted: false, deletedAt: null,
     inFocus: false,
     isFocus: false,
     projectIds: ['project-1'],

@@ -14,7 +14,7 @@ const note = (id: string, x: number, y: number): NoteCardModel => ({
   z: 1,
   createdAt: 1,
   updatedAt: 1,
-  archived: false,
+  archived: false, deleted: false, deletedAt: null,
   inFocus: false,
   isFocus: false,
   projectIds: [],
