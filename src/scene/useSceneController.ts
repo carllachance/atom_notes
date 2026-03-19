@@ -255,8 +255,8 @@ export function useSceneController() {
       }
 
       if (event.key === 'Escape') {
-        if (scene.captureComposer.open && !scene.captureComposer.draft.trim()) {
-          mutations.setCaptureComposer({ open: false, draft: '' });
+        if (scene.captureComposer.open) {
+          mutations.setCaptureComposer({ open: false });
           return;
         }
         mutations.closeActiveNote();
@@ -348,9 +348,8 @@ export function useSceneController() {
   }, [scene.captureComposer.draft, scene.lens, scene.notes, viewportCenter, activeNote, highestZ, runAsyncInference]);
 
   const cancelCapture = useCallback(() => {
-    if (scene.captureComposer.draft.trim()) return;
-    mutations.setCaptureComposer({ open: false, draft: '' });
-  }, [mutations, scene.captureComposer.draft]);
+    mutations.setCaptureComposer({ open: false });
+  }, [mutations]);
 
   const undoLastCapture = useCallback(() => {
     const lastId = scene.captureComposer.lastCreatedNoteId;

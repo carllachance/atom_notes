@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, PointerEvent, useEffect, useMemo, useState } from 'react';
 import { ThinkingGlyph } from './ThinkingGlyph';
 import { INSIGHTS_RAIL_MODES, getNextInsightsRailState } from '../detailSurface/detailSurfaceModel';
 import { getInsightTimelineForNote } from '../insights/insightTimeline';
@@ -25,60 +25,49 @@ type AIPanelProps = {
   onPreviewAction: (action: ActionSuggestion) => void;
   onConfirmAction: () => void;
   onCancelAction: () => void;
+  width: number;
+  onWidthChange: (width: number) => void;
 };
 
-function composerLabel(mode: AIInteractionMode) {
-  if (mode === 'explore') return 'Trace';
-  if (mode === 'summarize') return 'Synthesize';
-  if (mode === 'act') return 'Commit';
-  return 'Ask';
-}
+const RAIL_MIN_WIDTH = 320;
+const RAIL_MAX_WIDTH = 520;
+const ACTION_LABELS: Record<AIInteractionMode, string> = {
+  ask: 'Ask',
+  explore: 'Trace',
+  summarize: 'Sum',
+  act: 'Act'
+};
 
 function placeholderForMode(mode: AIInteractionMode, selectedNote: NoteCardModel | null) {
-  if (mode === 'explore') return selectedNote ? 'Trace nearby blockers, references, or next moves' : 'Trace a pattern across the visible graph';
-  if (mode === 'summarize') return selectedNote ? 'Condense this note and its strongest neighbors' : 'Condense the current scope';
-  if (mode === 'act') return selectedNote ? 'Recommend the safest next action for this note' : 'Recommend the next action for this workspace';
-  return selectedNote ? 'Ask from the perspective of the current note' : 'Ask about the current scope';
-}
-
-function formatTimelineTimestamp(timestamp: number) {
-  const deltaMs = Date.now() - timestamp;
-  const deltaMinutes = Math.max(1, Math.round(deltaMs / 60000));
-  if (deltaMinutes < 60) return `${deltaMinutes}m`;
-  const deltaHours = Math.round(deltaMinutes / 60);
-  if (deltaHours < 24) return `${deltaHours}h`;
-  const deltaDays = Math.round(deltaHours / 24);
-  return `${deltaDays}d`;
+  if (mode === 'explore') return selectedNote ? 'Trace blockers or next moves' : 'Trace the strongest pattern here';
+  if (mode === 'summarize') return selectedNote ? 'Summarize this note and nearby context' : 'Summarize the visible scope';
+  if (mode === 'act') return selectedNote ? 'Recommend the safest next step' : 'Recommend the next workspace move';
+  return selectedNote ? 'Ask about this note' : 'Ask about the current scope';
 }
 
 function getIntentPrompts(mode: AIInteractionMode, selectedNote: NoteCardModel | null, scopeLabel: string): string[] {
   const noteLabel = selectedNote?.title ?? 'this note';
-  if (mode === 'explore') {
-    return [
-      `Trace what branches away from ${noteLabel}`,
-      `Show the strongest neighbors in ${scopeLabel}`,
-      `What conflicts or blockers are nearby?`
-    ];
-  }
-  if (mode === 'summarize') {
-    return [
-      `Summarize ${noteLabel} with its local graph`,
-      `Turn the visible scope into a concise brief`,
-      `What matters most right now?`
-    ];
-  }
-  if (mode === 'act') {
-    return [
-      `What should happen next from ${noteLabel}?`,
-      'Draft the safest next step',
-      'What can I commit or link right now?'
-    ];
-  }
-  return [
-    `What does ${noteLabel} connect to?`,
-    `What should I inspect inside ${scopeLabel}?`,
-    'What am I missing from the local graph?'
-  ];
+  if (mode === 'explore') return [`Trace from ${noteLabel}`, `Show nearby blockers`, `What branches matter in ${scopeLabel}?`];
+  if (mode === 'summarize') return [`Summarize ${noteLabel}`, 'What matters now?', 'Turn this scope into a brief'];
+  if (mode === 'act') return [`What should happen next?`, `Give ${noteLabel} a next step`, 'What can I commit now?'];
+  return [`What connects to ${noteLabel}?`, 'What am I missing?', `What should I inspect in ${scopeLabel}?`];
+}
+
+function getModeIcon(mode: AIInteractionMode) {
+  if (mode === 'explore') return '◎';
+  if (mode === 'summarize') return '≡';
+  if (mode === 'act') return '↗';
+  return '?';
+}
+
+function latestAssistantMessage(panel: AIPanelViewState) {
+  return [...panel.transcript].reverse().find((entry) => entry.role === 'assistant') ?? null;
+}
+
+function summarizeTimeline(entries: InsightTimelineEntry[]) {
+  if (!entries.length) return '';
+  const latest = [...entries].sort((a, b) => b.createdAt - a.createdAt)[0];
+  return latest ? `${latest.title}: ${latest.detail}` : '';
 }
 
 export function AIPanel({
@@ -101,45 +90,62 @@ export function AIPanel({
   noteIsOpen,
   onPreviewAction,
   onConfirmAction,
-  onCancelAction
+  onCancelAction,
+  width,
+  onWidthChange
 }: AIPanelProps) {
-  const notesById = new Map(notes.map((note) => [note.id, note]));
+  const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
   const activeResponse = streamedResponse ?? panel.response;
-  const resolvedReferences = activeResponse?.references.map((referenceId) => notesById.get(referenceId)).filter(Boolean) as NoteCardModel[] | undefined;
   const isExpanded = panel.state !== 'hidden';
   const promptSuggestions = getIntentPrompts(panel.mode, selectedNote, scopeLabel);
-  const [showOlderTimeline, setShowOlderTimeline] = useState(false);
-  const timeline = useMemo(() => (selectedNote ? getInsightTimelineForNote(timelineEntries, selectedNote.id) : { nowEntries: [], visibleEarlierEntries: [], hiddenEarlierEntries: [] }), [selectedNote, timelineEntries]);
-  const hasTimeline = timeline.nowEntries.length > 0 || timeline.visibleEarlierEntries.length > 0 || timeline.hiddenEarlierEntries.length > 0;
-  const hasActivity = Boolean(
-    pendingAction ||
-    panel.transcript.length ||
-    activeResponse ||
-    streaming ||
-    hasTimeline
+  const timeline = useMemo(
+    () => (selectedNote ? getInsightTimelineForNote(timelineEntries, selectedNote.id) : { nowEntries: [], visibleEarlierEntries: [], hiddenEarlierEntries: [] }),
+    [selectedNote, timelineEntries]
   );
+  const responseNotes = useMemo(
+    () => activeResponse?.results.map((result) => ({ result, note: notesById.get(result.noteId) ?? null })).filter((entry) => entry.note).slice(0, 4) ?? [],
+    [activeResponse, notesById]
+  );
+  const [showWhy, setShowWhy] = useState(false);
+  const lastAssistant = latestAssistantMessage(panel);
+  const timelineSummary = summarizeTimeline([...timeline.nowEntries, ...timeline.visibleEarlierEntries]);
+  const primaryMessage = activeResponse?.answer || (streaming ? 'Thinking through the local graph…' : lastAssistant?.content) || '';
 
   useEffect(() => {
-    setShowOlderTimeline(false);
-  }, [selectedNote?.id, timelineEntries.length]);
+    setShowWhy(false);
+  }, [selectedNote?.id, activeResponse?.answer, panel.state]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onRun();
   };
 
-  const handleTimelineAction = (action: InsightTimelineEntry['actions'][number]) => {
-    if (action.kind === 'open') {
-      onOpenReference(action.noteId);
-      return;
-    }
-    onPreviewAction(action.suggestion);
+  const beginResize = (event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = width;
+
+    const onPointerMove = (moveEvent: globalThis.PointerEvent) => {
+      const nextWidth = Math.max(RAIL_MIN_WIDTH, Math.min(RAIL_MAX_WIDTH, startWidth - (moveEvent.clientX - startX)));
+      onWidthChange(nextWidth);
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
   };
 
-  const visibleEarlierEntries = showOlderTimeline ? [...timeline.visibleEarlierEntries, ...timeline.hiddenEarlierEntries] : timeline.visibleEarlierEntries;
-
   return (
-    <aside className="ai-panel" data-state={panel.state} data-note-active={noteIsOpen ? 'true' : 'false'}>
+    <aside
+      className="ai-panel"
+      data-state={panel.state}
+      data-note-active={noteIsOpen ? 'true' : 'false'}
+      style={{ ['--thinking-rail-width' as string]: `${width}px` }}
+    >
       <div className="ai-rail">
         <button
           className={`ai-panel-toggle ai-panel-toggle--thinking ${panel.state === 'hidden' ? '' : 'active'}`.trim()}
@@ -160,7 +166,8 @@ export function AIPanel({
               aria-label={label}
               title={label}
             >
-              <span className="ai-mode-label">{label}</span>
+              <span className="ai-mode-icon" aria-hidden="true">{getModeIcon(mode)}</span>
+              <span className="ai-mode-label">{ACTION_LABELS[mode]}</span>
             </button>
           ))}
         </nav>
@@ -168,218 +175,123 @@ export function AIPanel({
 
       {isExpanded ? (
         <div className="ai-panel-body">
+          <button type="button" className="ai-panel-resize" onPointerDown={beginResize} aria-label="Resize Thinking rail" />
           <div className="ai-panel-scroll">
             <header className="ai-panel-header ai-panel-header--context">
               <div className="ai-context-headline">
                 <strong>Thinking</strong>
                 <small>{selectedNote?.title ?? activeWorkspace?.name ?? activeProject?.name ?? `${visibleNotesCount} visible notes`}</small>
               </div>
+              {activeResponse || lastAssistant || timelineSummary ? (
+                <button type="button" className="ghost-button ai-why-toggle" onClick={() => setShowWhy((value) => !value)}>
+                  {showWhy ? 'Hide why' : 'Why'}
+                </button>
+              ) : null}
             </header>
-
-            {!hasActivity ? (
-              <section className="ai-idle-prompts" aria-label="Suggested prompts">
-              <div className="ai-prompt-grid">
-                {promptSuggestions.slice(0, 3).map((prompt) => (
-                  <button key={prompt} className="ai-prompt-card" onClick={() => onQueryChange(prompt)}>
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-              </section>
-            ) : null}
 
             {pendingAction ? (
               <div className="ai-action-preview">
-                <strong>Ready to apply</strong>
+                <strong>Ready</strong>
                 <p>{pendingAction.label}</p>
                 <div>
-                  <button className="ghost-button" onClick={onCancelAction} type="button">Keep as suggestion</button>
-                  <button onClick={onConfirmAction} type="button">Apply now</button>
+                  <button className="ghost-button" onClick={onCancelAction} type="button">Keep</button>
+                  <button onClick={onConfirmAction} type="button">Apply</button>
                 </div>
               </div>
             ) : null}
 
-            {hasActivity ? (
-              <>
-                {hasTimeline && selectedNote ? (
-                  <section className="ai-timeline" aria-label="Insight timeline">
-                    <div className="ai-section-heading">
-                      <span className="ai-block-label">Timeline</span>
-                      <small>Meaningful shifts only</small>
-                    </div>
+            {primaryMessage ? (
+              <section className="ai-primary-response" aria-live="polite">
+                <p>{primaryMessage}</p>
+              </section>
+            ) : (
+              <section className="ai-idle-prompts" aria-label="Suggested prompts">
+                <div className="ai-prompt-grid">
+                  {promptSuggestions.slice(0, 3).map((prompt) => (
+                    <button key={prompt} className="ai-prompt-card" onClick={() => onQueryChange(prompt)}>
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
-                    <div className="ai-timeline-groups">
-                      <div className="ai-timeline-group">
-                        <span className="ai-timeline-label">Now</span>
-                        {timeline.nowEntries.length ? (
-                          <ul className="ai-timeline-list">
-                            {timeline.nowEntries.map((entry) => (
-                              <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
-                                <div className="ai-timeline-copy">
-                                  <div className="ai-timeline-row">
-                                    <strong>{entry.title}</strong>
-                                    <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
-                                  </div>
-                                  <p>{entry.detail}</p>
-                                </div>
-                                {entry.actions.length ? (
-                                  <div className="ai-inline-actions ai-inline-actions--timeline">
-                                    {entry.actions.map((action) => (
-                                      <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
-                                        {action.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </div>
-
-                      {(visibleEarlierEntries.length || timeline.hiddenEarlierEntries.length) ? (
-                        <div className="ai-timeline-group">
-                          <div className="ai-timeline-heading-row">
-                            <span className="ai-timeline-label">Earlier</span>
-                            {timeline.hiddenEarlierEntries.length ? (
-                              <button className="ghost-button ai-timeline-toggle" onClick={() => setShowOlderTimeline((value) => !value)} type="button">
-                                {showOlderTimeline ? 'Show less' : `Show ${timeline.hiddenEarlierEntries.length} older`}
-                              </button>
-                            ) : null}
-                          </div>
-                          <ul className="ai-timeline-list">
-                            {visibleEarlierEntries.map((entry) => (
-                              <li key={entry.id} className={`ai-timeline-item ai-timeline-item--${entry.kind}`}>
-                                <div className="ai-timeline-copy">
-                                  <div className="ai-timeline-row">
-                                    <strong>{entry.title}</strong>
-                                    <time dateTime={new Date(entry.createdAt).toISOString()} title={new Date(entry.createdAt).toLocaleString()}>{formatTimelineTimestamp(entry.createdAt)}</time>
-                                  </div>
-                                  <p>{entry.detail}</p>
-                                </div>
-                                {entry.actions.length ? (
-                                  <div className="ai-inline-actions ai-inline-actions--timeline">
-                                    {entry.actions.map((action) => (
-                                      <button key={action.id} className="ghost-button" onClick={() => handleTimelineAction(action)} type="button">
-                                        {action.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </div>
-                  </section>
-                ) : null}
-
-                {panel.transcript.length ? (
-                  <div className="ai-transcript" aria-live="polite">
-                    {panel.transcript.map((entry) => (
-                      <section key={entry.id} className={`ai-message ai-message--${entry.role}`}>
-                        <div className="ai-message-meta">
-                          <span>{entry.role === 'user' ? 'You' : `Thinking · ${composerLabel(entry.mode)}`}</span>
-                        </div>
-                        <p>{entry.content}</p>
-                      </section>
-                    ))}
-                  </div>
-                ) : null}
-
-                {activeResponse ? (
-                  <div className="ai-response">
-                    <section className="ai-summary-block">
-                      <div className="ai-section-heading">
-                        <span className="ai-block-label">Answer</span>
-                        <small>{streaming ? 'Updating live' : 'Grounded in the current graph'}</small>
-                      </div>
-                      <p className="ai-answer">{activeResponse.answer || 'Thinking through the local graph…'}</p>
-                    </section>
-
-                    {activeResponse.results.length ? (
-                      <section className="ai-section">
-                        <div className="ai-section-heading">
-                          <span className="ai-block-label">Related notes</span>
-                          <small>Top notes are already highlighted on the canvas</small>
-                        </div>
-                        <div className="ai-reference-grid">
-                          {activeResponse.results.slice(0, 3).map((result) => {
-                            const note = notesById.get(result.noteId);
-                            if (!note) return null;
-                            return (
-                              <article key={result.noteId} className="ai-reference-card ai-reference-card--result">
-                                <strong>{note.title ?? 'Untitled note'}</strong>
-                                <span>{result.reasons.join(' · ')}</span>
-                                <div className="ai-inline-actions">
-                                  <button className="ghost-button" onClick={() => onOpenReference(note.id)}>Open</button>
-                                  {selectedNote ? (
-                                    <button
-                                      className="ghost-button"
-                                      onClick={() =>
-                                        onPreviewAction({
-                                          id: `ai-link-${selectedNote.id}-${note.id}`,
-                                          label: `Link ${selectedNote.title ?? 'current note'} to ${note.title ?? 'this note'}`,
-                                          kind: 'create_link',
-                                          relationships: [{ fromId: selectedNote.id, toId: note.id, type: 'related' }],
-                                          requiresConfirmation: true
-                                        })
-                                      }
-                                    >
-                                      Create link
-                                    </button>
-                                  ) : null}
-                                </div>
-                              </article>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ) : null}
-
-                    {activeResponse.sections.map((section) => (
-                      <section key={section.id} className="ai-section">
-                        <span className="ai-block-label">{section.title}</span>
-                        <p>{section.body || '…'}</p>
-                      </section>
-                    ))}
-
-                    {resolvedReferences?.length ? (
-                      <section className="ai-grounded-references">
-                        <div className="ai-section-heading">
-                          <span className="ai-block-label">References</span>
-                          <small>Open notes from the current graph context</small>
-                        </div>
-                        <div className="ai-reference-grid">
-                          {resolvedReferences.map((reference) => (
-                            <button key={reference.id} className="ai-reference-card" onClick={() => onOpenReference(reference.id)}>
-                              <strong>{reference.title ?? 'Untitled note'}</strong>
-                              <span>{reference.projectIds.length ? `${reference.projectIds.length} project link${reference.projectIds.length === 1 ? '' : 's'}` : 'No project links'}</span>
+            {responseNotes.length ? (
+              <section className="ai-related-strip" aria-label="Related notes">
+                <div className="ai-section-heading">
+                  <span className="ai-block-label">Related</span>
+                  <small>Top notes only</small>
+                </div>
+                <div className="ai-reference-grid">
+                  {responseNotes.map(({ result, note }) => {
+                    if (!note) return null;
+                    return (
+                      <article key={note.id} className="ai-reference-card ai-reference-card--result">
+                        <strong>{note.title ?? 'Untitled note'}</strong>
+                        <span>{result.reasons[0] ?? 'Nearby context'}</span>
+                        <div className="ai-inline-actions">
+                          <button className="ghost-button" onClick={() => onOpenReference(note.id)} type="button">Open</button>
+                          {selectedNote ? (
+                            <button
+                              className="ghost-button"
+                              onClick={() =>
+                                onPreviewAction({
+                                  id: `ai-link-${selectedNote.id}-${note.id}`,
+                                  label: `Link ${selectedNote.title ?? 'current note'} to ${note.title ?? 'this note'}`,
+                                  kind: 'create_link',
+                                  relationships: [{ fromId: selectedNote.id, toId: note.id, type: 'related' }],
+                                  requiresConfirmation: true
+                                })
+                              }
+                              type="button"
+                            >
+                              Link
                             </button>
-                          ))}
+                          ) : null}
                         </div>
-                      </section>
-                    ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
 
-                    {activeResponse.actions?.length ? (
-                      <div className="ai-action-chips">
-                        {activeResponse.actions.map((action) => (
-                          <button key={action.id} className="ghost-button" onClick={() => onPreviewAction(action)}>
-                            {action.label}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+            {showWhy ? (
+              <section className="ai-why-panel">
+                {timelineSummary ? (
+                  <div className="ai-why-block">
+                    <span className="ai-block-label">Recent shift</span>
+                    <p>{timelineSummary}</p>
                   </div>
                 ) : null}
-              </>
+                {activeResponse?.sections.length ? (
+                  <div className="ai-why-block">
+                    <span className="ai-block-label">Signals</span>
+                    <ul>
+                      {activeResponse.sections.map((section) => (
+                        <li key={section.id}>
+                          <strong>{section.title}</strong>
+                          <span>{section.body}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {activeResponse?.actions?.length ? (
+                  <div className="ai-action-chips">
+                    {activeResponse.actions.map((action) => (
+                      <button key={action.id} className="ghost-button" onClick={() => onPreviewAction(action)} type="button">
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
             ) : null}
           </div>
 
           <form className="ai-chat-shell" onSubmit={handleSubmit}>
-            <label className="ai-query-label" htmlFor="ai-query-input">What do you need from the current graph?</label>
-            <div className="ai-query-row">
+            <div className="ai-query-row ai-query-row--inline">
               <input
                 id="ai-query-input"
                 className="ai-query-input"
@@ -388,10 +300,9 @@ export function AIPanel({
                 onChange={(event) => onQueryChange(event.target.value)}
               />
               <button type="submit" disabled={!panel.query.trim() || panel.loading || streaming}>
-                {panel.loading || streaming ? 'Thinking…' : composerLabel(panel.mode)}
+                {panel.loading || streaming ? 'Thinking…' : ACTION_LABELS[panel.mode]}
               </button>
             </div>
-            <p className="ai-query-hint">Intent-based prompts stay grounded in the selected note, current scope, and visible graph.</p>
           </form>
         </div>
       ) : null}

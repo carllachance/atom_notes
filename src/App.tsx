@@ -14,6 +14,7 @@ import { useSceneController } from './scene/useSceneController';
 export function App() {
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [thinkingRailWidth, setThinkingRailWidth] = useState(360);
   const demoLinks = [{ href: '/query-prototype', label: 'Query demo' }];
 
   const {
@@ -146,14 +147,10 @@ export function App() {
         <section className="view-stack" data-lens={scene.lens.kind}>
           {!activeNote ? (
             <HomeSurface
-              draft={scene.captureComposer.draft}
               notes={scene.notes}
               deletedNotes={deletedNotes}
               lastCreatedNoteId={scene.captureComposer.lastCreatedNoteId}
-              onDraftChange={onCaptureDraftChange}
-              onCommit={commitCapture}
               onOpenNote={onOpenNote}
-              onOpenCaptureComposer={() => onCaptureDraftChange(scene.captureComposer.draft)}
               onRestoreDeletedNote={restoreDeletedNote}
             />
           ) : null}
@@ -189,6 +186,7 @@ export function App() {
               onBringToFront={bringToFront}
               onHoverStart={onHoverStart}
               onHoverEnd={onHoverEnd}
+              reservedRightInset={0}
             />
             {scene.lens.kind === 'workspace' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are anchored in this workspace yet. Keep the scope, then capture or assign notes into it.</div> : null}
             {scene.lens.kind === 'project' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are attached to this project yet. Add a project inside a note to give it a calm shared cluster.</div> : null}
@@ -216,6 +214,8 @@ export function App() {
           onPreviewAction={setPendingAction}
           onConfirmAction={confirmPendingAction}
           onCancelAction={cancelPendingAction}
+          width={thinkingRailWidth}
+          onWidthChange={setThinkingRailWidth}
         />
       </section>
 
@@ -229,6 +229,7 @@ export function App() {
         onCommit={commitCapture}
         onCancel={cancelCapture}
         onUndo={undoLastCapture}
+        onExpand={() => onCaptureDraftChange(scene.captureComposer.draft)}
         canUndo={Boolean(scene.captureComposer.lastCreatedNoteId)}
       />
 
@@ -247,6 +248,7 @@ export function App() {
         thinkingActive={scene.aiPanel.state !== 'hidden'}
         hasFreshInsights={hasFreshInsights}
         initialPosition={activeNote ? notePanelPositions[activeNote.id] : undefined}
+        rightInset={scene.aiPanel.state === 'hidden' ? 24 : thinkingRailWidth + 24}
         onClose={closeActiveNote}
         onThinkAboutNote={() => setAIPanelVisibility('open')}
         onDelete={deleteActiveNote}

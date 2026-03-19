@@ -41,6 +41,7 @@ type SpatialCanvasProps = {
   onBringToFront: (id: string) => void;
   onHoverStart: (id: string) => void;
   onHoverEnd: (id: string) => void;
+  reservedRightInset: number;
 };
 
 type DragState = {
@@ -54,6 +55,8 @@ type DragState = {
 
 const OPEN_THRESHOLD_PX = 6;
 const CLUSTER_FORCE_RESTORE_MS = 420;
+const NOTE_WIDTH = 270;
+const NOTE_HEIGHT = 170;
 
 export function SpatialCanvas({
   notes,
@@ -82,7 +85,8 @@ export function SpatialCanvas({
   onOpen,
   onBringToFront,
   onHoverStart,
-  onHoverEnd
+  onHoverEnd,
+  reservedRightInset
 }: SpatialCanvasProps) {
   const dragState = useRef<DragState | null>(null);
   const dragFrameRef = useRef<number | null>(null);
@@ -300,9 +304,16 @@ export function SpatialCanvas({
           dragState.current.moved = true;
         }
 
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const minX = canvas.scrollLeft + 18;
+        const maxX = canvas.scrollLeft + canvas.clientWidth - NOTE_WIDTH - 18 - reservedRightInset;
+        const minY = canvas.scrollTop + 18;
+        const maxY = canvas.scrollTop + canvas.clientHeight - NOTE_HEIGHT - 18;
+
         queueDragPosition(
-          event.clientX - dragState.current.dx + canvasRef.current!.scrollLeft,
-          event.clientY - dragState.current.dy + canvasRef.current!.scrollTop
+          Math.min(Math.max(event.clientX - dragState.current.dx + canvas.scrollLeft, minX), Math.max(minX, maxX)),
+          Math.min(Math.max(event.clientY - dragState.current.dy + canvas.scrollTop, minY), Math.max(minY, maxY))
         );
       }}
       onPointerUp={finishDrag}
