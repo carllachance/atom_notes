@@ -14,7 +14,8 @@ import { resolveCapturePlacement } from './capturePlacement';
 import { useAmbientGuidance } from './useAmbientGuidance';
 import { useSceneMutations } from './useSceneMutations';
 import { createAttachmentFromFile, processAttachment } from '../attachments/attachmentProcessing';
-import { handleCtrlTapInScene } from './sceneActions';
+import { handleCtrlTapInScene, openNoteInScene } from './sceneActions';
+import { FocusLensSession, buildFocusLensPresentation, pinFocusLensLayout, restoreFocusLensSnapshot, snapshotFocusLensPositions } from './focusLens';
 
 const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
@@ -46,6 +47,7 @@ export function useSceneController() {
   const [streamingResponse, setStreamingResponse] = useState<InsightsResponse | null>(null);
   const [isStreamingResponse, setIsStreamingResponse] = useState(false);
   const [recentlyDeletedNoteId, setRecentlyDeletedNoteId] = useState<string | null>(null);
+  const [focusLensSession, setFocusLensSession] = useState<FocusLensSession | null>(null);
   const streamingTimerRef = useRef<number | null>(null);
   const processingAttachmentRef = useRef<string | null>(null);
 
@@ -93,6 +95,7 @@ export function useSceneController() {
     stableRankedRelationshipsRef.current = liveRankedRelationships;
   }
   const rankedRelationships = scene.isDragging ? stableRankedRelationshipsRef.current : liveRankedRelationships;
+  const focusLensPresentation = useMemo(() => buildFocusLensPresentation(scene, activeNote, focusLensSession), [activeNote, focusLensSession, scene]);
 
   const relationshipPanelItems = useMemo(() => {
     if (!activeNote) return [];
@@ -148,6 +151,65 @@ export function useSceneController() {
     onNoteTraversed: ambient.onNoteTraversed,
     setRelationshipFilter
   });
+
+  const openFocusLensNote = useCallback((noteId: string) => {
+    mutations.onOpenNote(noteId);
+    setFocusLensSession({
+      rootNoteId: noteId,
+      focusStack: [noteId],
+      snapshot: snapshotFocusLensPositions(scene),
+      pinned: false
+    });
+  }, [mutations, scene]);
+
+  const traverseWithFocusLens = useCallback((targetNoteId: string, relationshipId: string) => {
+    mutations.traverseToRelated(targetNoteId, relationshipId);
+    setFocusLensSession((current) => {
+      if (!current) {
+        return {
+          rootNoteId: scene.activeNoteId ?? targetNoteId,
+          focusStack: [scene.activeNoteId, targetNoteId].filter((value): value is string => Boolean(value)),
+          snapshot: snapshotFocusLensPositions(scene),
+          pinned: false
+        };
+      }
+
+      const nextStack = current.focusStack[current.focusStack.length - 1] === targetNoteId
+        ? current.focusStack
+        : [...current.focusStack, targetNoteId];
+      return { ...current, focusStack: nextStack };
+    });
+  }, [mutations, scene]);
+
+  const closeFocusLens = useCallback(() => {
+    mutations.closeActiveNote();
+    setFocusLensSession(null);
+  }, [mutations]);
+
+  const goBackFocusLens = useCallback(() => {
+    setFocusLensSession((current) => {
+      if (!current || current.focusStack.length < 2) return current;
+      const nextStack = current.focusStack.slice(0, -1);
+      const previousId = nextStack[nextStack.length - 1];
+      setScene((prev) => openNoteInScene(prev, previousId));
+      return { ...current, focusStack: nextStack };
+    });
+  }, [setScene]);
+
+  const pinFocusLens = useCallback(() => {
+    if (!focusLensPresentation.active || focusLensPresentation.pinned) return;
+    setScene((prev) => pinFocusLensLayout(prev, focusLensPresentation.layoutById));
+    setFocusLensSession((current) => (current ? { ...current, pinned: true } : current));
+  }, [focusLensPresentation, setScene]);
+
+  const resetFocusLens = useCallback(() => {
+    setScene((prev) => {
+      const restored = focusLensSession ? restoreFocusLensSnapshot(prev, focusLensSession.snapshot) : prev;
+      return { ...restored, activeNoteId: null };
+    });
+    setFocusLensSession(null);
+    setRelationshipFilter('all');
+  }, [focusLensSession, setRelationshipFilter, setScene]);
 
   useEffect(() => {
     saveScene(scene);
@@ -213,6 +275,12 @@ export function useSceneController() {
 
   useEffect(() => {
     if (!activeNote) {
+      setFocusLensSession(null);
+    }
+  }, [activeNote]);
+
+  useEffect(() => {
+    if (!activeNote) {
       setInspectedRelationshipId(null);
       return;
     }
@@ -259,13 +327,13 @@ export function useSceneController() {
           mutations.setExpandedSurface('none');
           return;
         }
-        mutations.closeActiveNote();
+        closeFocusLens();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mutations, scene.expandedSecondarySurface, scene.lastCtrlTapTs]);
+  }, [closeFocusLens, mutations, scene.expandedSecondarySurface, scene.lastCtrlTapTs]);
 
   const visibleRevealMatchIds = lensPresentation.revealMatchIds.filter((noteId) => visibleNoteIds.has(noteId));
   const revealActiveNoteId = visibleRevealMatchIds.length > 0 ? visibleRevealMatchIds[activeRevealMatchIndex % visibleRevealMatchIds.length] : null;
@@ -310,10 +378,10 @@ export function useSceneController() {
 
   const advanceRecallCue = useCallback(() => {
     if (!recallCue) return;
-    mutations.onOpenNote(recallCue.noteId);
+    openFocusLensNote(recallCue.noteId);
     setHighlightedNoteIds([recallCue.noteId]);
     ambient.clearRecallCue();
-  }, [ambient, mutations, recallCue]);
+  }, [ambient, openFocusLensNote, recallCue]);
 
   const clearRecallCue = useCallback(() => {
     ambient.clearRecallCue();
@@ -342,6 +410,12 @@ export function useSceneController() {
         expandedSecondarySurface: 'none',
         captureComposer: { draft: '', lastCreatedNoteId: createdNote.id }
       };
+    });
+    setFocusLensSession({
+      rootNoteId: createdNote.id,
+      focusStack: [createdNote.id],
+      snapshot: snapshotFocusLensPositions(scene),
+      pinned: false
     });
 
     setHighlightedNoteIds([createdNote.id]);
@@ -409,8 +483,8 @@ export function useSceneController() {
 
   const openAIReference = useCallback((noteId: string) => {
     setHighlightedNoteIds([noteId]);
-    mutations.onOpenNote(noteId);
-  }, [mutations]);
+    openFocusLensNote(noteId);
+  }, [openFocusLensNote]);
 
   const appendTextToActiveNote = useCallback((content: string) => {
     if (!scene.activeNoteId) return;
@@ -434,6 +508,12 @@ export function useSceneController() {
         relationships: refreshInferredRelationships(notes, prev.relationships, now()),
         activeNoteId: createdNote.id
       };
+    });
+    setFocusLensSession({
+      rootNoteId: createdNote.id,
+      focusStack: [createdNote.id],
+      snapshot: snapshotFocusLensPositions(scene),
+      pinned: false
     });
 
     setHighlightedNoteIds([createdNote.id]);
@@ -610,6 +690,7 @@ export function useSceneController() {
     recallCue,
     rankedRelationships,
     relationshipPanelItems,
+    focusLensPresentation,
     activeInsightTimeline: activeNote ? (scene.insightTimeline ?? []).filter((entry) => entry.noteId === activeNote.id) : [],
     streamingResponse,
     isStreamingResponse,
@@ -626,7 +707,7 @@ export function useSceneController() {
     setRelationshipFilter,
     inspectRelationship,
     closeRelationshipInspector,
-    closeActiveNote: mutations.closeActiveNote,
+    closeActiveNote: closeFocusLens,
     updateNote: mutations.updateNote,
     bringToFront: mutations.bringToFront,
     setIsDragging: mutations.setIsDragging,
@@ -642,7 +723,7 @@ export function useSceneController() {
     updateRelationship,
     undoRelationshipEdit,
     removeRelationship,
-    traverseToRelated: mutations.traverseToRelated,
+    traverseToRelated: traverseWithFocusLens,
     toggleNoteFocus: mutations.toggleNoteFocus,
     setNoteProjects: mutations.setNoteProjects,
     createProjectForNote: mutations.createProjectForNote,
@@ -653,7 +734,7 @@ export function useSceneController() {
     retryAttachmentProcessing,
     onCanvasScroll: mutations.onCanvasScroll,
     onViewportCenterChange,
-    onOpenNote: mutations.onOpenNote,
+    onOpenNote: openFocusLensNote,
     onArchiveNote: mutations.onArchiveNote,
     restoreArchivedNote: mutations.restoreArchivedNote,
     onHoverStart: ambient.onHoverStart,
@@ -675,6 +756,9 @@ export function useSceneController() {
     recentlyDeletedNoteId,
     openAIReference,
     runInsights,
+    goBackFocusLens,
+    pinFocusLens,
+    resetFocusLens,
     confirmPendingAction,
     cancelPendingAction: () => setPendingAction(null)
   };

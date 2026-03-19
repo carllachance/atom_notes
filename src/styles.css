@@ -6560,3 +6560,113 @@ samp,
     align-items: flex-start;
   }
 }
+
+/* Focus context lens */
+.note-card {
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.84, 0.28, 1),
+    opacity 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    filter 180ms ease,
+    background 180ms ease;
+}
+
+.note-card[data-focus-lens-tier='active'] {
+  box-shadow:
+    0 18px 34px rgba(31, 46, 78, 0.2),
+    0 0 0 1px rgba(210, 226, 255, 0.1),
+    0 0 28px rgba(115, 156, 235, 0.14);
+}
+
+.note-card[data-focus-lens-tier='neighbor'] {
+  box-shadow:
+    0 12px 24px rgba(12, 18, 29, 0.14),
+    0 0 0 1px rgba(180, 198, 229, 0.08);
+}
+
+.note-card[data-focus-lens-tier='context'] {
+  box-shadow: 0 8px 18px rgba(9, 14, 24, 0.08);
+}
+
+.note-card[data-focus-lens-tier='background'] {
+  filter: blur(0.24px) saturate(0.88);
+}
+
+.focus-lens-action {
+  min-width: 88px;
+}
+
+.focus-lens-chip-strip {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.focus-lens-chip {
+  display: inline-grid;
+  gap: 2px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(156, 178, 215, 0.12);
+  background: rgba(16, 21, 31, 0.72);
+  color: rgba(226, 234, 248, 0.88);
+  text-align: left;
+}
+
+.focus-lens-chip span {
+  font-size: 0.63rem;
+  color: rgba(157, 174, 204, 0.72);
+}
+
+.focus-lens-chip strong {
+  font-size: 0.72rem;
+  font-weight: 560;
+}
+
+.focus-lens-chip--active,
+.focus-lens-chip:hover,
+.focus-lens-chip:focus-visible {
+  border-color: rgba(128, 171, 255, 0.24);
+  background: rgba(24, 31, 47, 0.9);
+  box-shadow: 0 10px 22px rgba(6, 10, 18, 0.16);
+}
+
+.focus-lens-chip--overflow {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  color: rgba(168, 182, 207, 0.78);
+}
+
+.focus-lens-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 164, 196, 0.08);
+  background: rgba(14, 19, 28, 0.44);
+}
+
+.focus-lens-summary strong {
+  font-size: 0.76rem;
+}
+
+.focus-lens-summary span {
+  font-size: 0.72rem;
+  color: rgba(165, 180, 208, 0.76);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-card,
+  .related-node,
+  .relationship-edge,
+  .focus-lens-chip {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
