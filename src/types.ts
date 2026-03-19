@@ -33,6 +33,54 @@ export type Lens = UniverseLens | ProjectLens | WorkspaceLens | RevealLens | Arc
 export type NoteIntent = 'task' | 'link' | 'code' | 'note';
 export type TaskState = 'open' | 'done';
 
+
+export type AttachmentFileKind = 'pdf' | 'text' | 'markdown' | 'json' | 'csv' | 'image';
+export type AttachmentProcessingStatus = 'uploaded' | 'processing' | 'processed' | 'failed';
+export type AttachmentExtractionMethod = 'native_text' | 'ocr';
+
+export type AttachmentSourceLocation = {
+  kind: 'page' | 'line_range' | 'source';
+  label: string;
+  pageNumber?: number;
+  lineStart?: number;
+  lineEnd?: number;
+};
+
+export type AttachmentChunk = {
+  id: string;
+  text: string;
+  sourceLocation: AttachmentSourceLocation;
+};
+
+export type AttachmentExtractionResult = {
+  method: AttachmentExtractionMethod;
+  extractedAt: number;
+  contentHash: string;
+  text: string;
+  chunks: AttachmentChunk[];
+};
+
+export type NoteAttachment = {
+  id: string;
+  name: string;
+  mimeType: string;
+  fileSize: number;
+  addedAt: number;
+  fileKind: AttachmentFileKind;
+  rawFile: {
+    dataUrl: string;
+    contentHash: string;
+    lastModified: number;
+  };
+  processing: {
+    status: AttachmentProcessingStatus;
+    error: string | null;
+    retryCount: number;
+    updatedAt: number;
+  };
+  extraction: AttachmentExtractionResult | null;
+};
+
 export type RelationshipType =
   | 'related'
   | 'references'
@@ -114,6 +162,7 @@ export type NoteCardModel = {
     createdAt: number;
   }>;
   inferredRelationships?: SuggestedRelationship[];
+  attachments?: NoteAttachment[];
 };
 
 export type Relationship = {

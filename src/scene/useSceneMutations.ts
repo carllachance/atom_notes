@@ -31,6 +31,7 @@ import { createProjectAndAssignToNoteInScene, setNoteProjectsInScene } from '../
 import { ProjectDraft } from '../projects/projectModel';
 import { createWorkspaceAndAssignToNoteInScene, setNoteWorkspaceInScene } from '../workspaces/workspaceActions';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
+import { addAttachmentsToNoteInScene, markAttachmentFailedInScene, markAttachmentProcessedInScene, markAttachmentProcessingInScene, removeAttachmentFromNoteInScene, retryAttachmentProcessingInScene } from '../attachments/attachmentActions';
 
 type UseSceneMutationsOptions = {
   setScene: Dispatch<SetStateAction<SceneState>>;
@@ -179,6 +180,30 @@ export function useSceneMutations({
     setScene((prev) => createWorkspaceAndAssignToNoteInScene(prev, id, draft));
   }, [setScene]);
 
+  const addAttachments = useCallback((noteId: string, attachments: Parameters<typeof addAttachmentsToNoteInScene>[2]) => {
+    setScene((prev) => addAttachmentsToNoteInScene(prev, noteId, attachments));
+  }, [setScene]);
+
+  const removeAttachment = useCallback((noteId: string, attachmentId: string) => {
+    setScene((prev) => removeAttachmentFromNoteInScene(prev, noteId, attachmentId));
+  }, [setScene]);
+
+  const markAttachmentProcessing = useCallback((noteId: string, attachmentId: string) => {
+    setScene((prev) => markAttachmentProcessingInScene(prev, noteId, attachmentId));
+  }, [setScene]);
+
+  const markAttachmentProcessed = useCallback((noteId: string, attachmentId: string, extraction: Parameters<typeof markAttachmentProcessedInScene>[3]) => {
+    setScene((prev) => markAttachmentProcessedInScene(prev, noteId, attachmentId, extraction));
+  }, [setScene]);
+
+  const markAttachmentFailed = useCallback((noteId: string, attachmentId: string, error: string) => {
+    setScene((prev) => markAttachmentFailedInScene(prev, noteId, attachmentId, error));
+  }, [setScene]);
+
+  const retryAttachmentProcessing = useCallback((noteId: string, attachmentId: string) => {
+    setScene((prev) => retryAttachmentProcessingInScene(prev, noteId, attachmentId));
+  }, [setScene]);
+
   return {
     closeActiveNote,
     updateNote,
@@ -205,6 +230,12 @@ export function useSceneMutations({
     setNoteProjects,
     createProjectForNote,
     setNoteWorkspace,
-    createWorkspaceForNote
+    createWorkspaceForNote,
+    addAttachments,
+    removeAttachment,
+    markAttachmentProcessing,
+    markAttachmentProcessed,
+    markAttachmentFailed,
+    retryAttachmentProcessing
   };
 }

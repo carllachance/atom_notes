@@ -3,7 +3,7 @@ import {
   DetailSurfaceRelationshipOption,
   getDetailSurfaceRelationshipOption
 } from '../detailSurface/detailSurfaceModel';
-import { PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
 import { ThinkingGlyph } from './ThinkingGlyph';
 import { InlineNoteLinkEditor } from './InlineNoteLinkEditor';
@@ -23,6 +23,7 @@ import { getLikelyActionFragments } from '../tasks/actionFragmentSuggestions';
 import { ProjectDraft } from '../projects/projectModel';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } from '../types';
+import { AttachmentPanel } from './attachments/AttachmentPanel';
 
 type VisibleRelationship = {
   id: string;
@@ -73,6 +74,9 @@ type ExpandedNoteProps = {
   onCreateWorkspace: (id: string, draft: WorkspaceDraft) => void;
   onSetProjectLens: (projectId: string | null) => void;
   onSetWorkspaceLens: (workspaceId: string | null) => void;
+  onAddAttachments: (event: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
+  onRemoveAttachment: (attachmentId: string) => void;
+  onRetryAttachment: (attachmentId: string) => void;
   onHoverRelatedNote: (noteId: string) => void;
   onClearRelatedHover: (noteId: string) => void;
 };
@@ -260,6 +264,9 @@ export function ExpandedNote({
   onCreateWorkspace,
   onSetProjectLens,
   onSetWorkspaceLens,
+  onAddAttachments,
+  onRemoveAttachment,
+  onRetryAttachment,
   onHoverRelatedNote,
   onClearRelatedHover
 }: ExpandedNoteProps) {
@@ -680,6 +687,13 @@ export function ExpandedNote({
                 </div>
               )}
             </div>
+
+            <AttachmentPanel
+              attachments={note.attachments ?? []}
+              onAddAttachments={onAddAttachments}
+              onRemoveAttachment={onRemoveAttachment}
+              onRetryAttachment={onRetryAttachment}
+            />
             {likelyActionFragments.length ? (
               <section className="capture-followups" aria-label="Likely follow-up suggestions">
                 <div className="section-head">

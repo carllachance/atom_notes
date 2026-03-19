@@ -142,7 +142,8 @@ test('relationshipActions creates a new linked note inline and inherits the acti
     promotedTaskFragments: [],
     intent: undefined,
     intentConfidence: undefined,
-    inferredRelationships: []
+    inferredRelationships: [],
+    attachments: []
   });
   assert.equal(result.scene.relationships.some((relationship) => relationship.fromId === 'a' && relationship.toId === 'inline-note' && relationship.type === 'supports'), true);
 });
