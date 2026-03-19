@@ -3,12 +3,14 @@ import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
 import { getProjectNoteVisual } from '../relationships/relationshipVisuals';
 import { describeNoteTrace, getTraceVisualBias } from '../trace';
 import { NoteCardModel } from '../types';
+import { FocusLensNodeState } from '../scene/focusLens';
 import { LensNotePresentation } from '../scene/lens';
 
 type NoteCardProps = {
   note: NoteCardModel;
   position: { x: number; y: number } | null;
   meta?: LensNotePresentation;
+  focusLensState?: FocusLensNodeState;
   focusHighlightEnabled: boolean;
   focusModeActive: boolean;
   recentlyClosed: boolean;
@@ -48,7 +50,7 @@ function formatIntentLabel(intent: NoteCardModel['intent']) {
   return intent ? intent.toUpperCase() : null;
 }
 
-function NoteCardComponent({ note, position, meta, focusHighlightEnabled, focusModeActive, recentlyClosed, ambientRelated, ambientPulse, ambientGlowLevel, isDragging, isDirectlyDragging, revealMatched, revealActive, isActive, isHovered, activeProjectLabel, activeProjectColor, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave }: NoteCardProps) {
+function NoteCardComponent({ note, position, meta, focusLensState, focusHighlightEnabled, focusModeActive, recentlyClosed, ambientRelated, ambientPulse, ambientGlowLevel, isDragging, isDirectlyDragging, revealMatched, revealActive, isActive, isHovered, activeProjectLabel, activeProjectColor, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave }: NoteCardProps) {
   const bias = getTraceVisualBias(note);
   const projectVisual = getProjectNoteVisual(meta?.projectState === 'member' ? 'member' : meta?.surfaced ? 'subordinate' : 'none');
   const displayTitle = getCompactDisplayTitle(note);
@@ -56,6 +58,8 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, focusM
   const visualState = getVisualState(note, focusHighlightEnabled, { isActive, revealActive, ambientPulse, ambientGlowLevel, recentlyClosed, revealMatched, ambientRelated, isHovered });
   const emphasisScale = meta?.emphasis === 'supporting' ? 0.985 : 1;
   const emphasisOpacity = meta?.emphasis === 'supporting' ? 0.84 : 1;
+  const focusLensScale = focusLensState?.scaleMultiplier ?? 1;
+  const focusLensOpacity = focusLensState?.opacityMultiplier ?? 1;
   const dragScale = isDirectlyDragging ? 1.02 : isDragging ? 1.008 : 1;
   const isFocus = Boolean(note.isFocus ?? note.inFocus);
   const resolvedPosition = position ?? { x: note.x, y: note.y };
@@ -79,11 +83,12 @@ function NoteCardComponent({ note, position, meta, focusHighlightEnabled, focusM
       data-emphasis={meta?.emphasis ?? 'context'}
       data-dragging={isDragging ? 'true' : 'false'}
       data-direct-dragging={isDirectlyDragging ? 'true' : 'false'}
+      data-focus-lens-tier={focusLensState?.tier ?? 'none'}
       style={{
-        transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift - (isDirectlyDragging ? 6 : isDragging ? 2 : 0)}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale * dragScale})`,
+        transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift - (isDirectlyDragging ? 6 : isDragging ? 2 : 0)}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale * focusLensScale * dragScale})`,
         transformOrigin: 'top left',
-        zIndex: note.z,
-        opacity: bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity * focusOpacity,
+        zIndex: note.z + (focusLensState?.zBoost ?? 0),
+        opacity: bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity * focusOpacity * focusLensOpacity,
         filter: `blur(${bias.blur}px)`,
         ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0',
         ['--project-accent' as string]: meta?.projectAccent ?? activeProjectColor ?? 'rgba(122, 162, 247, 0.42)',
@@ -120,6 +125,11 @@ export const NoteCard = memo(NoteCardComponent, (prev, next) => {
     prev.meta?.projectAccent === next.meta?.projectAccent &&
     prev.meta?.workspaceState === next.meta?.workspaceState &&
     prev.meta?.contextLabel === next.meta?.contextLabel &&
+    prev.focusLensState?.tier === next.focusLensState?.tier &&
+    prev.focusLensState?.degree === next.focusLensState?.degree &&
+    prev.focusLensState?.opacityMultiplier === next.focusLensState?.opacityMultiplier &&
+    prev.focusLensState?.scaleMultiplier === next.focusLensState?.scaleMultiplier &&
+    prev.focusLensState?.zBoost === next.focusLensState?.zBoost &&
     prev.focusHighlightEnabled === next.focusHighlightEnabled &&
     prev.focusModeActive === next.focusModeActive &&
     prev.recentlyClosed === next.recentlyClosed &&

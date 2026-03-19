@@ -24,6 +24,7 @@ import { ProjectDraft } from '../projects/projectModel';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } from '../types';
 import { AttachmentPanel } from './attachments/AttachmentPanel';
+import { FocusLensRelatedNote } from '../scene/focusLens';
 
 type VisibleRelationship = {
   id: string;
@@ -85,6 +86,14 @@ type ExpandedNoteProps = {
   onRetryAttachment: (attachmentId: string) => void;
   onHoverRelatedNote: (noteId: string) => void;
   onClearRelatedHover: (noteId: string) => void;
+  focusLensRelatedNotes: FocusLensRelatedNote[];
+  focusLensOverflowCount: number;
+  hoveredRelatedNoteId: string | null;
+  focusLensCanGoBack: boolean;
+  focusLensPinned: boolean;
+  onFocusLensBack: () => void;
+  onFocusLensPin: () => void;
+  onFocusLensReset: () => void;
   onPositionChange?: (noteId: string, position: { x: number; y: number }) => void;
 };
 
@@ -280,6 +289,14 @@ export function ExpandedNote({
   onRetryAttachment,
   onHoverRelatedNote,
   onClearRelatedHover,
+  focusLensRelatedNotes,
+  focusLensOverflowCount,
+  hoveredRelatedNoteId,
+  focusLensCanGoBack,
+  focusLensPinned,
+  onFocusLensBack,
+  onFocusLensPin,
+  onFocusLensReset,
   onPositionChange
 }: ExpandedNoteProps) {
   const [expandedSecondaryPanel, setExpandedSecondaryPanel] = useState<NoteSecondaryPanel>('none');
@@ -587,6 +604,9 @@ export function ExpandedNote({
             </div>
           </div>
           <div className="note-header-tools">
+            {focusLensCanGoBack ? <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensBack}>Back</button> : null}
+            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensPin}>{focusLensPinned ? 'Pinned' : 'Pin layout'}</button>
+            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensReset}>Reset view</button>
             <IconToolButton
               label="Think about this note"
               kind="thinking"
@@ -596,6 +616,25 @@ export function ExpandedNote({
             />
           </div>
         </header>
+
+        {focusLensRelatedNotes.length ? (
+          <div className="focus-lens-chip-strip" aria-label="Surfaced related notes">
+            {focusLensRelatedNotes.filter((item) => item.degree === 1).map((relationship) => (
+              <button
+                key={relationship.relationshipId}
+                type="button"
+                className={`focus-lens-chip ${hoveredRelatedNoteId === relationship.targetId ? 'focus-lens-chip--active' : ''}`}
+                onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
+                onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
+                onClick={() => onOpenRelated(relationship.targetId, relationship.relationshipId)}
+              >
+                <span>{formatRelationshipType(relationship.relationship.type)}</span>
+                <strong>{relationship.targetTitle}</strong>
+              </button>
+            ))}
+            {focusLensOverflowCount > 0 ? <span className="focus-lens-chip focus-lens-chip--overflow">+{focusLensOverflowCount} more nearby</span> : null}
+          </div>
+        ) : null}
 
         <div className="expanded-note-layout">
           <div className="expanded-note-main">
@@ -784,7 +823,12 @@ export function ExpandedNote({
               </div>
 
               <p className="filter-state-copy">Local map · {flowSummary}</p>
-
+              {focusLensRelatedNotes.length ? (
+                <div className="focus-lens-summary">
+                  <strong>Surfaced first ring</strong>
+                  <span>{focusLensRelatedNotes.filter((item) => item.degree === 1).length} direct · {focusLensRelatedNotes.filter((item) => item.degree === 2).length} faint context</span>
+                </div>
+              ) : null}
 
               <div className="connections-flow-list" aria-label="Constellation map">
                 {connectedGroups.some((group) => group.items.length) ? connectedGroups.map((group) => (

@@ -75,6 +75,14 @@ function render() {
       onRetryAttachment={() => {}}
       onHoverRelatedNote={() => {}}
       onClearRelatedHover={() => {}}
+      focusLensRelatedNotes={[]}
+      focusLensOverflowCount={0}
+      hoveredRelatedNoteId={null}
+      focusLensCanGoBack={false}
+      focusLensPinned={false}
+      onFocusLensBack={() => {}}
+      onFocusLensPin={() => {}}
+      onFocusLensReset={() => {}}
     />
   );
 }

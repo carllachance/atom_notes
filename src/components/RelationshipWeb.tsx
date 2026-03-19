@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { getCompactDisplayTitle } from '../noteText';
 import { getRelationshipTargetNoteId } from '../relationshipLogic';
 import { getSemanticRelationshipVisual } from '../relationships/relationshipVisuals';
-import { NoteCardModel, Relationship, RelationshipType } from '../types';
+import { NoteCardModel, RelationshipType } from '../types';
+import { FocusLensRelatedNote } from '../scene/focusLens';
 import {
   CanvasViewportMetrics,
   buildRelationshipEdgePath,
@@ -10,33 +11,25 @@ import {
   getRelationshipWebPlaneStyle
 } from './relationshipWebGeometry';
 
-type RankedRelationship = {
-  relationship: Relationship;
-  score: number;
-};
-
 type RelationshipWebProps = {
   activeNote: NoteCardModel;
   notes: NoteCardModel[];
-  rankedRelationships: RankedRelationship[];
+  relatedNotes: FocusLensRelatedNote[];
   filter: 'all' | RelationshipType;
   canvasMetrics: CanvasViewportMetrics | null;
   hoveredNoteId: string | null;
   onInspectRelationship: (relationshipId: string) => void;
+  onOpenRelated: (targetNoteId: string, relationshipId: string) => void;
+  onHoverRelatedNote: (noteId: string) => void;
+  onClearRelatedHover: (noteId: string) => void;
 };
 
-type VisibleEdge = {
-  relationship: Relationship;
-  target: NoteCardModel;
-  score: number;
-};
-
-export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter, canvasMetrics, hoveredNoteId, onInspectRelationship }: RelationshipWebProps) {
+export function RelationshipWeb({ activeNote, notes, relatedNotes, filter, canvasMetrics, hoveredNoteId, onInspectRelationship, onOpenRelated, onHoverRelatedNote, onClearRelatedHover }: RelationshipWebProps) {
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
   const [localHoveredNoteId, setLocalHoveredNoteId] = useState<string | null>(null);
 
-  const visibleEdges = useMemo(() => {
-    const filtered = rankedRelationships.filter((item) => filter === 'all' || item.relationship.type === filter);
+  const visibleTargets = useMemo(() => {
+    const filtered = relatedNotes.filter((item) => item.degree === 1 && (filter === 'all' || item.relationship.type === filter));
 
     return filtered
       .slice(0, 10)
@@ -44,12 +37,10 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
         const targetId = getRelationshipTargetNoteId(item.relationship, activeNote.id);
         const target = notesById.get(targetId);
         if (!target) return null;
-        return { relationship: item.relationship, target, score: item.score } satisfies VisibleEdge;
+        return { relationship: item.relationship, target, score: item.score };
       })
-      .filter((item): item is VisibleEdge => Boolean(item));
-  }, [activeNote.id, filter, notesById, rankedRelationships]);
-
-  const visibleTargets = visibleEdges.slice(0, 8);
+      .filter((item): item is { relationship: FocusLensRelatedNote['relationship']; target: NoteCardModel; score: number } => Boolean(item));
+  }, [activeNote.id, filter, notesById, relatedNotes]);
   const emphasis = filter === 'all' ? 'default' : 'selected';
   const emphasizedTargetId = localHoveredNoteId ?? hoveredNoteId;
   const hoverActive = visibleTargets.some(({ target }) => target.id === emphasizedTargetId);
@@ -118,9 +109,15 @@ export function RelationshipWeb({ activeNote, notes, rankedRelationships, filter
                   ? `0 10px 28px rgba(2, 4, 9, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 24px color-mix(in srgb, ${visual.node.glowColor} 42%, transparent)`
                   : `0 6px 16px rgba(2, 4, 9, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.02), 0 0 18px color-mix(in srgb, ${visual.node.glowColor} ${Math.round(visual.node.glowOpacity * 100)}%, transparent)`
               }}
-              onMouseEnter={() => setLocalHoveredNoteId(note.id)}
-              onMouseLeave={() => setLocalHoveredNoteId((current) => (current === note.id ? null : current))}
-              onClick={() => onInspectRelationship(relationship.id)}
+              onMouseEnter={() => {
+                setLocalHoveredNoteId(note.id);
+                onHoverRelatedNote(note.id);
+              }}
+              onMouseLeave={() => {
+                setLocalHoveredNoteId((current) => (current === note.id ? null : current));
+                onClearRelatedHover(note.id);
+              }}
+              onClick={() => onOpenRelated(note.id, relationship.id)}
             >
               <span className="related-node-kind" style={{ opacity: visual.node.labelOpacity }}>{visual.label}</span>
               <span className="related-node-title">{getCompactDisplayTitle(note, 36)}</span>

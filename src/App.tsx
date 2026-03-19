@@ -38,6 +38,7 @@ export function App() {
     recallCue,
     rankedRelationships,
     relationshipPanelItems,
+    focusLensPresentation,
     activeInsightTimeline,
     streamingResponse,
     isStreamingResponse,
@@ -53,6 +54,9 @@ export function App() {
     inspectRelationship,
     closeRelationshipInspector,
     closeActiveNote,
+    goBackFocusLens,
+    pinFocusLens,
+    resetFocusLens,
     updateNote,
     bringToFront,
     setIsDragging,
@@ -155,6 +159,8 @@ export function App() {
             <SpatialCanvas
               notes={visibleNotes}
               noteMetaById={lensPresentation.noteMetaById}
+              focusLensStateById={focusLensPresentation.noteStateById}
+              focusLensLayoutById={focusLensPresentation.layoutById}
               focusMode={scene.focusMode}
               activeNoteId={activeNote?.id ?? null}
               hoveredNoteId={hoveredNoteId}
@@ -214,7 +220,7 @@ export function App() {
       </section>
 
       {activeNote ? <button type="button" className="canvas-dim" aria-label="Close note" onClick={closeActiveNote} /> : null}
-      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} /> : null}
+      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} relatedNotes={focusLensPresentation.relatedNotes} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} onOpenRelated={traverseToRelated} onHoverRelatedNote={onHoverStart} onClearRelatedHover={onHoverEnd} /> : null}
 
       <CaptureComposer
         isOpen={captureExpanded}
@@ -276,6 +282,14 @@ export function App() {
         onRetryAttachment={retryAttachmentProcessing}
         onHoverRelatedNote={onHoverStart}
         onClearRelatedHover={onHoverEnd}
+        focusLensRelatedNotes={focusLensPresentation.relatedNotes}
+        focusLensOverflowCount={focusLensPresentation.overflowCount}
+        hoveredRelatedNoteId={hoveredNoteId}
+        focusLensCanGoBack={focusLensPresentation.canGoBack}
+        focusLensPinned={focusLensPresentation.pinned}
+        onFocusLensBack={goBackFocusLens}
+        onFocusLensPin={pinFocusLens}
+        onFocusLensReset={resetFocusLens}
         onPositionChange={(noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position }))}
       />
       {recentlyDeletedNoteId ? (

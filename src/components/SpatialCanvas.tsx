@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getProjectGroupingVisual } from '../relationships/relationshipVisuals';
 import { FocusMode, NoteCardModel, Project, Relationship } from '../types';
+import { FocusLensNodeState } from '../scene/focusLens';
 import { buildClusteredProjectConnectorSegments, useSubtleCanvasClustering } from './canvasClustering';
 import { LensNotePresentation } from '../scene/lens';
 import { ProjectConnectorSegment } from '../projects/projectSelectors';
@@ -16,6 +17,8 @@ type RecenterTarget = {
 type SpatialCanvasProps = {
   notes: NoteCardModel[];
   noteMetaById: Record<string, LensNotePresentation>;
+  focusLensStateById: Record<string, FocusLensNodeState>;
+  focusLensLayoutById: Record<string, { x: number; y: number }>;
   focusMode: FocusMode;
   activeNoteId: string | null;
   hoveredNoteId: string | null;
@@ -61,6 +64,8 @@ const NOTE_HEIGHT = 170;
 export function SpatialCanvas({
   notes,
   noteMetaById,
+  focusLensStateById,
+  focusLensLayoutById,
   focusMode,
   activeNoteId,
   hoveredNoteId,
@@ -341,12 +346,15 @@ export function SpatialCanvas({
         ) : null}
         {clusteredNotes.map((note) => {
           const meta = noteMetaById[note.id];
+          const focusLensState = focusLensStateById[note.id];
+          const focusLensPosition = focusLensLayoutById[note.id] ?? null;
           return (
             <NoteCard
               key={note.id}
               note={note}
-              position={dragPosition?.id === note.id ? { x: dragPosition.x, y: dragPosition.y } : clusteredPositions[note.id] ?? null}
+              position={dragPosition?.id === note.id ? { x: dragPosition.x, y: dragPosition.y } : focusLensPosition ?? clusteredPositions[note.id] ?? null}
               meta={meta}
+              focusLensState={focusLensState}
               focusHighlightEnabled={focusMode.highlight}
               focusModeActive={focusMode.highlight || focusMode.isolate}
               recentlyClosed={recentlyClosedNoteId === note.id}
