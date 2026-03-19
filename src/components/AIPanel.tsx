@@ -34,8 +34,8 @@ const RAIL_MAX_WIDTH = 520;
 const ACTION_LABELS: Record<AIInteractionMode, string> = {
   ask: 'Ask',
   explore: 'Trace',
-  summarize: 'Sum',
-  act: 'Act'
+  summarize: 'Summary',
+  act: 'Next'
 };
 
 function placeholderForMode(mode: AIInteractionMode, selectedNote: NoteCardModel | null) {
@@ -96,14 +96,14 @@ export function AIPanel({
 }: AIPanelProps) {
   const notesById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
   const activeResponse = streamedResponse ?? panel.response;
-  const isExpanded = panel.state !== 'hidden';
+  const isExpanded = panel.state === 'open';
   const promptSuggestions = getIntentPrompts(panel.mode, selectedNote, scopeLabel);
   const timeline = useMemo(
     () => (selectedNote ? getInsightTimelineForNote(timelineEntries, selectedNote.id) : { nowEntries: [], visibleEarlierEntries: [], hiddenEarlierEntries: [] }),
     [selectedNote, timelineEntries]
   );
   const responseNotes = useMemo(
-    () => activeResponse?.results.map((result) => ({ result, note: notesById.get(result.noteId) ?? null })).filter((entry) => entry.note).slice(0, 4) ?? [],
+    () => activeResponse?.results.map((result) => ({ result, note: notesById.get(result.noteId) ?? null })).filter((entry) => entry.note).slice(0, 5) ?? [],
     [activeResponse, notesById]
   );
   const [showWhy, setShowWhy] = useState(false);
@@ -164,7 +164,7 @@ export function AIPanel({
               className={panel.mode === mode ? 'active' : ''}
               onClick={() => onModeChange(mode)}
               aria-label={label}
-              title={label}
+              title={`${ACTION_LABELS[mode]} · ${label}`}
             >
               <span className="ai-mode-icon" aria-hidden="true">{getModeIcon(mode)}</span>
               <span className="ai-mode-label">{ACTION_LABELS[mode]}</span>
@@ -218,10 +218,6 @@ export function AIPanel({
 
             {responseNotes.length ? (
               <section className="ai-related-strip" aria-label="Related notes">
-                <div className="ai-section-heading">
-                  <span className="ai-block-label">Related</span>
-                  <small>Top notes only</small>
-                </div>
                 <div className="ai-reference-grid">
                   {responseNotes.map(({ result, note }) => {
                     if (!note) return null;
@@ -231,23 +227,6 @@ export function AIPanel({
                         <span>{result.reasons[0] ?? 'Nearby context'}</span>
                         <div className="ai-inline-actions">
                           <button className="ghost-button" onClick={() => onOpenReference(note.id)} type="button">Open</button>
-                          {selectedNote ? (
-                            <button
-                              className="ghost-button"
-                              onClick={() =>
-                                onPreviewAction({
-                                  id: `ai-link-${selectedNote.id}-${note.id}`,
-                                  label: `Link ${selectedNote.title ?? 'current note'} to ${note.title ?? 'this note'}`,
-                                  kind: 'create_link',
-                                  relationships: [{ fromId: selectedNote.id, toId: note.id, type: 'related' }],
-                                  requiresConfirmation: true
-                                })
-                              }
-                              type="button"
-                            >
-                              Link
-                            </button>
-                          ) : null}
                         </div>
                       </article>
                     );

@@ -19,7 +19,7 @@ export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, o
           <header>
             <div>
               <strong>Capture</strong>
-              <small>Keep it light. Expand only when the note needs more room.</small>
+              <small>Quick entry, then back to the canvas.</small>
             </div>
             <button type="button" className="ghost-button" onClick={onCancel} aria-label="Close capture panel">
               Close
@@ -28,7 +28,7 @@ export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, o
           <textarea
             id="quick-capture"
             autoFocus
-            placeholder="Write the note you want to keep."
+            placeholder="Capture the next note."
             value={value}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -43,7 +43,7 @@ export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, o
             }}
           />
           <footer>
-            <span>Ctrl+Enter to capture · ESC to collapse</span>
+            <span>Ctrl+Enter to save · Esc to collapse</span>
             <div className="capture-composer__actions">
               {canUndo ? (
                 <button type="button" className="ghost-button" onClick={onUndo}>
@@ -60,7 +60,7 @@ export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, o
         <div className="capture-composer capture-composer--compact-bar">
           <div className="capture-composer__compact-copy">
             <strong>Capture</strong>
-            <small>Always available, never in the way.</small>
+            <small>Docked and ready.</small>
           </div>
           <div className="capture-composer__compact-row">
             <input

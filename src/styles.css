@@ -5632,7 +5632,10 @@ samp,
 .canvas-dim {
   background: radial-gradient(circle at 72% 34%, rgba(9, 14, 22, 0.1), rgba(9, 14, 22, 0.02) 48%, transparent 78%);
   opacity: 1;
-  pointer-events: none;
+  pointer-events: auto;
+  border: 0;
+  width: 100%;
+  cursor: default;
 }
 
 .expanded-note-shell {
@@ -5855,20 +5858,78 @@ samp,
 }
 
 .home-surface--light {
-  max-width: min(760px, calc(100% - 36px));
+  max-width: min(560px, calc(100% - 36px));
 }
 
-.home-surface__capture--compact {
-  padding: 2px 0 0;
-  background: transparent;
-  border: 0;
+.home-surface__resume {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+.home-surface__resume-chip,
+.home-surface__empty-prompt {
+  display: inline-grid;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(84, 103, 145, 0.2);
+  background: rgba(10, 15, 26, 0.52);
+  color: #e6eefc;
+  text-align: left;
+}
+
+.home-surface__resume-chip {
+  cursor: pointer;
+}
+
+.home-surface__resume-chip:hover,
+.home-surface__resume-chip:focus-visible {
+  border-color: rgba(118, 138, 184, 0.34);
+}
+
+.home-surface__resume-label {
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9fb2da;
+}
+
+.home-surface__resume-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: min(460px, calc(100vw - 56px));
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(84, 103, 145, 0.2);
+  background: rgba(10, 15, 26, 0.94);
+  box-shadow: 0 18px 34px rgba(3, 6, 10, 0.24);
+  z-index: 2;
+}
+
+.home-surface__empty-prompt {
+  justify-self: flex-start;
+}
+
+.home-surface__empty-prompt strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.home-surface__capture-head,
+.home-surface__capture-head h1,
+.home-surface__capture-head p {
+  display: none;
 }
 
 .ai-panel {
   width: var(--thinking-rail-width, 360px);
   min-width: 64px;
   border-radius: 22px;
-  background: rgba(10, 15, 26, 0.44);
+  background: rgba(10, 15, 26, 0.38);
   backdrop-filter: blur(12px);
   padding: 10px;
   display: grid;
@@ -5940,6 +6001,7 @@ samp,
   display: grid;
   gap: 12px;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .ai-panel-header--context {
@@ -6003,6 +6065,10 @@ samp,
   border-radius: 14px;
   border: 1px solid rgba(90, 112, 157, 0.16);
   background: rgba(14, 20, 33, 0.68);
+}
+
+.ai-reference-card strong {
+  font-size: 0.85rem;
 }
 
 .ai-inline-actions {
@@ -6138,6 +6204,10 @@ samp,
   .expanded-note {
     width: min(760px, calc(100vw - 36px));
     max-width: calc(100vw - 36px);
+  }
+
+  .home-surface__resume-popover {
+    width: min(100%, calc(100vw - 36px));
   }
 }
 

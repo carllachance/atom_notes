@@ -104,6 +104,8 @@ export function App() {
     confirmPendingAction,
     cancelPendingAction
   } = useSceneController();
+  const thinkingRailVisible = scene.aiPanel.state !== 'hidden';
+  const thinkingRailReservedInset = thinkingRailVisible ? thinkingRailWidth + 24 : 24;
   const hasFreshInsights = Boolean(
     activeNote && (
       isStreamingResponse ||
@@ -219,7 +221,7 @@ export function App() {
         />
       </section>
 
-      {activeNote ? <div className="canvas-dim" /> : null}
+      {activeNote ? <button type="button" className="canvas-dim" aria-label="Close note" onClick={closeActiveNote} /> : null}
       {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} /> : null}
 
       <CaptureComposer
@@ -245,10 +247,10 @@ export function App() {
         canUndoRelationshipEdit={canUndoRelationshipEdit}
         activeProjectRevealId={lensPresentation.activeProject?.id ?? null}
         activeWorkspaceLensId={lensPresentation.activeWorkspace?.id ?? null}
-        thinkingActive={scene.aiPanel.state !== 'hidden'}
+        thinkingActive={thinkingRailVisible}
         hasFreshInsights={hasFreshInsights}
         initialPosition={activeNote ? notePanelPositions[activeNote.id] : undefined}
-        rightInset={scene.aiPanel.state === 'hidden' ? 24 : thinkingRailWidth + 24}
+        rightInset={thinkingRailReservedInset}
         onClose={closeActiveNote}
         onThinkAboutNote={() => setAIPanelVisibility('open')}
         onDelete={deleteActiveNote}
