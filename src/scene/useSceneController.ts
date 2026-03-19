@@ -251,12 +251,12 @@ export function useSceneController() {
 
       if ((event.ctrlKey || event.metaKey) && event.key === '.') {
         event.preventDefault();
-        mutations.setAIPanelVisibility(scene.aiPanel.state === 'open' ? 'peek' : 'open');
+        mutations.setExpandedSurface(scene.expandedSecondarySurface === 'thinking' ? 'none' : 'thinking');
       }
 
       if (event.key === 'Escape') {
-        if (scene.captureComposer.open) {
-          mutations.setCaptureComposer({ open: false });
+        if (scene.expandedSecondarySurface === 'capture') {
+          mutations.setExpandedSurface('none');
           return;
         }
         mutations.closeActiveNote();
@@ -265,7 +265,7 @@ export function useSceneController() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mutations, scene.aiPanel.state, scene.captureComposer.draft, scene.captureComposer.open, scene.lastCtrlTapTs]);
+  }, [mutations, scene.expandedSecondarySurface, scene.lastCtrlTapTs]);
 
   const visibleRevealMatchIds = lensPresentation.revealMatchIds.filter((noteId) => visibleNoteIds.has(noteId));
   const revealActiveNoteId = visibleRevealMatchIds.length > 0 ? visibleRevealMatchIds[activeRevealMatchIndex % visibleRevealMatchIds.length] : null;
@@ -320,7 +320,8 @@ export function useSceneController() {
   }, [ambient]);
 
   const onCaptureDraftChange = useCallback((draft: string) => {
-    mutations.setCaptureComposer({ open: true, draft });
+    mutations.setCaptureComposer({ draft });
+    mutations.setExpandedSurface('capture');
   }, [mutations]);
 
   const commitCapture = useCallback(() => {
@@ -338,8 +339,8 @@ export function useSceneController() {
         notes,
         relationships: refreshInferredRelationships(notes, prev.relationships, now()),
         activeNoteId: createdNote.id,
-        quickCaptureOpen: false,
-        captureComposer: { open: false, draft: '', lastCreatedNoteId: createdNote.id }
+        expandedSecondarySurface: 'none',
+        captureComposer: { draft: '', lastCreatedNoteId: createdNote.id }
       };
     });
 
@@ -348,7 +349,7 @@ export function useSceneController() {
   }, [scene.captureComposer.draft, scene.lens, scene.notes, viewportCenter, activeNote, highestZ, runAsyncInference]);
 
   const cancelCapture = useCallback(() => {
-    mutations.setCaptureComposer({ open: false });
+    mutations.setExpandedSurface('none');
   }, [mutations]);
 
   const undoLastCapture = useCallback(() => {
@@ -356,7 +357,8 @@ export function useSceneController() {
     if (!lastId) return;
     mutations.deleteNote(lastId);
     setRecentlyDeletedNoteId(lastId);
-    mutations.setCaptureComposer({ lastCreatedNoteId: null, open: false, draft: '' });
+    mutations.setCaptureComposer({ lastCreatedNoteId: null, draft: '' });
+    mutations.setExpandedSurface('none');
   }, [mutations, scene.captureComposer.lastCreatedNoteId]);
 
   const deleteActiveNote = useCallback((noteId: string) => {
@@ -494,10 +496,10 @@ export function useSceneController() {
 
     mutations.setAIPanel({
       loading: true,
-      state: 'open',
       response: null,
       transcript: [...scene.aiPanel.transcript, userEntry]
     });
+    mutations.setExpandedSurface('thinking');
 
     const response = await runConnectedInsights(scene, {
       query,
@@ -527,7 +529,6 @@ export function useSceneController() {
             loading: false,
             response,
             query: '',
-            state: 'open' as const,
             transcript: [...scene.aiPanel.transcript, userEntry, assistantEntry]
           }
         };
@@ -551,7 +552,8 @@ export function useSceneController() {
     if (pendingAction.kind === 'create_summary') {
       const related = scene.notes.filter((note) => (pendingAction.noteIds ?? []).includes(note.id));
       const summary = ['Summary', ...related.map((note) => `- ${note.title ?? note.body.slice(0, 42)}`)].join('\n');
-      mutations.setCaptureComposer({ open: true, draft: summary });
+      mutations.setCaptureComposer({ draft: summary });
+      mutations.setExpandedSurface('capture');
     }
     if (pendingAction.kind === 'append_to_note' && pendingAction.summary) {
       appendTextToActiveNote(pendingAction.summary);
@@ -631,7 +633,7 @@ export function useSceneController() {
     setLens: mutations.setLens,
     setFocusMode: mutations.setFocusMode,
     setAIPanel: mutations.setAIPanel,
-    setAIPanelVisibility: mutations.setAIPanelVisibility,
+    setExpandedSurface: mutations.setExpandedSurface,
     createExplicitRelationship: mutations.createExplicitRelationship,
     createInlineLinkedNote: mutations.createInlineLinkedNote,
     confirmRelationship: mutations.confirmRelationship,

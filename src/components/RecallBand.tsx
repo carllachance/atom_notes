@@ -18,6 +18,9 @@ type RecallBandProps = {
   onReveal: () => void;
   onRevealNext: () => void;
   onRevealPrev: () => void;
+  recallCue: { noteTitle: string; suggestedNextStep: string } | null;
+  onAdvanceRecallCue: () => void;
+  onClearRecallCue: () => void;
   demoLinks?: Array<{
     href: string;
     label: string;
@@ -62,6 +65,9 @@ export function RecallBand({
   onReveal,
   onRevealNext,
   onRevealPrev,
+  recallCue,
+  onAdvanceRecallCue,
+  onClearRecallCue,
   demoLinks = []
 }: RecallBandProps) {
   const activeProjectId = lens.kind === 'project' || lens.kind === 'reveal' ? lens.projectId ?? '' : '';
@@ -86,6 +92,30 @@ export function RecallBand({
         <span className="active-lens-label">Active lens</span>
         <strong>{lensLabel}</strong>
       </div>
+
+      {recallCue ? (
+        <div className="recall-resume" aria-live="polite">
+          <button
+            type="button"
+            className="recall-resume-chip"
+            onClick={onAdvanceRecallCue}
+            title={recallCue.suggestedNextStep}
+            aria-label={`Continue ${recallCue.noteTitle}. ${recallCue.suggestedNextStep}`}
+          >
+            <span className="recall-resume-chip__label">Where was I</span>
+            <span className="recall-resume-chip__title">{recallCue.noteTitle}</span>
+          </button>
+          <button
+            type="button"
+            className="recall-resume-dismiss"
+            onClick={onClearRecallCue}
+            aria-label="Dismiss resume suggestion"
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
 
       <div className="project-reveal-controls focus-controls">
         <button

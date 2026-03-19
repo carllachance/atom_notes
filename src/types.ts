@@ -189,13 +189,12 @@ export type FocusMode = {
 };
 
 export type CaptureComposerState = {
-  open: boolean;
   draft: string;
   lastCreatedNoteId: string | null;
 };
 
 export type AIInteractionMode = 'ask' | 'explore' | 'summarize' | 'act';
-export type AIPanelState = 'hidden' | 'peek' | 'open';
+export type ExpandedSecondarySurface = 'none' | 'thinking' | 'capture';
 
 export type ActionSuggestion = {
   id: string;
@@ -262,7 +261,6 @@ export type AITranscriptEntry = {
 };
 
 export type AIPanelViewState = {
-  state: AIPanelState;
   mode: AIInteractionMode;
   query: string;
   response: InsightsResponse | null;
@@ -278,7 +276,7 @@ export type SceneState = {
   insightTimeline?: InsightTimelineEntry[];
   isDragging: boolean;
   activeNoteId: string | null;
-  quickCaptureOpen: boolean;
+  expandedSecondarySurface: ExpandedSecondarySurface;
   captureComposer: CaptureComposerState;
   focusMode: FocusMode;
   aiPanel: AIPanelViewState;

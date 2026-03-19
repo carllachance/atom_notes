@@ -28,9 +28,9 @@ test('sceneStorage loads the synthetic demo scene when no persisted data exists'
   assert.equal(scene.notes[0].title, 'Daily Fed Report Overview');
   assert.match(scene.notes[0].body, /Reference portal/);
   assert.equal(scene.relationships.filter((relationship) => relationship.explicitness === 'explicit').length, demoRelationships.length);
-  assert.deepEqual(scene.captureComposer, { open: false, draft: '', lastCreatedNoteId: null });
+  assert.deepEqual(scene.captureComposer, { draft: '', lastCreatedNoteId: null });
   assert.deepEqual(scene.focusMode, { highlight: true, isolate: false });
-  assert.equal(scene.aiPanel.state, 'hidden');
+  assert.equal(scene.expandedSecondarySurface, 'none');
 });
 
 test('sceneStorage upgrades the legacy welcome seed to the synthetic demo scene', () => {
@@ -64,6 +64,7 @@ test('sceneStorage migrates legacy project reveal state into a formal project le
   assert.equal(loaded.notes[0].workspaceId, 'w-1');
   assert.equal(loaded.workspaces[0].key, 'OPS');
   assert.deepEqual(loaded.lens, { kind: 'project', projectId: 'p-1', mode: 'strict' });
+  assert.equal(loaded.expandedSecondarySurface, 'capture');
   saveScene(loaded as SceneState);
   const persisted = JSON.parse(localStorage.getItem(SCENE_KEY) as string) as SceneState;
   assert.equal(persisted.projects[0].id, 'p-1');

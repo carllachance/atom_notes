@@ -4,7 +4,6 @@ import { CaptureComposer } from './components/CaptureComposer';
 import { ExpandedNote } from './components/ExpandedNote';
 import { HomeSurface } from './components/HomeSurface';
 import { RecallBand } from './components/RecallBand';
-import { RecallPrompt } from './components/RecallPrompt';
 import { RelationshipWeb } from './components/RelationshipWeb';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
@@ -60,7 +59,7 @@ export function App() {
     setLens,
     setFocusMode,
     setAIPanel,
-    setAIPanelVisibility,
+    setExpandedSurface,
     createExplicitRelationship,
     createInlineLinkedNote,
     confirmRelationship,
@@ -104,8 +103,10 @@ export function App() {
     confirmPendingAction,
     cancelPendingAction
   } = useSceneController();
-  const thinkingRailVisible = scene.aiPanel.state !== 'hidden';
+  const thinkingRailVisible = scene.expandedSecondarySurface === 'thinking';
+  const captureExpanded = scene.expandedSecondarySurface === 'capture';
   const thinkingRailReservedInset = thinkingRailVisible ? thinkingRailWidth + 24 : 24;
+  const captureDockInset = captureExpanded ? 236 : 88;
   const hasFreshInsights = Boolean(
     activeNote && (
       isStreamingResponse ||
@@ -133,17 +134,11 @@ export function App() {
         onReveal={onReveal}
         onRevealPrev={onRevealPrev}
         onRevealNext={onRevealNext}
+        recallCue={recallCue ? { noteTitle: recallCue.noteTitle, suggestedNextStep: recallCue.suggestedNextStep } : null}
+        onAdvanceRecallCue={onAdvanceRecallCue}
+        onClearRecallCue={onClearRecallCue}
         demoLinks={demoLinks}
       />
-
-      {recallCue ? (
-        <RecallPrompt
-          noteTitle={recallCue.noteTitle}
-          suggestedNextStep={recallCue.suggestedNextStep}
-          onAdvance={onAdvanceRecallCue}
-          onClear={onClearRecallCue}
-        />
-      ) : null}
 
       <section className="workspace-shell">
         <section className="view-stack" data-lens={scene.lens.kind}>
@@ -197,22 +192,19 @@ export function App() {
 
         <AIPanel
           panel={scene.aiPanel}
+          isOpen={thinkingRailVisible}
           selectedNote={activeNote}
-          visibleNotesCount={visibleNotes.length}
-          activeProject={lensPresentation.activeProject}
-          activeWorkspace={lensPresentation.activeWorkspace}
-          scopeLabel={lensPresentation.lensLabel}
+          contextLabel={lensPresentation.lensLabel}
           notes={scene.notes}
           streamedResponse={streamingResponse}
           timelineEntries={activeInsightTimeline}
           streaming={isStreamingResponse}
-          onStateChange={setAIPanelVisibility}
+          onToggle={() => setExpandedSurface(thinkingRailVisible ? 'none' : 'thinking')}
           onModeChange={(mode) => setAIPanel({ mode })}
           onQueryChange={(query) => setAIPanel({ query })}
           onRun={runInsights}
           onOpenReference={openAIReference}
           pendingAction={pendingAction}
-          noteIsOpen={Boolean(activeNote)}
           onPreviewAction={setPendingAction}
           onConfirmAction={confirmPendingAction}
           onCancelAction={cancelPendingAction}
@@ -225,7 +217,7 @@ export function App() {
       {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} rankedRelationships={rankedRelationships} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} /> : null}
 
       <CaptureComposer
-        isOpen={scene.captureComposer.open}
+        isOpen={captureExpanded}
         value={scene.captureComposer.draft}
         onChange={onCaptureDraftChange}
         onCommit={commitCapture}
@@ -251,8 +243,9 @@ export function App() {
         hasFreshInsights={hasFreshInsights}
         initialPosition={activeNote ? notePanelPositions[activeNote.id] : undefined}
         rightInset={thinkingRailReservedInset}
+        bottomInset={captureDockInset}
         onClose={closeActiveNote}
-        onThinkAboutNote={() => setAIPanelVisibility('open')}
+        onThinkAboutNote={() => setExpandedSurface('thinking')}
         onDelete={deleteActiveNote}
         onChange={(id, updates) => {
           const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
