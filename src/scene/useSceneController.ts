@@ -16,6 +16,7 @@ import { useSceneMutations } from './useSceneMutations';
 import { createAttachmentFromFile, processAttachment } from '../attachments/attachmentProcessing';
 import { handleCtrlTapInScene, openNoteInScene } from './sceneActions';
 import { FocusLensSession, buildFocusLensPresentation, pinFocusLensLayout, restoreFocusLensSnapshot, snapshotFocusLensPositions } from './focusLens';
+import { getCanvasRecoveryCenter } from './canvasVisibility';
 
 const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
@@ -48,8 +49,12 @@ export function useSceneController() {
   const [isStreamingResponse, setIsStreamingResponse] = useState(false);
   const [recentlyDeletedNoteId, setRecentlyDeletedNoteId] = useState<string | null>(null);
   const [focusLensSession, setFocusLensSession] = useState<FocusLensSession | null>(null);
+  const [manualRecenterTarget, setManualRecenterTarget] = useState<{ x: number; y: number; requestId: number } | null>(null);
   const streamingTimerRef = useRef<number | null>(null);
   const processingAttachmentRef = useRef<string | null>(null);
+  const canvasDebugEnabled =
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('debugCanvas=1') || window.localStorage.getItem('atom-notes.debugCanvas') === '1');
 
   const liveLensPresentation = useMemo(() => getLensPresentation(scene), [scene]);
   const stableLensPresentationRef = useRef(liveLensPresentation);
@@ -73,6 +78,7 @@ export function useSceneController() {
     [scene.notes]
   );
   const highestZ = scene.notes.reduce((acc, note) => Math.max(acc, note.z), 0);
+  const totalActiveNotes = useMemo(() => scene.notes.filter((note) => !note.archived && !note.deleted).length, [scene.notes]);
   const visibleNoteIds = useMemo(() => new Set(visibleNotes.map((note) => note.id)), [visibleNotes]);
   const focusCount = useMemo(() => scene.notes.filter((note) => !note.archived && Boolean(note.isFocus ?? note.inFocus)).length, [scene.notes]);
   const activeNoteProjects = useMemo(() => (activeNote ? getProjectsForNote(scene, activeNote.id) : []), [activeNote, scene]);
@@ -214,6 +220,26 @@ export function useSceneController() {
   useEffect(() => {
     saveScene(scene);
   }, [scene]);
+
+  useEffect(() => {
+    if (!canvasDebugEnabled) return;
+    if (totalActiveNotes === 0) return;
+    if (lensPresentation.visibleNotes.length === 0) {
+      console.warn('[canvas] non-empty universe collapsed by current lens', {
+        totalActiveNotes,
+        lens: scene.lens,
+        focusMode: scene.focusMode
+      });
+      return;
+    }
+    if (visibleNotes.length === 0) {
+      console.warn('[canvas] notes are in scope but hidden from the current render set', {
+        totalActiveNotes,
+        lensVisibleIds: lensPresentation.visibleNotes.map((note) => note.id),
+        focusMode: scene.focusMode
+      });
+    }
+  }, [canvasDebugEnabled, lensPresentation.visibleNotes, scene.focusMode, scene.lens, totalActiveNotes, visibleNotes]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTraceClock((tick) => tick + 1), 60_000);
@@ -386,6 +412,38 @@ export function useSceneController() {
   const clearRecallCue = useCallback(() => {
     ambient.clearRecallCue();
   }, [ambient]);
+
+  const queueRecenter = useCallback((notes: typeof scene.notes) => {
+    const center = getCanvasRecoveryCenter(notes);
+    if (!center) return;
+    setManualRecenterTarget({ ...center, requestId: Date.now() });
+  }, []);
+
+  const fitAllNotes = useCallback(() => {
+    const allActiveNotes = scene.notes.filter((note) => !note.archived && !note.deleted);
+    queueRecenter(allActiveNotes);
+  }, [queueRecenter, scene.notes]);
+
+  const resetView = useCallback(() => {
+    const notesToCenter = visibleNotes.length > 0 ? visibleNotes : lensPresentation.visibleNotes;
+    if (notesToCenter.length > 0) {
+      queueRecenter(notesToCenter);
+      return;
+    }
+    fitAllNotes();
+  }, [fitAllNotes, lensPresentation.visibleNotes, queueRecenter, visibleNotes]);
+
+  const clearCanvasFocus = useCallback(() => {
+    setScene((prev) => ({
+      ...prev,
+      focusMode: { ...prev.focusMode, highlight: false, isolate: false }
+    }));
+  }, []);
+
+  const clearCanvasFilters = useCallback(() => {
+    setActiveRevealMatchIndex(0);
+    setScene((prev) => ({ ...prev, lens: { kind: 'universe' } }));
+  }, []);
 
   const onCaptureDraftChange = useCallback((draft: string) => {
     mutations.setCaptureComposer({ draft });
@@ -675,6 +733,7 @@ export function useSceneController() {
     activeNoteProjects,
     activeWorkspace,
     visibleNotes,
+    totalActiveNotes,
     archivedNotes,
     deletedNotes,
     projects: scene.projects,
@@ -698,7 +757,7 @@ export function useSceneController() {
     ambientGlowLevel: ambient.ambientGlowLevel,
     pulseNoteId: ambient.pulseNoteId,
     isDragging: scene.isDragging,
-    recenterTarget: scene.isDragging ? null : ambient.recenterTarget,
+    recenterTarget: scene.isDragging ? null : manualRecenterTarget ?? ambient.recenterTarget,
     revealState: { query: scene.lens.kind === 'reveal' ? scene.lens.query : '', matchedNoteIds: lensPresentation.revealMatchIds, activeMatchIndex: activeRevealMatchIndex },
     visibleRevealMatchIds: revealMatchedNoteIds,
     revealActiveNoteId,
@@ -746,6 +805,10 @@ export function useSceneController() {
     onReveal,
     onRevealNext: () => stepReveal(1),
     onRevealPrev: () => stepReveal(-1),
+    resetView,
+    fitAllNotes,
+    clearCanvasFocus,
+    clearCanvasFilters,
     onCaptureDraftChange,
     commitCapture,
     cancelCapture,

@@ -14,6 +14,8 @@ export type CanvasViewportMetrics = {
   top: number;
   scrollLeft: number;
   scrollTop: number;
+  width: number;
+  height: number;
 };
 
 export function getNoteVisualFrame(note: PositionedNote) {
@@ -65,4 +67,41 @@ export function getRelatedNodeStyle(note: PositionedNote): CSSProperties {
   return {
     transform: `translate(${frame.x + RELATED_NODE_OFFSET_X * frame.scale}px, ${frame.y + RELATED_NODE_OFFSET_Y * frame.scale}px)`
   };
+}
+
+export function getNotesBoundingBox(notes: PositionedNote[]) {
+  if (notes.length === 0) return null;
+
+  const frames = notes.map((note) => getNoteVisualFrame(note));
+  const left = Math.min(...frames.map((frame) => frame.x));
+  const top = Math.min(...frames.map((frame) => frame.y));
+  const right = Math.max(...frames.map((frame) => frame.x + frame.width));
+  const bottom = Math.max(...frames.map((frame) => frame.y + frame.height));
+
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top
+  };
+}
+
+export function countNotesInViewport(notes: PositionedNote[], metrics: CanvasViewportMetrics) {
+  const viewportLeft = metrics.scrollLeft;
+  const viewportTop = metrics.scrollTop;
+  const viewportRight = viewportLeft + metrics.width;
+  const viewportBottom = viewportTop + metrics.height;
+
+  return notes.reduce((count, note) => {
+    const frame = getNoteVisualFrame(note);
+    const intersects =
+      frame.x < viewportRight &&
+      frame.x + frame.width > viewportLeft &&
+      frame.y < viewportBottom &&
+      frame.y + frame.height > viewportTop;
+
+    return intersects ? count + 1 : count;
+  }, 0);
 }

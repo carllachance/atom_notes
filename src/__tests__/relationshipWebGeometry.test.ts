@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildRelationshipEdgePath,
+  countNotesInViewport,
   getNoteCenter,
+  getNotesBoundingBox,
   getRelatedNodeStyle,
   getRelationshipWebPlaneStyle
 } from '../components/relationshipWebGeometry';
@@ -52,7 +54,9 @@ test('keeps the relationship plane locked to the canvas viewport across arbitrar
       left: 24,
       top: 80,
       scrollLeft: 310,
-      scrollTop: 140
+      scrollTop: 140,
+      width: 600,
+      height: 400
     }),
     {
       transform: 'translate(-286px, -60px)'
@@ -64,7 +68,9 @@ test('keeps the relationship plane locked to the canvas viewport across arbitrar
       left: 142,
       top: 12,
       scrollLeft: 0,
-      scrollTop: 420
+      scrollTop: 420,
+      width: 600,
+      height: 400
     }),
     {
       transform: 'translate(142px, -408px)'
@@ -77,4 +83,41 @@ test('positions related-node affordances in the same raw canvas coordinate space
   assert.deepEqual(getRelatedNodeStyle(target), {
     transform: 'translate(955.475px, 461.82000000000005px)'
   });
+});
+
+test('computes note bounds and viewport intersections for recovery heuristics', (t: any) => {
+  t.mock.method(Date, 'now', () => 2_000);
+
+  assert.deepEqual(getNotesBoundingBox([active, target]), {
+    left: 120,
+    top: 157.76,
+    right: 1131.35,
+    bottom: 542.22,
+    width: 1011.3499999999999,
+    height: 384.46000000000004
+  });
+
+  assert.equal(
+    countNotesInViewport([active, target], {
+      left: 0,
+      top: 0,
+      scrollLeft: 0,
+      scrollTop: 0,
+      width: 500,
+      height: 500
+    }),
+    1
+  );
+
+  assert.equal(
+    countNotesInViewport([active, target], {
+      left: 0,
+      top: 0,
+      scrollLeft: 1400,
+      scrollTop: 900,
+      width: 500,
+      height: 500
+    }),
+    0
+  );
 });

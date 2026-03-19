@@ -5653,6 +5653,81 @@ samp,
   align-self: flex-start;
 }
 
+/* Canvas recovery guardrails */
+.thinking-surface {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.recall-band {
+  grid-row: 1;
+}
+
+.workspace-shell {
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.view-stack,
+.view-layer,
+.view-layer-canvas {
+  min-width: 0;
+  min-height: 0;
+}
+
+.view-layer-canvas {
+  display: flex;
+}
+
+.spatial-canvas {
+  flex: 1 1 auto;
+}
+
+.capture-composer-shell {
+  grid-row: 3;
+}
+
+.canvas-recovery-controls {
+  flex-wrap: wrap;
+}
+
+.canvas-recovery-helper {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 3;
+  max-width: min(440px, calc(100% - 32px));
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(125, 146, 191, 0.22);
+  background: rgba(10, 15, 26, 0.82);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 38px rgba(3, 7, 15, 0.16);
+}
+
+.canvas-recovery-helper strong {
+  color: #edf3ff;
+}
+
+.canvas-recovery-helper p {
+  margin: 6px 0 0;
+  color: #b6c5e5;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.canvas-recovery-helper__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .disclosure-summary {
   width: 100%;
   display: flex;
@@ -6669,4 +6744,42 @@ samp,
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
   }
+}
+
+/* Final layout guardrails for canvas recovery */
+.thinking-surface {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.recall-band {
+  grid-row: 1;
+}
+
+.workspace-shell {
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.view-stack,
+.view-layer,
+.view-layer-canvas {
+  min-width: 0;
+  min-height: 0;
+}
+
+.view-layer-canvas {
+  display: flex;
+}
+
+.spatial-canvas {
+  flex: 1 1 auto;
+}
+
+.capture-composer-shell {
+  grid-row: 3;
 }
