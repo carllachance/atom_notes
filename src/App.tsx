@@ -3,6 +3,7 @@ import { AIPanel } from './components/AIPanel';
 import { CaptureComposer } from './components/CaptureComposer';
 import { ExpandedNote } from './components/ExpandedNote';
 import { HomeSurface } from './components/HomeSurface';
+import { NoteOpenOverlayScene } from './components/NoteOpenOverlayScene';
 import { RecallBand } from './components/RecallBand';
 import { RelationshipWeb } from './components/RelationshipWeb';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
@@ -178,40 +179,114 @@ export function App() {
             />
           ) : null}
           <div className="view-layer view-layer-canvas">
-            <SpatialCanvas
-              notes={visibleNotes}
-              noteMetaById={lensPresentation.noteMetaById}
-              focusLensStateById={focusLensPresentation.noteStateById}
-              focusLensLayoutById={focusLensPresentation.layoutById}
-              focusMode={scene.focusMode}
+            <NoteOpenOverlayScene
+              notes={scene.notes}
+              visibleNotes={visibleNotes}
               activeNoteId={activeNote?.id ?? null}
+              activeNoteProjects={activeNoteProjects}
+              activeWorkspace={activeWorkspace}
+              relatedNotes={focusLensPresentation.relatedNotes}
+              relationshipFilter={relationshipFilter}
+              canvasMetrics={canvasMetrics}
               hoveredNoteId={hoveredNoteId}
-              revealMatchedNoteIds={visibleRevealMatchIds}
-              revealActiveNoteId={revealActiveNoteId}
-              initialScrollLeft={scene.canvasScrollLeft}
-              initialScrollTop={scene.canvasScrollTop}
-              recentlyClosedNoteId={recentlyClosedNoteId}
-              relatedGlowNoteIds={ambientRelatedNoteIds}
-              ambientGlowLevel={ambientGlowLevel}
-              pulseNoteId={pulseNoteId}
-              isDragging={isDragging}
-              recenterTarget={recenterTarget}
-              activeProject={lensPresentation.activeProject}
-              projectConnectorSegments={lensPresentation.projectConnectorSegments}
-              relationships={scene.relationships}
-              onScroll={onCanvasScroll}
-              onViewportCenterChange={onViewportCenterChange}
-              onMetricsChange={setCanvasMetrics}
-              onDragStart={() => setIsDragging(true)}
-              onDragEnd={(id, x, y, moved) => {
-                if (moved) updateNote(id, { x, y }, 'moved');
-                setIsDragging(false);
+              onOpenNote={onOpenNote}
+              onCloseNote={closeActiveNote}
+              onInspectRelationship={inspectRelationship}
+              onOpenRelated={traverseToRelated}
+              onHoverRelatedNote={onHoverStart}
+              onClearRelatedHover={onHoverEnd}
+              spatialCanvasProps={{
+                noteMetaById: lensPresentation.noteMetaById,
+                focusLensStateById: focusLensPresentation.noteStateById,
+                focusLensLayoutById: focusLensPresentation.layoutById,
+                focusMode: scene.focusMode,
+                hoveredNoteId,
+                revealMatchedNoteIds: visibleRevealMatchIds,
+                revealActiveNoteId,
+                initialScrollLeft: scene.canvasScrollLeft,
+                initialScrollTop: scene.canvasScrollTop,
+                recentlyClosedNoteId,
+                relatedGlowNoteIds: ambientRelatedNoteIds,
+                pulseNoteId,
+                ambientGlowLevel,
+                isDragging,
+                recenterTarget,
+                activeProject: lensPresentation.activeProject,
+                projectConnectorSegments: lensPresentation.projectConnectorSegments,
+                relationships: scene.relationships,
+                onScroll: onCanvasScroll,
+                onViewportCenterChange,
+                onMetricsChange: setCanvasMetrics,
+                onDragStart: () => setIsDragging(true),
+                onDragEnd: (id, x, y, moved) => {
+                  if (moved) updateNote(id, { x, y }, 'moved');
+                  setIsDragging(false);
+                },
+                onBringToFront: bringToFront,
+                onHoverStart,
+                onHoverEnd,
+                reservedRightInset: 0
               }}
-              onOpen={onOpenNote}
-              onBringToFront={bringToFront}
-              onHoverStart={onHoverStart}
-              onHoverEnd={onHoverEnd}
-              reservedRightInset={0}
+              expandedNoteProps={{
+                projects,
+                workspaces,
+                relationships: relationshipPanelItems,
+                inspectedRelationship,
+                canUndoRelationshipEdit,
+                activeProjectRevealId: lensPresentation.activeProject?.id ?? null,
+                activeWorkspaceLensId: lensPresentation.activeWorkspace?.id ?? null,
+                thinkingActive: thinkingRailVisible,
+                hasFreshInsights,
+                initialPosition: activeNote ? notePanelPositions[activeNote.id] : undefined,
+                rightInset: thinkingRailReservedInset,
+                bottomInset: captureDockInset,
+                onClose: closeActiveNote,
+                onThinkAboutNote: () => setExpandedSurface('thinking'),
+                onDelete: deleteActiveNote,
+                onChange: (id, updates) => {
+                  const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
+                  updateNote(id, updates, trace);
+                },
+                onArchive: onArchiveNote,
+                onRestoreArchive: restoreArchivedNote,
+                onOpenRelated: traverseToRelated,
+                onInspectRelationship: inspectRelationship,
+                onCloseRelationshipInspector: closeRelationshipInspector,
+                onCreateExplicitLink: createExplicitRelationship,
+                onCreateInlineLinkedNote: createInlineLinkedNote,
+                onConfirmRelationship: confirmRelationship,
+                onPromoteFragmentToTask: promoteNoteFragmentToTask,
+                onSetTaskState: setTaskState,
+                onUpdateRelationship: updateRelationship,
+                onRemoveRelationship: removeRelationship,
+                onUndoRelationshipEdit: undoRelationshipEdit,
+                onToggleFocus: toggleNoteFocus,
+                onSetProjectIds: setNoteProjects,
+                onCreateProject: createProjectForNote,
+                onSetWorkspaceId: setNoteWorkspace,
+                onCreateWorkspace: createWorkspaceForNote,
+                onSetProjectLens: (projectId) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' }),
+                onSetWorkspaceLens: (workspaceId) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' }),
+                onAddAttachments: addAttachmentsToActiveNote,
+                onRemoveAttachment: removeAttachment,
+                onRetryAttachment: retryAttachmentProcessing,
+                onHoverRelatedNote: onHoverStart,
+                onClearRelatedHover: onHoverEnd,
+                focusLensRelatedNotes: focusLensPresentation.relatedNotes,
+                focusLensOverflowCount: focusLensPresentation.overflowCount,
+                hoveredRelatedNoteId: hoveredNoteId,
+                focusLensCanGoBack: focusLensPresentation.canGoBack,
+                focusLensPinned: focusLensPresentation.pinned,
+                onFocusLensBack: goBackFocusLens,
+                onFocusLensPin: pinFocusLens,
+                onFocusLensReset: resetFocusLens,
+                onPositionChange: (noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position }))
+              }}
+              components={{
+                SpatialCanvasComponent: SpatialCanvas,
+                RelationshipWebComponent: RelationshipWeb,
+                ExpandedNoteComponent: ExpandedNote
+              }}
             />
             {canvasVisibility.shouldShowRecoveryHelper ? (
               <div className="canvas-recovery-helper" role="status" aria-live="polite">
@@ -267,9 +342,6 @@ export function App() {
         />
       </section>
 
-      {activeNote ? <button type="button" className="canvas-dim" aria-label="Close note" onClick={closeActiveNote} /> : null}
-      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} relatedNotes={focusLensPresentation.relatedNotes} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} onOpenRelated={traverseToRelated} onHoverRelatedNote={onHoverStart} onClearRelatedHover={onHoverEnd} /> : null}
-
       <CaptureComposer
         isOpen={captureExpanded}
         value={scene.captureComposer.draft}
@@ -281,65 +353,6 @@ export function App() {
         canUndo={Boolean(scene.captureComposer.lastCreatedNoteId)}
       />
 
-      <ExpandedNote
-        note={activeNote}
-        notes={scene.notes}
-        projects={projects}
-        workspaces={workspaces}
-        noteProjects={activeNoteProjects}
-        noteWorkspace={activeWorkspace}
-        relationships={relationshipPanelItems}
-        inspectedRelationship={inspectedRelationship}
-        canUndoRelationshipEdit={canUndoRelationshipEdit}
-        activeProjectRevealId={lensPresentation.activeProject?.id ?? null}
-        activeWorkspaceLensId={lensPresentation.activeWorkspace?.id ?? null}
-        thinkingActive={thinkingRailVisible}
-        hasFreshInsights={hasFreshInsights}
-        initialPosition={activeNote ? notePanelPositions[activeNote.id] : undefined}
-        rightInset={thinkingRailReservedInset}
-        bottomInset={captureDockInset}
-        onClose={closeActiveNote}
-        onThinkAboutNote={() => setExpandedSurface('thinking')}
-        onDelete={deleteActiveNote}
-        onChange={(id, updates) => {
-          const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
-          updateNote(id, updates, trace);
-        }}
-        onArchive={onArchiveNote}
-        onRestoreArchive={restoreArchivedNote}
-        onOpenRelated={traverseToRelated}
-        onInspectRelationship={inspectRelationship}
-        onCloseRelationshipInspector={closeRelationshipInspector}
-        onCreateExplicitLink={createExplicitRelationship}
-        onCreateInlineLinkedNote={createInlineLinkedNote}
-        onConfirmRelationship={confirmRelationship}
-        onPromoteFragmentToTask={promoteNoteFragmentToTask}
-        onSetTaskState={setTaskState}
-        onUpdateRelationship={updateRelationship}
-        onRemoveRelationship={removeRelationship}
-        onUndoRelationshipEdit={undoRelationshipEdit}
-        onToggleFocus={toggleNoteFocus}
-        onSetProjectIds={setNoteProjects}
-        onCreateProject={createProjectForNote}
-        onSetWorkspaceId={setNoteWorkspace}
-        onCreateWorkspace={createWorkspaceForNote}
-        onSetProjectLens={(projectId) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' })}
-        onSetWorkspaceLens={(workspaceId) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' })}
-        onAddAttachments={addAttachmentsToActiveNote}
-        onRemoveAttachment={removeAttachment}
-        onRetryAttachment={retryAttachmentProcessing}
-        onHoverRelatedNote={onHoverStart}
-        onClearRelatedHover={onHoverEnd}
-        focusLensRelatedNotes={focusLensPresentation.relatedNotes}
-        focusLensOverflowCount={focusLensPresentation.overflowCount}
-        hoveredRelatedNoteId={hoveredNoteId}
-        focusLensCanGoBack={focusLensPresentation.canGoBack}
-        focusLensPinned={focusLensPresentation.pinned}
-        onFocusLensBack={goBackFocusLens}
-        onFocusLensPin={pinFocusLens}
-        onFocusLensReset={resetFocusLens}
-        onPositionChange={(noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position }))}
-      />
       {recentlyDeletedNoteId ? (
         <div className="undo-toast" role="status" aria-live="polite">
           <span>Note moved to trash.</span>
