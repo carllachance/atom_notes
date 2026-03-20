@@ -1,0 +1,194 @@
+{
+  "meta": {
+    "project": "atom_notes",
+    "file": "claude_code_tasks_E1_E4.json",
+    "covers": ["E1", "E2", "E3", "E4"],
+    "companion_file": "claude_code_tasks_E5_E8.json",
+    "usage": "Each task is a self-contained Claude Code session. Feed the 'prompt' field directly. Complete tasks in 'depends_on' order. Human-gated tasks require manual action before Claude Code can proceed.",
+    "conventions": {
+      "may_modify": "Claude Code may create or edit these paths",
+      "must_not_modify": "Claude Code must read-only these paths",
+      "verify": "Run these commands after the task to confirm success",
+      "human_gate": "If true, a human must complete or approve this step before the next task runs"
+    }
+  },
+  "tasks": [
+
+    {
+      "id": "E1-T1",
+      "epic": "E1",
+      "title": "Create PR triage tracking document",
+      "human_gate": false,
+      "depends_on": [],
+      "may_modify": ["docs/pr_triage.md"],
+      "must_not_modify": [],
+      "verify": ["test -f docs/pr_triage.md"],
+      "prompt": "Create the file docs/pr_triage.md. It is a triage table for the 12 open Codex-generated PRs in this repo. The table must have columns: PR number, title, systems touched (comma-separated from: note-model, relationship-model, canvas, clustering, note-modal, relationship-strip, toolbar, insights-rail, lens-architecture, project-model, tests), status (one of: merge-ready | needs-revision | close-and-redo | human-review-needed), depends-on (PR numbers this one must follow), and notes. Pre-populate the PR numbers 1-5 and 25-29 and 47 and 56 with title 'TBD' and status 'human-review-needed' in all rows. Add a header section explaining: 'Merge order rule: never mark a PR merge-ready if a more foundational PR it depends on is not yet merged. Foundational order: note-model and relationship-model PRs first, then lens-architecture, then canvas and clustering, then modal and UI.' Save the file."
+    },
+
+    {
+      "id": "E1-T2",
+      "epic": "E1",
+      "title": "Audit src/ for conflicting type definitions",
+      "human_gate": false,
+      "depends_on": ["E1-T1"],
+      "may_modify": ["docs/type_conflicts.md"],
+      "must_not_modify": ["src/"],
+      "verify": ["test -f docs/type_conflicts.md"],
+      "prompt": "Search the entire src/ directory for any TypeScript interface or type definitions that resemble Note, Relationship, LifecycleState, RelationshipType, or NoteRole. Use grep or find to locate all files containing 'interface Note', 'type Note', 'interface Relationship', 'type Relationship', 'LifecycleState', 'RelationshipType', 'NoteRole'. For each match, record the file path, the line number, and the full definition. Write your findings to docs/type_conflicts.md in a markdown table with columns: file, line, definition-snippet, conflict-risk (high if it defines a core entity type, low if it is a local UI prop type). Do not modify any source files. This document will be used as input for E2."
+    },
+
+    {
+      "id": "E1-T3",
+      "epic": "E1",
+      "title": "Write post-triage smoke test script",
+      "human_gate": false,
+      "depends_on": [],
+      "may_modify": ["scripts/smoke_test.md"],
+      "must_not_modify": ["src/", "src-tauri/"],
+      "verify": ["test -f scripts/smoke_test.md"],
+      "prompt": "Create the file scripts/smoke_test.md. This is a human-executable smoke test checklist to run after the 12 open PRs have been triaged and main is stable. The checklist must cover: (1) npm install completes without errors, (2) npm run build completes without TypeScript errors, (3) npm test passes all tests, (4) npm run dev starts the Vite dev server on port 1420, (5) opening http://localhost:5173 shows the canvas without console errors, (6) double-tapping Ctrl opens the capture composer overlay, (7) typing a note and pressing Ctrl+Enter creates and places a note on the canvas, (8) clicking an existing note opens the note modal, (9) the note modal closes cleanly on Escape or clicking the backdrop, (10) the canvas renders without layout errors after creating 3 notes. Format each item as a checkbox with expected result and a 'pass / fail / blocked' field. Add a footer: 'If any step fails, document it as an issue before beginning E2 tasks.'"
+    },
+
+    {
+      "id": "E1-T4",
+      "epic": "E1",
+      "title": "HUMAN GATE — PR triage and merge",
+      "human_gate": true,
+      "depends_on": ["E1-T1", "E1-T2"],
+      "may_modify": [],
+      "must_not_modify": [],
+      "verify": [],
+      "prompt": "HUMAN ACTION REQUIRED. This task cannot be automated. Using docs/pr_triage.md as your guide and docs/type_conflicts.md as reference for type conflicts: (1) Review each open PR manually on GitHub starting with those touching note-model and relationship-model. (2) Update the status column in docs/pr_triage.md as you go. (3) Merge PRs in the dependency order defined in the triage doc header. Run npm run build after each merge to catch breakage immediately. (4) Close PRs that conflict with already-merged foundational work and note the reason in the triage doc. (5) When all 12 PRs are resolved (merged or closed), commit the final docs/pr_triage.md to main. Only then proceed to E1-T5."
+    },
+
+    {
+      "id": "E1-T5",
+      "epic": "E1",
+      "title": "Run and record smoke test baseline",
+      "human_gate": true,
+      "depends_on": ["E1-T3", "E1-T4"],
+      "may_modify": ["docs/smoke_test_baseline.md"],
+      "must_not_modify": [],
+      "verify": ["test -f docs/smoke_test_baseline.md"],
+      "prompt": "HUMAN ACTION REQUIRED. Run through every item in scripts/smoke_test.md against the current main branch (after all PRs are resolved). Record pass/fail for each step. Save your results to docs/smoke_test_baseline.md. This file is the regression baseline — any future E2-E8 task that breaks a passing item is a regression that must be fixed before continuing. Commit docs/smoke_test_baseline.md to main."
+    },
+
+    {
+      "id": "E2-T1",
+      "epic": "E2",
+      "title": "Create canonical Note and Relationship types",
+      "human_gate": false,
+      "depends_on": ["E1-T4"],
+      "may_modify": ["src/types/note.ts", "src/types/relationship.ts", "src/types/index.ts"],
+      "must_not_modify": ["src/store/", "src/components/", "src/services/"],
+      "verify": ["npx tsc --noEmit"],
+      "prompt": "Create three new files. Do not modify any existing src/ files in this task — only create new ones.\n\n1. Create src/types/note.ts. Define and export:\n- NoteRole: union type of 'note' | 'task' | 'project' | 'reference_hub' | 'review_item' | 'artifact'\n- TaskStatus: union type of 'open' | 'in_progress' | 'blocked' | 'done'\n- NoteStatus: union type of 'active' | 'archived'\n- NotePosition: interface with x: number and y: number\n- Note: interface with id: string, content: string, title: string, roles: NoteRole[], workspace_id: string | null, project_ids: string[], task_status: TaskStatus | null, created_at: string, updated_at: string, last_viewed_at: string | null, status: NoteStatus, archived: boolean, position: NotePosition\n\n2. Create src/types/relationship.ts. Define and export:\n- RelationshipType: union type of 'parent_child' | 'derived_from' | 'supersedes' | 'task_dependency' | 'action_source' | 'belongs_to_project' | 'references' | 'related_concept' | 'same_entity' | 'conflicts_with' | 'duplicate_of'\n- LifecycleState: union type of 'proposed' | 'confirmed' | 'active' | 'cooling' | 'historical' | 'superseded' | 'rejected'\n- Explicitness: union type of 'explicit' | 'inferred' | 'workflow_derived'\n- Relationship: interface with id: string, source_id: string, target_id: string, type: RelationshipType, lifecycle_state: LifecycleState, explicitness: Explicitness, confidence: number (0-1), reinforcement_score: number (0-1), created_at: string, last_active_at: string, archived: boolean, explanation: string | null\n\n3. Create src/types/index.ts. Re-export everything from note.ts and relationship.ts using export * from syntax.\n\nAfter creating all three files, run npx tsc --noEmit to confirm they compile without errors. Fix any TypeScript issues before finishing."
+    },
+
+    {
+      "id": "E2-T2",
+      "epic": "E2",
+      "title": "Create canonical context, lens, and session types",
+      "human_gate": false,
+      "depends_on": ["E2-T1"],
+      "may_modify": ["src/types/context.ts", "src/types/index.ts"],
+      "must_not_modify": ["src/store/", "src/components/", "src/services/", "src/types/note.ts", "src/types/relationship.ts"],
+      "verify": ["npx tsc --noEmit"],
+      "prompt": "Create src/types/context.ts. Define and export the following types. Do not modify any other files except appending exports to src/types/index.ts at the end.\n\n- IntentClass: union type of 'reference_lookup' | 'task_execution' | 'concept_exploration' | 'history_trace' | 'conflict_resolution' | 'review_commit'\n- LensType: union type of 'universe' | 'project' | 'workspace' | 'reveal' | 'archive' | 'operational' | 'reference' | 'conceptual' | 'conflict' | 'historical' | 'personal' | 'team'\n- EpistemicMode: union type of 'exploratory' | 'operational' | 'evidentiary' | 'consensus'\n- UncertaintyTolerance: union type of 'precise' | 'balanced' | 'fast'\n- IntentContext: interface with intent_class: IntentClass, confidence: number, inferred_from_signals: string[], started_at: string, updated_at: string, expires_at: string\n- AttentionBudgetContext: interface with total_budget: number, remaining_budget: number, node_budget: number, edge_budget: number, explanation_budget: number, prediction_budget: number, historical_budget: number, mode: EpistemicMode, primary_intent: IntentClass | null\n- LensComposition: interface with lenses: Array<{ lens: LensType; weight: number }>, source: 'user' | 'system_suggested' | 'learned_pattern', confidence: number, last_used_at: string\n\nThen open src/types/index.ts and add: export * from './context';\n\nRun npx tsc --noEmit and fix any errors."
+    },
+
+    {
+      "id": "E2-T3",
+      "epic": "E2",
+      "title": "Migrate existing code to import from canonical types",
+      "human_gate": false,
+      "depends_on": ["E2-T2"],
+      "may_modify": ["src/"],
+      "must_not_modify": ["src/types/"],
+      "verify": [
+        "npx tsc --noEmit",
+        "npm test",
+        "! grep -rn 'interface Note ' src/ --include='*.ts' --include='*.tsx' | grep -v 'src/types/'",
+        "! grep -rn 'interface Relationship ' src/ --include='*.ts' --include='*.tsx' | grep -v 'src/types/'"
+      ],
+      "prompt": "Read docs/type_conflicts.md to find all files with conflicting type definitions. For each file listed with conflict-risk 'high':\n1. Open the file.\n2. Remove the local Note, Relationship, LifecycleState, RelationshipType, or NoteRole definitions.\n3. Add an import at the top of the file: import type { Note, Relationship, LifecycleState, RelationshipType, NoteRole } from '../types'; (adjust the relative path as needed).\n4. Fix any TypeScript errors caused by differences between the old local type and the new canonical type. If a field exists in the old type but not in the new canonical type, add it as an optional field to the canonical type in src/types/note.ts or src/types/relationship.ts and document why in a comment.\n\nAfter all migrations, run:\n- npx tsc --noEmit (must produce zero errors)\n- npm test (all tests must pass)\n- grep -rn 'interface Note ' src/ --include='*.ts' --include='*.tsx' (must return no results outside src/types/)\n- grep -rn 'interface Relationship ' src/ --include='*.ts' --include='*.tsx' (must return no results outside src/types/)"
+    },
+
+    {
+      "id": "E3-T1",
+      "epic": "E3",
+      "title": "Install Zustand and define store structure",
+      "human_gate": false,
+      "depends_on": ["E2-T3"],
+      "may_modify": ["package.json", "src/store/index.ts", "src/store/types.ts"],
+      "must_not_modify": ["src/types/", "src/components/", "src/services/"],
+      "verify": ["npx tsc --noEmit", "node -e \"require('./node_modules/zustand')\""],
+      "prompt": "Install Zustand: run npm install zustand.\n\nThen create src/store/types.ts. This file defines the shape of the entire store — do not implement logic here, only interfaces:\n- NotesSlice: interface with notes: Map<string, Note>, addNote: (note: Note) => void, updateNote: (id: string, patch: Partial<Note>) => void, deleteNote: (id: string) => void\n- RelationshipsSlice: interface with relationships: Map<string, Relationship>, addRelationship: (rel: Relationship) => void, updateRelationship: (id: string, patch: Partial<Relationship>) => void, getRelationshipsForNote: (noteId: string) => Relationship[]\n- CanvasSlice: interface with viewportCenter: { x: number; y: number }, zoom: number, selectedNoteId: string | null, hoveredNoteId: string | null, focusModeActive: boolean, focusNoteIds: Set<string>, setSelectedNote: (id: string | null) => void, setHoveredNote: (id: string | null) => void, setFocusMode: (active: boolean, ids?: string[]) => void\n- UISlice: interface with activeModalNoteId: string | null, activeLens: LensType, activeEpistemicMode: EpistemicMode, uncertaintyTolerance: UncertaintyTolerance, insightsRailOpen: boolean, setActiveModal: (noteId: string | null) => void, setLens: (lens: LensType) => void, setEpistemicMode: (mode: EpistemicMode) => void\n- SessionSlice: interface with intentContext: IntentContext | null, attentionBudget: AttentionBudgetContext | null, setIntentContext: (ctx: IntentContext | null) => void, resetAttentionBudget: (mode: EpistemicMode) => void\n- AppStore: interface extending all five slices\n\nAll imported types come from '../types'. Create src/store/index.ts with a placeholder: export type { AppStore } from './types'; — we will implement slices in subsequent tasks. Run npx tsc --noEmit."
+    },
+
+    {
+      "id": "E3-T2",
+      "epic": "E3",
+      "title": "Implement notes and relationships store slices",
+      "human_gate": false,
+      "depends_on": ["E3-T1"],
+      "may_modify": ["src/store/notesSlice.ts", "src/store/relationshipsSlice.ts", "src/store/index.ts"],
+      "must_not_modify": ["src/types/", "src/store/types.ts", "src/components/"],
+      "verify": ["npx tsc --noEmit", "npm test"],
+      "prompt": "Create src/store/notesSlice.ts. Import create from zustand and Note from '../types'. Implement NotesSlice using Zustand's slice pattern (a function that takes set and get and returns the slice state and actions):\n- notes initializes as new Map()\n- addNote: adds note to the map using note.id as key\n- updateNote: merges patch into existing note using spread, updates updated_at to new Date().toISOString()\n- deleteNote: removes note from the map\n\nCreate src/store/relationshipsSlice.ts. Implement RelationshipsSlice:\n- relationships initializes as new Map()\n- addRelationship: adds to map using rel.id as key\n- updateRelationship: merges patch into existing relationship\n- getRelationshipsForNote: returns all relationships where source_id === noteId OR target_id === noteId\n\nUpdate src/store/index.ts. Create the combined store using Zustand's create function, combining notesSlice and relationshipsSlice. Export: the store as default, a useNoteStore hook, and individual selector hooks useNote(id: string) and useAllNotes() that are memoized. Run npx tsc --noEmit and npm test."
+    },
+
+    {
+      "id": "E3-T3",
+      "epic": "E3",
+      "title": "Implement canvas and UI store slices",
+      "human_gate": false,
+      "depends_on": ["E3-T2"],
+      "may_modify": ["src/store/canvasSlice.ts", "src/store/uiSlice.ts", "src/store/index.ts"],
+      "must_not_modify": ["src/types/", "src/store/types.ts", "src/store/notesSlice.ts", "src/store/relationshipsSlice.ts"],
+      "verify": ["npx tsc --noEmit", "npm test"],
+      "prompt": "Create src/store/canvasSlice.ts. Implement CanvasSlice:\n- viewportCenter initializes as { x: 0, y: 0 }\n- zoom initializes as 1\n- selectedNoteId initializes as null\n- hoveredNoteId initializes as null\n- focusModeActive initializes as false\n- focusNoteIds initializes as new Set()\n- setSelectedNote: sets selectedNoteId\n- setHoveredNote: sets hoveredNoteId\n- setFocusMode: sets focusModeActive and replaces focusNoteIds with provided ids (or clears if none)\n\nCreate src/store/uiSlice.ts. Implement UISlice:\n- activeModalNoteId initializes as null\n- activeLens initializes as 'universe'\n- activeEpistemicMode initializes as 'operational'\n- uncertaintyTolerance initializes as 'balanced'\n- insightsRailOpen initializes as false\n- setActiveModal: sets activeModalNoteId\n- setLens: sets activeLens\n- setEpistemicMode: sets activeEpistemicMode\n\nAdd both slices to the combined store in src/store/index.ts. Export selector hooks: useSelectedNoteId, useActiveModalNoteId, useActiveLens, useActiveEpistemicMode. Run npx tsc --noEmit and npm test."
+    },
+
+    {
+      "id": "E3-T4",
+      "epic": "E3",
+      "title": "Implement session store slice with intent expiry",
+      "human_gate": false,
+      "depends_on": ["E3-T3"],
+      "may_modify": ["src/store/sessionSlice.ts", "src/store/index.ts"],
+      "must_not_modify": ["src/types/", "src/store/types.ts", "src/store/canvasSlice.ts", "src/store/uiSlice.ts"],
+      "verify": ["npx tsc --noEmit", "npm test"],
+      "prompt": "Create src/store/sessionSlice.ts. Implement SessionSlice:\n- intentContext initializes as null\n- attentionBudget initializes as null\n- setIntentContext: sets intentContext directly\n- resetAttentionBudget: given an EpistemicMode, sets attentionBudget to a fresh AttentionBudgetContext. Budget defaults by mode: for 'exploratory' total_budget=13.0, node_budget=20, edge_budget=15; for 'operational' total_budget=13.0, node_budget=18, edge_budget=12; for 'evidentiary' total_budget=10.0, node_budget=15, edge_budget=10; for 'consensus' total_budget=12.0, node_budget=18, edge_budget=12. Default mode is 'operational'. remaining_budget should equal total_budget on reset. explanation_budget=1, prediction_budget=2, historical_budget=2.\n\nAlso export a selector hook: useActiveIntentContext() that reads intentContext from the store and returns null if Date.now() > Date.parse(intentContext.expires_at), otherwise returns the context.\n\nAdd sessionSlice to the combined store in src/store/index.ts. Run npx tsc --noEmit and npm test."
+    },
+
+    {
+      "id": "E3-T5",
+      "epic": "E3",
+      "title": "Migrate shared component state to the store",
+      "human_gate": false,
+      "depends_on": ["E3-T4"],
+      "may_modify": ["src/components/", "src/App.tsx", "src/"],
+      "must_not_modify": ["src/types/", "src/store/"],
+      "verify": [
+        "npx tsc --noEmit",
+        "npm test",
+        "npm run build"
+      ],
+      "prompt": "Audit every .tsx and .ts file in src/components/ and src/. Find every useState hook that holds one of these values: the selected note ID, the active modal note ID, note data passed between siblings, the active lens type, focus mode state, or hovered note ID.\n\nFor each one found:\n1. Remove the useState and its setter.\n2. Replace reads with the appropriate selector from src/store/index.ts (e.g. useSelectedNoteId(), useActiveModalNoteId()).\n3. Replace writes with the appropriate action from the store (e.g. store.setSelectedNote(id)).\n4. Remove prop drilling: if the value was passed as a prop from parent to child, remove the prop from the parent and have the child read directly from the store.\n\nDo not migrate purely local UI state (e.g. whether a dropdown is open, hover state for a single element that has no consumers).\n\nAfter all migrations run:\n- npx tsc --noEmit (zero errors)\n- npm test (all pass)\n- npm run build (succeeds)"
+    },
+
+    {
+      "id": "E4-T1",
+      "epic": "E4",
+      "title": "Implement RelationshipLifecycleService as a pure function",
+      "human_gate": false,
+      "depends_on": ["E2-T1"],
+      "may_modify": ["src/services/RelationshipLifecycleService.ts"],
+      "must_not_modify": ["src/types/", "src/store/", "src/components/"],
+      "verify": ["npx tsc --noEmit"]
+    }
+
+  ]
+}
