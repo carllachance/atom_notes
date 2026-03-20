@@ -12,202 +12,6 @@ import { summarizeCanvasVisibility } from './scene/canvasVisibility';
 import { useSceneController } from './scene/useSceneController';
 
 
-type SceneController = ReturnType<typeof useSceneController>;
-
-type AppNoteOpenLayersProps = {
-  activeNote: SceneController['activeNote'];
-  activeNoteProjects: SceneController['activeNoteProjects'];
-  activeWorkspace: SceneController['activeWorkspace'];
-  canvasMetrics: CanvasViewportMetrics | null;
-  canUndoRelationshipEdit: SceneController['canUndoRelationshipEdit'];
-  captureDockInset: number;
-  closeActiveNote: SceneController['closeActiveNote'];
-  createExplicitRelationship: SceneController['createExplicitRelationship'];
-  createInlineLinkedNote: SceneController['createInlineLinkedNote'];
-  createProjectForNote: SceneController['createProjectForNote'];
-  createWorkspaceForNote: SceneController['createWorkspaceForNote'];
-  deleteActiveNote: SceneController['deleteActiveNote'];
-  focusLensPresentation: SceneController['focusLensPresentation'];
-  goBackFocusLens: SceneController['goBackFocusLens'];
-  hasFreshInsights: boolean;
-  hoveredNoteId: SceneController['hoveredNoteId'];
-  inspectRelationship: SceneController['inspectRelationship'];
-  inspectedRelationship: SceneController['inspectedRelationship'];
-  lensPresentation: SceneController['lensPresentation'];
-  notePanelPositions: Record<string, { x: number; y: number }>;
-  onArchiveNote: SceneController['onArchiveNote'];
-  onHoverEnd: SceneController['onHoverEnd'];
-  onHoverStart: SceneController['onHoverStart'];
-  pinFocusLens: SceneController['pinFocusLens'];
-  projects: SceneController['projects'];
-  relationshipFilter: SceneController['relationshipFilter'];
-  relationshipPanelItems: SceneController['relationshipPanelItems'];
-  relationshipWebOverride?: React.ReactNode;
-  resetFocusLens: SceneController['resetFocusLens'];
-  restoreArchivedNote: SceneController['restoreArchivedNote'];
-  retryAttachmentProcessing: SceneController['retryAttachmentProcessing'];
-  rightInset: number;
-  notes: SceneController['scene']['notes'];
-  visibleNotes: SceneController['visibleNotes'];
-  setLens: SceneController['setLens'];
-  setNotePanelPositions: React.Dispatch<React.SetStateAction<Record<string, { x: number; y: number }>>>;
-  setNoteProjects: SceneController['setNoteProjects'];
-  setNoteWorkspace: SceneController['setNoteWorkspace'];
-  setExpandedSurface: SceneController['setExpandedSurface'];
-  setTaskState: SceneController['setTaskState'];
-  thinkingActive: boolean;
-  toggleNoteFocus: SceneController['toggleNoteFocus'];
-  traverseToRelated: SceneController['traverseToRelated'];
-  undoRelationshipEdit: SceneController['undoRelationshipEdit'];
-  updateNote: SceneController['updateNote'];
-  updateRelationship: SceneController['updateRelationship'];
-  workspaces: SceneController['workspaces'];
-  addAttachmentsToActiveNote: SceneController['addAttachmentsToActiveNote'];
-  removeAttachment: SceneController['removeAttachment'];
-  closeRelationshipInspector: SceneController['closeRelationshipInspector'];
-  confirmRelationship: SceneController['confirmRelationship'];
-  promoteNoteFragmentToTask: SceneController['promoteNoteFragmentToTask'];
-  removeRelationship: SceneController['removeRelationship'];
-};
-
-export function AppNoteOpenLayers({
-  activeNote,
-  activeNoteProjects,
-  activeWorkspace,
-  addAttachmentsToActiveNote,
-  canvasMetrics,
-  canUndoRelationshipEdit,
-  captureDockInset,
-  closeActiveNote,
-  closeRelationshipInspector,
-  confirmRelationship,
-  createExplicitRelationship,
-  createInlineLinkedNote,
-  createProjectForNote,
-  createWorkspaceForNote,
-  deleteActiveNote,
-  focusLensPresentation,
-  goBackFocusLens,
-  hasFreshInsights,
-  hoveredNoteId,
-  inspectRelationship,
-  inspectedRelationship,
-  lensPresentation,
-  notePanelPositions,
-  onArchiveNote,
-  onHoverEnd,
-  onHoverStart,
-  pinFocusLens,
-  projects,
-  promoteNoteFragmentToTask,
-  relationshipFilter,
-  relationshipPanelItems,
-  relationshipWebOverride,
-  removeAttachment,
-  removeRelationship,
-  resetFocusLens,
-  restoreArchivedNote,
-  retryAttachmentProcessing,
-  rightInset,
-  notes,
-  setExpandedSurface,
-  setLens,
-  setNotePanelPositions,
-  setNoteProjects,
-  setNoteWorkspace,
-  setTaskState,
-  visibleNotes,
-  thinkingActive,
-  toggleNoteFocus,
-  traverseToRelated,
-  undoRelationshipEdit,
-  updateNote,
-  updateRelationship,
-  workspaces
-}: AppNoteOpenLayersProps) {
-  if (!activeNote) return null;
-
-  return (
-    <>
-      {/* Stacking contract: backdrop (z5) < relationship web (z6) < modal shell (z8). */}
-      <button type="button" className="canvas-dim" aria-label="Close note" onClick={closeActiveNote} />
-      {relationshipWebOverride ?? (
-        <RelationshipWeb
-          activeNote={activeNote}
-          notes={visibleNotes}
-          relatedNotes={focusLensPresentation.relatedNotes}
-          filter={relationshipFilter}
-          canvasMetrics={canvasMetrics}
-          hoveredNoteId={hoveredNoteId}
-          onInspectRelationship={inspectRelationship}
-          onOpenRelated={traverseToRelated}
-          onHoverRelatedNote={onHoverStart}
-          onClearRelatedHover={onHoverEnd}
-        />
-      )}
-      <ExpandedNote
-        note={activeNote}
-        notes={notes}
-        projects={projects}
-        workspaces={workspaces}
-        noteProjects={activeNoteProjects}
-        noteWorkspace={activeWorkspace}
-        relationships={relationshipPanelItems}
-        inspectedRelationship={inspectedRelationship}
-        canUndoRelationshipEdit={canUndoRelationshipEdit}
-        activeProjectRevealId={lensPresentation.activeProject?.id ?? null}
-        activeWorkspaceLensId={lensPresentation.activeWorkspace?.id ?? null}
-        thinkingActive={thinkingActive}
-        hasFreshInsights={hasFreshInsights}
-        initialPosition={notePanelPositions[activeNote.id]}
-        rightInset={rightInset}
-        bottomInset={captureDockInset}
-        onClose={closeActiveNote}
-        onThinkAboutNote={() => setExpandedSurface('thinking')}
-        onDelete={deleteActiveNote}
-        onChange={(id, updates) => {
-          const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
-          updateNote(id, updates, trace);
-        }}
-        onArchive={onArchiveNote}
-        onRestoreArchive={restoreArchivedNote}
-        onOpenRelated={traverseToRelated}
-        onInspectRelationship={inspectRelationship}
-        onCloseRelationshipInspector={closeRelationshipInspector}
-        onCreateExplicitLink={createExplicitRelationship}
-        onCreateInlineLinkedNote={createInlineLinkedNote}
-        onConfirmRelationship={confirmRelationship}
-        onPromoteFragmentToTask={promoteNoteFragmentToTask}
-        onSetTaskState={setTaskState}
-        onUpdateRelationship={updateRelationship}
-        onRemoveRelationship={removeRelationship}
-        onUndoRelationshipEdit={undoRelationshipEdit}
-        onToggleFocus={toggleNoteFocus}
-        onSetProjectIds={setNoteProjects}
-        onCreateProject={createProjectForNote}
-        onSetWorkspaceId={setNoteWorkspace}
-        onCreateWorkspace={createWorkspaceForNote}
-        onSetProjectLens={(projectId) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' })}
-        onSetWorkspaceLens={(workspaceId) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' })}
-        onAddAttachments={addAttachmentsToActiveNote}
-        onRemoveAttachment={removeAttachment}
-        onRetryAttachment={retryAttachmentProcessing}
-        onHoverRelatedNote={onHoverStart}
-        onClearRelatedHover={onHoverEnd}
-        focusLensRelatedNotes={focusLensPresentation.relatedNotes}
-        focusLensOverflowCount={focusLensPresentation.overflowCount}
-        hoveredRelatedNoteId={hoveredNoteId}
-        focusLensCanGoBack={focusLensPresentation.canGoBack}
-        focusLensPinned={focusLensPresentation.pinned}
-        onFocusLensBack={goBackFocusLens}
-        onFocusLensPin={pinFocusLens}
-        onFocusLensReset={resetFocusLens}
-        onPositionChange={(noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position }))}
-      />
-    </>
-  );
-}
-
 export function App() {
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -464,59 +268,68 @@ export function App() {
         />
       </section>
 
-      <AppNoteOpenLayers
-        activeNote={activeNote}
-        activeNoteProjects={activeNoteProjects}
-        activeWorkspace={activeWorkspace}
-        addAttachmentsToActiveNote={addAttachmentsToActiveNote}
-        canvasMetrics={canvasMetrics}
-        canUndoRelationshipEdit={canUndoRelationshipEdit}
-        captureDockInset={captureDockInset}
-        closeActiveNote={closeActiveNote}
-        closeRelationshipInspector={closeRelationshipInspector}
-        confirmRelationship={confirmRelationship}
-        createExplicitRelationship={createExplicitRelationship}
-        createInlineLinkedNote={createInlineLinkedNote}
-        createProjectForNote={createProjectForNote}
-        createWorkspaceForNote={createWorkspaceForNote}
-        deleteActiveNote={deleteActiveNote}
-        focusLensPresentation={focusLensPresentation}
-        goBackFocusLens={goBackFocusLens}
-        hasFreshInsights={hasFreshInsights}
-        hoveredNoteId={hoveredNoteId}
-        inspectRelationship={inspectRelationship}
-        inspectedRelationship={inspectedRelationship}
-        lensPresentation={lensPresentation}
-        notePanelPositions={notePanelPositions}
-        onArchiveNote={onArchiveNote}
-        onHoverEnd={onHoverEnd}
-        onHoverStart={onHoverStart}
-        pinFocusLens={pinFocusLens}
-        projects={projects}
-        promoteNoteFragmentToTask={promoteNoteFragmentToTask}
-        relationshipFilter={relationshipFilter}
-        relationshipPanelItems={relationshipPanelItems}
-        removeAttachment={removeAttachment}
-        removeRelationship={removeRelationship}
-        resetFocusLens={resetFocusLens}
-        restoreArchivedNote={restoreArchivedNote}
-        retryAttachmentProcessing={retryAttachmentProcessing}
-        rightInset={thinkingRailReservedInset}
+      {/* Stacking contract: backdrop (z5) < relationship web (z6) < modal shell (z8). */}
+      {activeNote ? <button type="button" className="canvas-dim" aria-label="Close note" onClick={closeActiveNote} /> : null}
+      {activeNote ? <RelationshipWeb activeNote={activeNote} notes={visibleNotes} relatedNotes={focusLensPresentation.relatedNotes} filter={relationshipFilter} canvasMetrics={canvasMetrics} hoveredNoteId={hoveredNoteId} onInspectRelationship={inspectRelationship} onOpenRelated={traverseToRelated} onHoverRelatedNote={onHoverStart} onClearRelatedHover={onHoverEnd} /> : null}
+
+      <ExpandedNote
+        note={activeNote}
         notes={scene.notes}
-        visibleNotes={visibleNotes}
-        setExpandedSurface={setExpandedSurface}
-        setLens={setLens}
-        setNotePanelPositions={setNotePanelPositions}
-        setNoteProjects={setNoteProjects}
-        setNoteWorkspace={setNoteWorkspace}
-        setTaskState={setTaskState}
-        thinkingActive={thinkingRailVisible}
-        toggleNoteFocus={toggleNoteFocus}
-        traverseToRelated={traverseToRelated}
-        undoRelationshipEdit={undoRelationshipEdit}
-        updateNote={updateNote}
-        updateRelationship={updateRelationship}
+        projects={projects}
         workspaces={workspaces}
+        noteProjects={activeNoteProjects}
+        noteWorkspace={activeWorkspace}
+        relationships={relationshipPanelItems}
+        inspectedRelationship={inspectedRelationship}
+        canUndoRelationshipEdit={canUndoRelationshipEdit}
+        activeProjectRevealId={lensPresentation.activeProject?.id ?? null}
+        activeWorkspaceLensId={lensPresentation.activeWorkspace?.id ?? null}
+        thinkingActive={thinkingRailVisible}
+        hasFreshInsights={hasFreshInsights}
+        initialPosition={activeNote ? notePanelPositions[activeNote.id] : undefined}
+        rightInset={thinkingRailReservedInset}
+        bottomInset={captureDockInset}
+        onClose={closeActiveNote}
+        onThinkAboutNote={() => setExpandedSurface('thinking')}
+        onDelete={deleteActiveNote}
+        onChange={(id, updates) => {
+          const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
+          updateNote(id, updates, trace);
+        }}
+        onArchive={onArchiveNote}
+        onRestoreArchive={restoreArchivedNote}
+        onOpenRelated={traverseToRelated}
+        onInspectRelationship={inspectRelationship}
+        onCloseRelationshipInspector={closeRelationshipInspector}
+        onCreateExplicitLink={createExplicitRelationship}
+        onCreateInlineLinkedNote={createInlineLinkedNote}
+        onConfirmRelationship={confirmRelationship}
+        onPromoteFragmentToTask={promoteNoteFragmentToTask}
+        onSetTaskState={setTaskState}
+        onUpdateRelationship={updateRelationship}
+        onRemoveRelationship={removeRelationship}
+        onUndoRelationshipEdit={undoRelationshipEdit}
+        onToggleFocus={toggleNoteFocus}
+        onSetProjectIds={setNoteProjects}
+        onCreateProject={createProjectForNote}
+        onSetWorkspaceId={setNoteWorkspace}
+        onCreateWorkspace={createWorkspaceForNote}
+        onSetProjectLens={(projectId) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' })}
+        onSetWorkspaceLens={(workspaceId) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' })}
+        onAddAttachments={addAttachmentsToActiveNote}
+        onRemoveAttachment={removeAttachment}
+        onRetryAttachment={retryAttachmentProcessing}
+        onHoverRelatedNote={onHoverStart}
+        onClearRelatedHover={onHoverEnd}
+        focusLensRelatedNotes={focusLensPresentation.relatedNotes}
+        focusLensOverflowCount={focusLensPresentation.overflowCount}
+        hoveredRelatedNoteId={hoveredNoteId}
+        focusLensCanGoBack={focusLensPresentation.canGoBack}
+        focusLensPinned={focusLensPresentation.pinned}
+        onFocusLensBack={goBackFocusLens}
+        onFocusLensPin={pinFocusLens}
+        onFocusLensReset={resetFocusLens}
+        onPositionChange={(noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position }))}
       />
 
       <CaptureComposer
