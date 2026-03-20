@@ -10,6 +10,7 @@ interface RelationshipGraphProps {
   relationships: Relationship[];
   notes: NoteCardModel[];
   activeFilter: RelationshipType | null;
+  ringByRelationshipId?: Record<string, 'primary' | 'secondary'>;
   onNodeClick: (noteId: string) => void;
 }
 
@@ -25,6 +26,7 @@ export function RelationshipGraph({
   relationships,
   notes,
   activeFilter,
+  ringByRelationshipId,
   onNodeClick,
 }: RelationshipGraphProps) {
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
@@ -39,12 +41,12 @@ export function RelationshipGraph({
       source_id: rel.fromId,
       target_id: rel.toId,
       type: rel.type,
-      visual_group: classifyEdge(rel),
+      visual_group: ringByRelationshipId?.[rel.id] ?? classifyEdge(rel),
       explicitness: rel.explicitness,
       lifecycle_state: rel.state === 'confirmed' ? 'active' : 'proposed',
       reinforcement_score: rel.confidence ?? 0.5,
     })),
-    [relationships]
+    [relationships, ringByRelationshipId]
   );
 
   const center = focalNotePosition;

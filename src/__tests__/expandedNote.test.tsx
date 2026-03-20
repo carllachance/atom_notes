@@ -87,10 +87,22 @@ function render() {
   );
 }
 
-test('expanded note keeps organization disclosures collapsed by default in read mode', () => {
+test('expanded note defaults to calm read mode with collapsed progressive disclosures', () => {
   const markup = render();
-  assert.match(markup, /Anchored in<\/strong><small>Assign workspace<\/small>/);
-  assert.match(markup, /Shared threads<\/strong><small>Operations Planning<\/small>/);
-  assert.match(markup, /aria-expanded="false"/);
-  assert.equal(markup.includes('No workspace assigned'), false);
+  assert.match(markup, /role="tab" aria-selected="true" class="active">Read<\/button>/);
+  assert.match(markup, /role="tab" aria-selected="false" class="">Constellation<\/button>/);
+  assert.match(markup, /Workspace unassigned/);
+  assert.match(markup, /Threads · Operations Planning/);
+  assert.match(markup, /Sources<\/strong><small>Quiet until needed<\/small>/);
+  assert.match(markup, /Transform<\/strong><small>One quiet transform at a time<\/small>/);
+  assert.equal((markup.match(/aria-expanded="false"/g) ?? []).length >= 2, true);
+  assert.equal(markup.includes('Follow</button>'), false);
+  assert.equal(markup.includes('Remove link'), false);
+});
+
+test('expanded note keeps source-heavy surfaces out of read mode until requested', () => {
+  const markup = render();
+  assert.equal(markup.includes('Source material</strong>'), false);
+  assert.equal(markup.includes('Connection detail'), false);
+  assert.match(markup, /Open constellation/);
 });

@@ -40,28 +40,34 @@ export function computeRelationshipVisualProps(rel: {
   // Color by type
   let color: string;
   switch (rel.type) {
+    case 'depends_on':
     case 'task_dependency':
     case 'action_source':
-      color = '#F4B942';
+      color = '#7fd28d';
       break;
     case 'references':
     case 'derived_from':
-      color = '#7EB8F7';
+      color = '#b48bff';
       break;
+    case 'related':
+    case 'supports':
+    case 'leads_to':
     case 'related_concept':
     case 'same_entity':
-      color = '#A78BFA';
+      color = '#74b7ff';
       break;
+    case 'contradicts':
     case 'conflicts_with':
     case 'duplicate_of':
-      color = '#F87171';
+      color = '#ff8c7c';
       break;
+    case 'part_of':
     case 'parent_child':
     case 'supersedes':
-      color = '#5EEAD4';
+      color = '#f0b562';
       break;
     default:
-      color = '#4A4858';
+      color = '#7d7686';
   }
 
   // Stroke width: linear map reinforcement_score [0,1] → [0.8, 2.5]

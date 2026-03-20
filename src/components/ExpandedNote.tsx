@@ -25,6 +25,7 @@ import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } from '../types';
 import { AttachmentPanel } from './attachments/AttachmentPanel';
 import { FocusLensRelatedNote } from '../scene/focusLens';
+import { RelationshipGraph } from './RelationshipGraph';
 
 type VisibleRelationship = {
   id: string;
@@ -38,6 +39,7 @@ type VisibleRelationship = {
   fromId: string;
   toId: string;
   directional: boolean;
+  confidence?: number;
 };
 
 type ExpandedNoteProps = {
@@ -98,8 +100,8 @@ type ExpandedNoteProps = {
 };
 
 type DragState = { dx: number; dy: number };
-type BodyMode = 'read' | 'edit';
-type NoteSecondaryPanel = 'none' | 'workspace' | 'project';
+type PanelMode = 'read' | 'edit' | 'constellation' | 'source';
+type UtilityPanel = 'none' | 'sources' | 'transform' | 'workspace' | 'project';
 type TextSelection = { start: number; end: number; text: string };
 type SuggestedLinkRow = ProactiveLinkSuggestion & {
   selectedType: RelationshipType;
@@ -119,6 +121,7 @@ type IconToolButtonProps = {
 
 const DEFAULT_PROJECT_DRAFT: ProjectDraft = { key: '', name: '', color: '#7aa2f7', description: '' };
 const DEFAULT_WORKSPACE_DRAFT: WorkspaceDraft = { key: '', name: '', color: '#5fbf97', description: '' };
+const TRACE_LIMIT = 3;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -200,19 +203,13 @@ function getRelationshipTone(noteId: string, relationship: VisibleRelationship) 
   return 'neutral';
 }
 
-function summarizeConnectionFlows(groups: Array<{ label: string; items: VisibleRelationship[] }>) {
-  const visible = groups.filter((group) => group.items.length);
-  if (!visible.length) return 'Nothing else is surfacing around this note yet.';
-  return visible.map((group) => `${group.label} ${group.items.length}`).join(' · ');
-}
-
 function getConstellationIntro(groups: Array<{ key: 'upstream' | 'downstream' | 'nearby'; items: VisibleRelationship[] }>) {
   const upstream = groups.find((group) => group.key === 'upstream')?.items.length ?? 0;
   const downstream = groups.find((group) => group.key === 'downstream')?.items.length ?? 0;
   const nearby = groups.find((group) => group.key === 'nearby')?.items.length ?? 0;
 
   if (!upstream && !downstream && !nearby) {
-    return 'The map is quiet for now. As this note starts touching other notes, they will gather here.';
+    return 'The local field is quiet for now. As this note starts touching others, they will gather here.';
   }
 
   const phrases: string[] = [];
@@ -241,6 +238,41 @@ function sceneRelationshipForTask(taskNoteId: string, sourceNoteId: string, rela
     (relationship.fromId === sourceNoteId && relationship.toId === taskNoteId) ||
     relationship.targetId === taskNoteId
   )) ?? null;
+}
+
+function ModeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
+  return (
+    <button type="button" role="tab" aria-selected={active} className={active ? 'active' : ''} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+function LowerDisclosure({
+  title,
+  summary,
+  open,
+  onToggle,
+  children
+}: {
+  title: string;
+  summary: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="detail-section detail-section--calm-disclosure" aria-label={title}>
+      <button type="button" className="disclosure-summary" aria-expanded={open} onClick={onToggle}>
+        <span>
+          <strong>{title}</strong>
+          <small>{summary}</small>
+        </span>
+        <span aria-hidden="true">{open ? '−' : '+'}</span>
+      </button>
+      {open ? <div className="detail-section__body">{children}</div> : null}
+    </section>
+  );
 }
 
 export function ExpandedNote({
@@ -299,13 +331,13 @@ export function ExpandedNote({
   onFocusLensReset,
   onPositionChange
 }: ExpandedNoteProps) {
-  const [expandedSecondaryPanel, setExpandedSecondaryPanel] = useState<NoteSecondaryPanel>('none');
-  const [composerSurface, setComposerSurface] = useState<Exclude<NoteSecondaryPanel, 'none'> | null>(null);
+  const [panelMode, setPanelMode] = useState<PanelMode>('read');
+  const [expandedUtilityPanel, setExpandedUtilityPanel] = useState<UtilityPanel>('none');
+  const [composerSurface, setComposerSurface] = useState<'workspace' | 'project' | null>(null);
   const [showDangerActions, setShowDangerActions] = useState(false);
   const [projectDraft, setProjectDraft] = useState<ProjectDraft>(DEFAULT_PROJECT_DRAFT);
   const [workspaceDraft, setWorkspaceDraft] = useState<WorkspaceDraft>(DEFAULT_WORKSPACE_DRAFT);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [bodyMode, setBodyMode] = useState<BodyMode>('read');
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [inspectorType, setInspectorType] = useState<RelationshipType>('related');
   const [previewDirectionReversed, setPreviewDirectionReversed] = useState(false);
@@ -316,10 +348,8 @@ export function ExpandedNote({
   const [customRefinementInstruction, setCustomRefinementInstruction] = useState('');
   const [refinementPreview, setRefinementPreview] = useState<RefinementSuggestion | null>(null);
   const [refinementPreviewDraft, setRefinementPreviewDraft] = useState('');
+  const [constellationFilter, setConstellationFilter] = useState<'all' | RelationshipType>('all');
   const panelRef = useRef<HTMLElement | null>(null);
-  const attachmentSectionRef = useRef<HTMLDivElement | null>(null);
-  const constellationSectionRef = useRef<HTMLElement | null>(null);
-  const organizationSectionRef = useRef<HTMLElement | null>(null);
   const inlineHighlightTimerRef = useRef<number | null>(null);
 
   const groupedRelationshipOptions = useMemo(() => {
@@ -333,8 +363,8 @@ export function ExpandedNote({
   useEffect(() => {
     setPosition(initialPosition ?? { x: 0, y: 0 });
     setDragState(null);
-    setBodyMode(note?.trace === 'captured' ? 'edit' : 'read');
-    setExpandedSecondaryPanel('none');
+    setPanelMode(note?.trace === 'captured' ? 'edit' : 'read');
+    setExpandedUtilityPanel('none');
     setComposerSurface(null);
     setShowDangerActions(false);
     setProjectDraft(DEFAULT_PROJECT_DRAFT);
@@ -346,6 +376,7 @@ export function ExpandedNote({
     setCustomRefinementInstruction('');
     setRefinementPreview(null);
     setRefinementPreviewDraft('');
+    setConstellationFilter('all');
   }, [initialPosition, note?.id, note?.trace]);
 
   useEffect(() => {
@@ -463,8 +494,73 @@ export function ExpandedNote({
       return a.targetTitle.localeCompare(b.targetTitle);
     })
   }));
-  const flowSummary = summarizeConnectionFlows(connectedGroups);
   const constellationIntro = getConstellationIntro(connectedGroups);
+  const upstreamCount = connectedGroups.find((group) => group.key === 'upstream')?.items.length ?? 0;
+  const downstreamCount = connectedGroups.find((group) => group.key === 'downstream')?.items.length ?? 0;
+  const nearbyCount = connectedGroups.find((group) => group.key === 'nearby')?.items.length ?? 0;
+  const faintContextCount = focusLensRelatedNotes.filter((item) => item.degree === 2).length;
+  const firstRingNotes = focusLensRelatedNotes.filter((item) => item.degree === 1);
+  const visibleTraceNotes = firstRingNotes.slice(0, TRACE_LIMIT);
+  const traceOverflow = Math.max(0, firstRingNotes.length - visibleTraceNotes.length + focusLensOverflowCount);
+  const workspaceSummary = noteWorkspace ? noteWorkspace.name : 'Assign workspace';
+  const threadSummary = noteProjects.length
+    ? noteProjects.slice(0, 2).map((project) => project.name).join(', ') + (noteProjects.length > 2 ? ` +${noteProjects.length - 2}` : '')
+    : 'No shared threads';
+  const attachmentCount = note.attachments?.length ?? 0;
+  const attachmentReadyCount = (note.attachments ?? []).filter((attachment) => attachment.processing.status === 'processed').length;
+  const workspaceSectionOpen = expandedUtilityPanel === 'workspace';
+  const projectSectionOpen = expandedUtilityPanel === 'project';
+  const sourceSectionOpen = expandedUtilityPanel === 'sources';
+  const transformSectionOpen = expandedUtilityPanel === 'transform';
+  const showWorkspaceComposer = composerSurface === 'workspace';
+  const showProjectComposer = composerSurface === 'project';
+  const activeRelationshipRows = constellationFilter === 'all'
+    ? connectedGroups
+    : connectedGroups.map((group) => ({ ...group, items: group.items.filter((relationship) => relationship.type === constellationFilter) }));
+
+  const constellationRelationships = useMemo<Relationship[]>(() => {
+    const direct = relationships.map((relationship) => ({
+      id: relationship.id,
+      fromId: relationship.fromId,
+      toId: relationship.toId,
+      type: relationship.type,
+      state: relationship.state,
+      explicitness: relationship.explicitness,
+      directional: relationship.directional,
+      confidence: relationship.confidence ?? 0.6,
+      explanation: relationship.explanation,
+      heuristicSupported: relationship.heuristicSupported,
+      createdAt: Date.now(),
+      lastActiveAt: Date.now()
+    }));
+    const context = focusLensRelatedNotes
+      .filter((item) => item.degree === 2)
+      .map((item) => ({
+        id: `context-${item.relationshipId}-${item.targetId}`,
+        fromId: note.id,
+        toId: item.targetId,
+        type: item.relationship.type,
+        state: 'proposed' as const,
+        explicitness: 'inferred' as const,
+        directional: true,
+        confidence: Math.min(0.45, item.relationship.confidence ?? 0.35),
+        explanation: item.relationship.explanation || 'Context from the second ring.',
+        heuristicSupported: item.relationship.heuristicSupported,
+        createdAt: Date.now(),
+        lastActiveAt: Date.now()
+      }));
+    return [...direct, ...context];
+  }, [focusLensRelatedNotes, note.id, relationships]);
+
+  const graphNotes = useMemo(() => {
+    const noteIds = new Set<string>([note.id, ...constellationRelationships.map((relationship) => relationship.fromId), ...constellationRelationships.map((relationship) => relationship.toId)]);
+    return notes.filter((candidate) => noteIds.has(candidate.id));
+  }, [constellationRelationships, note.id, notes]);
+
+  const ringByRelationshipId = useMemo<Record<string, 'primary' | 'secondary'>>(() => Object.fromEntries(constellationRelationships.map((relationship) => {
+    const isContext = relationship.id.startsWith('context-');
+    return [relationship.id, isContext ? 'secondary' : 'primary'];
+  })), [constellationRelationships]);
 
   const flashInlineTarget = (targetId: string) => {
     setInlineHighlightedTargetId(targetId);
@@ -540,106 +636,94 @@ export function ExpandedNote({
   };
 
   const runOutcomeRefinement = (presetId: RefinementPresetId) => {
-    setBodyMode('edit');
+    setPanelMode('edit');
+    setExpandedUtilityPanel('transform');
     window.setTimeout(() => runRefinement(presetId), 0);
   };
 
-  const workspaceSummary = noteWorkspace ? noteWorkspace.name : 'Assign workspace';
-  const threadSummary = noteProjects.length
-    ? noteProjects.slice(0, 2).map((project) => project.name).join(', ') + (noteProjects.length > 2 ? ` +${noteProjects.length - 2}` : '')
-    : 'No shared threads';
-  const workspaceSectionOpen = expandedSecondaryPanel === 'workspace';
-  const projectSectionOpen = expandedSecondaryPanel === 'project';
-  const showWorkspaceComposer = composerSurface === 'workspace';
-  const showProjectComposer = composerSurface === 'project';
-  const attachmentCount = note.attachments?.length ?? 0;
-  const attachmentReadyCount = (note.attachments ?? []).filter((attachment) => attachment.processing.status === 'processed').length;
+  const toggleUtilityPanel = (panel: Exclude<UtilityPanel, 'none'>) => {
+    setExpandedUtilityPanel((current) => current === panel ? 'none' : panel);
+    if (panel !== 'workspace' && panel !== 'project') {
+      setComposerSurface(null);
+    }
+  };
 
-  const toggleSecondaryPanel = (panel: Exclude<NoteSecondaryPanel, 'none'>) => {
-    setExpandedSecondaryPanel((current) => current === panel ? 'none' : panel);
-    setComposerSurface((current) => (current === panel ? null : current));
+  const openConstellationForRelationship = (relationship: VisibleRelationship) => {
+    setPanelMode('constellation');
+    onInspectRelationship(relationship.id);
   };
 
   return (
     <section className="expanded-note-shell" style={{ ['--thinking-rail-reserved' as string]: `${rightInset}px` }}>
-      <aside ref={panelRef} className="expanded-note" style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
-        <header className="expanded-note-header" onPointerDown={(event: PointerEvent<HTMLElement>) => {
+      <aside ref={panelRef} className="expanded-note expanded-note--rescue" data-panel-mode={panelMode} style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
+        <header className="expanded-note-header expanded-note-header--calm" onPointerDown={(event: PointerEvent<HTMLElement>) => {
           const target = event.target as HTMLElement;
-          if (target.closest('button, input, textarea, select, label')) return;
+          if (target.closest('button, input, textarea, select, label, summary')) return;
           event.preventDefault();
           setDragState({ dx: event.clientX - position.x, dy: event.clientY - position.y });
         }}>
           <div className="expanded-note-header-main">
             <input className="note-title-field" aria-label="Note title" placeholder="Untitled note" value={note.title ?? ''} onChange={(event) => onChange(note.id, { title: event.target.value })} />
-            <div className="note-header-meta-row">
-              <div className="body-mode-switch" role="tablist" aria-label="Note body mode">
-                <button role="tab" aria-selected={bodyMode === 'read'} className={bodyMode === 'read' ? 'active' : ''} onClick={() => setBodyMode('read')}>Read</button>
-                <button role="tab" aria-selected={bodyMode === 'edit'} className={bodyMode === 'edit' ? 'active' : ''} onClick={() => setBodyMode('edit')}>Edit</button>
-              </div>
-              <div className="note-project-pills">
-                {noteProjects.map((project) => (
-                  <button key={project.id} className={`project-pill ${activeProjectRevealId === project.id ? 'active' : ''}`} style={{ ['--project-accent' as string]: project.color }} onClick={() => onSetProjectLens(activeProjectRevealId === project.id ? null : project.id)}>{project.name}</button>
-                ))}
-                <button
-                  type="button"
-                  className={`project-pill workspace-pill ${noteWorkspace ? '' : 'workspace-inline-label--empty'} ${activeWorkspaceLensId === noteWorkspace?.id ? 'active' : ''}`.trim()}
-                  style={noteWorkspace ? { ['--project-accent' as string]: noteWorkspace.color } : undefined}
-                  onClick={() => {
-                    setExpandedSecondaryPanel(noteWorkspace && workspaceSectionOpen ? 'none' : 'workspace');
-                    if (noteWorkspace) onSetWorkspaceLens(activeWorkspaceLensId === noteWorkspace.id ? null : noteWorkspace.id);
-                  }}
-                >
-                  {workspaceSummary}
-                </button>
+            <div className="body-mode-switch" role="tablist" aria-label="Note surface mode">
+              <ModeButton active={panelMode === 'read'} onClick={() => setPanelMode('read')}>Read</ModeButton>
+              <ModeButton active={panelMode === 'edit'} onClick={() => setPanelMode('edit')}>Edit</ModeButton>
+              <ModeButton active={panelMode === 'constellation'} onClick={() => setPanelMode('constellation')}>Constellation</ModeButton>
+              <ModeButton active={panelMode === 'source'} onClick={() => setPanelMode('source')}>Source</ModeButton>
+            </div>
+          </div>
+          <div className="note-header-tools note-header-tools--compact">
+            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensPin}>{focusLensPinned ? 'Pinned' : 'Pin layout'}</button>
+            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensReset}>Reset view</button>
+            <button type="button" className="ghost-button focus-lens-action" onClick={onClose}>Close</button>
+            <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
+              <summary className="ghost-button">More</summary>
+              <div className="note-danger-menu__panel note-danger-menu__panel--quiet">
+                {focusLensCanGoBack ? <button type="button" className="ghost-button" onClick={onFocusLensBack}>Back</button> : null}
+                <IconToolButton
+                  label="Think about this note"
+                  kind="thinking"
+                  pressed={thinkingActive}
+                  pulse={hasFreshInsights && !thinkingActive}
+                  onClick={onThinkAboutNote}
+                />
+                <button type="button" className="ghost-button" onClick={() => onToggleFocus(note.id)}>{isFocus ? 'Remove focus' : 'Mark focus'}</button>
                 {note.intent === 'task' ? (
-                  <button
-                    className={`project-pill project-pill--utility ${note.taskState === 'done' ? 'active' : ''}`}
-                    onClick={() => onSetTaskState(note.id, note.taskState === 'done' ? 'open' : 'done')}
-                  >
+                  <button type="button" className="ghost-button" onClick={() => onSetTaskState(note.id, note.taskState === 'done' ? 'open' : 'done')}>
                     {getTaskStateLabel(note.taskState)}
                   </button>
                 ) : null}
-                <button className={`project-pill project-pill--utility ${isFocus ? 'active' : ''}`} onClick={() => onToggleFocus(note.id)}>{isFocus ? 'Focus' : 'Mark Focus'}</button>
+                <button type="button" className="ghost-button" onClick={() => (note.archived ? onRestoreArchive(note.id) : onArchive(note.id))}>
+                  {note.archived ? 'Restore from archive' : 'Archive'}
+                </button>
+                <button type="button" className="ghost-button note-danger-action" onClick={() => onDelete(note.id)}>Delete</button>
               </div>
-            </div>
-          </div>
-          <div className="note-header-tools">
-            {focusLensCanGoBack ? <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensBack}>Back</button> : null}
-            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensPin}>{focusLensPinned ? 'Pinned' : 'Pin layout'}</button>
-            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensReset}>Reset view</button>
-            <IconToolButton
-              label="Think about this note"
-              kind="thinking"
-              pressed={thinkingActive}
-              pulse={hasFreshInsights && !thinkingActive}
-              onClick={onThinkAboutNote}
-            />
+            </details>
           </div>
         </header>
 
-        {focusLensRelatedNotes.length ? (
-          <div className="focus-lens-chip-strip" aria-label="Surfaced related notes">
-            {focusLensRelatedNotes.filter((item) => item.degree === 1).map((relationship) => (
-              <button
-                key={relationship.relationshipId}
-                type="button"
-                className={`focus-lens-chip ${hoveredRelatedNoteId === relationship.targetId ? 'focus-lens-chip--active' : ''}`}
-                onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
-                onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
-                onClick={() => onOpenRelated(relationship.targetId, relationship.relationshipId)}
-              >
-                <span>{formatRelationshipType(relationship.relationship.type)}</span>
-                <strong>{relationship.targetTitle}</strong>
-              </button>
-            ))}
-            {focusLensOverflowCount > 0 ? <span className="focus-lens-chip focus-lens-chip--overflow">+{focusLensOverflowCount} more nearby</span> : null}
-          </div>
-        ) : null}
+        <div className="expanded-note-layout expanded-note-layout--single-column">
+          {panelMode === 'read' ? (
+            <div className="expanded-note-main expanded-note-main--reading">
+              <div className="note-identity-trace" aria-label="Note trace">
+                <span className={`note-trace-meta ${noteWorkspace ? '' : 'is-muted'}`}>{noteWorkspace ? `Workspace · ${workspaceSummary}` : 'Workspace unassigned'}</span>
+                {noteProjects.length ? <span className="note-trace-meta">Threads · {threadSummary}</span> : null}
+                {visibleTraceNotes.map((relationship) => (
+                  <button
+                    key={relationship.relationshipId}
+                    type="button"
+                    className={`note-trace-link ${hoveredRelatedNoteId === relationship.targetId ? 'is-active' : ''}`}
+                    onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
+                    onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
+                    onClick={() => onOpenRelated(relationship.targetId, relationship.relationshipId)}
+                  >
+                    <span>{formatRelationshipType(relationship.relationship.type)}</span>
+                    <strong>{relationship.targetTitle}</strong>
+                  </button>
+                ))}
+                {traceOverflow > 0 ? <span className="note-trace-overflow">+{traceOverflow} linked</span> : null}
+              </div>
 
-        <div className="expanded-note-layout">
-          <div className="expanded-note-main">
-            <div className="note-body-surface" data-mode={bodyMode}>
-              {bodyMode === 'read' ? (
+              <div className="note-body-surface" data-mode="read">
                 <MarkdownProjectionView
                   source={note.body}
                   note={note}
@@ -656,9 +740,113 @@ export function ExpandedNote({
                   }}
                   onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })}
                 />
-              ) : (
-                <div className="note-edit-stack">
+              </div>
+
+              {resolvedPromotedFragments.length ? (
+                <div className="inline-task-strip" aria-label="Inline task links">
+                  {resolvedPromotedFragments.map((fragment) => {
+                    const taskNote = notesById.get(fragment.taskNoteId);
+                    const taskState = taskStatesById.get(fragment.taskNoteId);
+                    return (
+                      <button
+                        key={fragment.id}
+                        type="button"
+                        className={`inline-task-strip-chip inline-task-strip-chip--${taskState ?? 'open'}`}
+                        onClick={() => {
+                          const relationship = sceneRelationshipForTask(fragment.taskNoteId, note.id, relationships);
+                          if (relationship) onOpenRelated(fragment.taskNoteId, relationship.id);
+                        }}
+                      >
+                        <strong>{taskNote ? getCompactDisplayTitle(taskNote, 28) : fragment.text}</strong>
+                        <small>{getTaskStateLabel(taskState)}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <section className="detail-section detail-section--constellation-summary" aria-label="Constellation summary">
+                <div className="section-head">
+                  <div>
+                    <strong>Constellation</strong>
+                    <p className="section-hint section-hint--constellation">{constellationIntro}</p>
+                  </div>
+                  <button type="button" className="ghost-button" onClick={() => setPanelMode('constellation')}>Open constellation</button>
+                </div>
+                <div className="constellation-summary-grid">
+                  <div><span>Upstream</span><strong>{upstreamCount}</strong></div>
+                  <div><span>Downstream</span><strong>{downstreamCount}</strong></div>
+                  <div><span>Nearby</span><strong>{nearbyCount}</strong></div>
+                  <div><span>Faint context</span><strong>{faintContextCount}</strong></div>
+                </div>
+              </section>
+
+              <div className="note-quiet-utilities">
+                <LowerDisclosure
+                  title="Sources"
+                  summary={attachmentCount ? `${attachmentReadyCount}/${attachmentCount} ready` : sourceNote ? 'Linked source available' : 'Quiet until needed'}
+                  open={sourceSectionOpen}
+                  onToggle={() => toggleUtilityPanel('sources')}
+                >
+                  {note.intent === 'task' && sourceNote && note.taskSource ? (
+                    <button
+                      type="button"
+                      className="task-origin-card"
+                      onClick={() => {
+                        const relationship = sceneRelationshipForTask(note.id, sourceNote.id, relationships);
+                        if (relationship) onOpenRelated(sourceNote.id, relationship.id);
+                      }}
+                    >
+                      <strong>{getCompactDisplayTitle(sourceNote, 38)}</strong>
+                      <p>{sourceSnippet}</p>
+                      <small>Open source note</small>
+                    </button>
+                  ) : null}
+                  <AttachmentPanel
+                    attachments={note.attachments ?? []}
+                    onAddAttachments={onAddAttachments}
+                    onRemoveAttachment={onRemoveAttachment}
+                    onRetryAttachment={onRetryAttachment}
+                  />
+                </LowerDisclosure>
+
+                <LowerDisclosure
+                  title="Transform"
+                  summary={thinkingActive ? 'Thinking rail is open' : 'One quiet transform at a time'}
+                  open={transformSectionOpen}
+                  onToggle={() => toggleUtilityPanel('transform')}
+                >
                   {!thinkingActive ? (
+                    <RefinementComposer
+                      selectionActive={Boolean(selectedTextRange?.text.trim())}
+                      preview={refinementPreview}
+                      previewDraft={refinementPreviewDraft}
+                      customInstruction={customRefinementInstruction}
+                      onSelectPreset={runRefinement}
+                      onCustomInstructionChange={setCustomRefinementInstruction}
+                      onRunCustom={() => runRefinement('custom')}
+                      onPreviewDraftChange={setRefinementPreviewDraft}
+                      onApplyReplace={applyRefinementReplace}
+                      onApplyInsertBelow={applyRefinementInsertBelow}
+                      onCancelPreview={clearRefinementPreview}
+                    />
+                  ) : null}
+                  <div className="quiet-action-row">
+                    <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('clarify')}>Clarify</button>
+                    <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('executive_summary')}>Exec summary</button>
+                    <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('summarize')}>Summarize</button>
+                    <button type="button" className="ghost-button" onClick={() => setPanelMode('edit')}>Open editor</button>
+                  </div>
+                </LowerDisclosure>
+              </div>
+            </div>
+          ) : null}
+
+          {panelMode === 'edit' ? (
+            <div className="expanded-note-main expanded-note-main--edit">
+              <div className="note-body-surface" data-mode="edit">
+                <div className="note-edit-stack">
+                  {!thinkingActive && transformSectionOpen ? (
                     <RefinementComposer
                       selectionActive={Boolean(selectedTextRange?.text.trim())}
                       preview={refinementPreview}
@@ -684,7 +872,7 @@ export function ExpandedNote({
                     onPromoteSelectionToTask={(selection) => {
                       const result = onPromoteFragmentToTask(note.id, selection);
                       if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
-                      setBodyMode('read');
+                      setPanelMode('read');
                     }}
                     onCreateLink={({ targetId, type }) => {
                       onCreateExplicitLink(note.id, targetId, type);
@@ -723,131 +911,262 @@ export function ExpandedNote({
                     onSelectionChange={setSelectedTextRange}
                   />
                 </div>
-              )}
-            </div>
+              </div>
 
-            <div ref={attachmentSectionRef}>
-              <AttachmentPanel
-                attachments={note.attachments ?? []}
-                onAddAttachments={onAddAttachments}
-                onRemoveAttachment={onRemoveAttachment}
-                onRetryAttachment={onRetryAttachment}
-              />
-            </div>
-            {likelyActionFragments.length ? (
-              <section className="capture-followups" aria-label="Likely follow-up suggestions">
-                <div className="section-head">
-                  <div>
-                    <strong>Likely follow-ups</strong>
-                    <p className="section-hint">Optional suggestions from this capture only. Nothing becomes a task until you promote it.</p>
-                  </div>
-                  <span className="section-meta">{likelyActionFragments.length} suggestions</span>
-                </div>
-                <div className="capture-followups__list">
-                  {likelyActionFragments.map((fragment) => (
-                    <div key={fragment.id} className="capture-followups__row">
-                      <div>
-                        <strong>{fragment.text}</strong>
-                        <small>{fragment.reason}</small>
-                      </div>
-                      <button
-                        type="button"
-                        className="ghost-button"
-                        onClick={() => {
-                          const result = onPromoteFragmentToTask(note.id, fragment);
-                          if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
-                        }}
-                      >
-                        Promote to task
-                      </button>
+              {likelyActionFragments.length ? (
+                <section className="capture-followups" aria-label="Likely follow-up suggestions">
+                  <div className="section-head">
+                    <div>
+                      <strong>Likely follow-ups</strong>
+                      <p className="section-hint">Optional suggestions from this note only. Nothing becomes a task until you promote it.</p>
                     </div>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-            {resolvedPromotedFragments.length ? (
-              <div className="inline-task-strip" aria-label="Inline task links">
-                {resolvedPromotedFragments.map((fragment) => {
-                  const taskNote = notesById.get(fragment.taskNoteId);
-                  const taskState = taskStatesById.get(fragment.taskNoteId);
-                  return (
-                    <button
-                      key={fragment.id}
-                      type="button"
-                      className={`inline-task-strip-chip inline-task-strip-chip--${taskState ?? 'open'}`}
-                      onClick={() => {
-                        const relationship = sceneRelationshipForTask(fragment.taskNoteId, note.id, relationships);
-                        if (relationship) onOpenRelated(fragment.taskNoteId, relationship.id);
-                      }}
-                    >
-                      <strong>{taskNote ? getCompactDisplayTitle(taskNote, 28) : fragment.text}</strong>
-                      <small>{getTaskStateLabel(taskState)}</small>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-
-          <aside className="expanded-note-sidebar">
-            {note.intent === 'task' && sourceNote && note.taskSource ? (
-              <section className="detail-section detail-section--constellation-subsection" aria-label="Origin">
-                <div className="section-head">
-                  <div>
-                    <strong>Origin</strong>
-                    <small className="section-hint">This task stays tethered to the note fragment it came from.</small>
+                    <span className="section-meta">{likelyActionFragments.length} suggestions</span>
                   </div>
-                  <span className="section-meta">{getTaskStateLabel(note.taskState)}</span>
-                </div>
-                <button
-                  type="button"
-                  className="task-origin-card"
-                  onClick={() => {
-                    const relationship = sceneRelationshipForTask(note.id, sourceNote.id, relationships);
-                    if (relationship) onOpenRelated(sourceNote.id, relationship.id);
-                  }}
-                >
-                  <strong>{getCompactDisplayTitle(sourceNote, 38)}</strong>
-                  <p>{sourceSnippet}</p>
-                  <small>Open source note</small>
-                </button>
-              </section>
-            ) : null}
-            <section ref={constellationSectionRef} className="detail-section detail-section--constellation" aria-label="Constellation">
-              <div className="section-head">
-                <div>
-                  <strong>Constellation</strong>
-                  <p className="section-hint section-hint--constellation">{constellationIntro}</p>
-                </div>
-                <span className="section-meta">{relationships.length} in view</span>
-              </div>
-
-              <p className="filter-state-copy">Local map · {flowSummary}</p>
-              {focusLensRelatedNotes.length ? (
-                <div className="focus-lens-summary">
-                  <strong>Surfaced first ring</strong>
-                  <span>{focusLensRelatedNotes.filter((item) => item.degree === 1).length} direct · {focusLensRelatedNotes.filter((item) => item.degree === 2).length} faint context</span>
-                </div>
+                  <div className="capture-followups__list">
+                    {likelyActionFragments.map((fragment) => (
+                      <div key={fragment.id} className="capture-followups__row">
+                        <div>
+                          <strong>{fragment.text}</strong>
+                          <small>{fragment.reason}</small>
+                        </div>
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() => {
+                            const result = onPromoteFragmentToTask(note.id, fragment);
+                            if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
+                          }}
+                        >
+                          Promote to task
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ) : null}
 
-              <div className="connections-flow-list" aria-label="Constellation map">
-                {connectedGroups.some((group) => group.items.length) ? connectedGroups.map((group) => (
-                  group.items.length ? (
-                    <section key={group.key} className="connections-flow-group" aria-label={group.label}>
-                      <div className="connections-flow-head">
-                        <strong>{group.label}</strong>
-                        <span>{group.items.length}</span>
-                      </div>
+              <div className="note-quiet-utilities">
+                <LowerDisclosure
+                  title="Transform"
+                  summary={thinkingActive ? 'Thinking rail is open' : 'Refine only when needed'}
+                  open={transformSectionOpen}
+                  onToggle={() => toggleUtilityPanel('transform')}
+                >
+                  {!thinkingActive ? (
+                    <RefinementComposer
+                      selectionActive={Boolean(selectedTextRange?.text.trim())}
+                      preview={refinementPreview}
+                      previewDraft={refinementPreviewDraft}
+                      customInstruction={customRefinementInstruction}
+                      onSelectPreset={runRefinement}
+                      onCustomInstructionChange={setCustomRefinementInstruction}
+                      onRunCustom={() => runRefinement('custom')}
+                      onPreviewDraftChange={setRefinementPreviewDraft}
+                      onApplyReplace={applyRefinementReplace}
+                      onApplyInsertBelow={applyRefinementInsertBelow}
+                      onCancelPreview={clearRefinementPreview}
+                    />
+                  ) : null}
+                </LowerDisclosure>
 
-                      <div className="relations-list">
-                        {group.items.map((relationship) => (
-                          <div
-                            key={relationship.id}
-                            className={`relation-row relation-row--${relationship.explicitness} relation-row--${group.key} relation-row--${getRelationshipTone(note.id, relationship)}`}
-                            onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
-                            onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
-                          >
-                            <button className="relation-main" onClick={() => onInspectRelationship(relationship.id)}>
+                <LowerDisclosure title="Anchored in" summary={workspaceSummary} open={workspaceSectionOpen} onToggle={() => toggleUtilityPanel('workspace')}>
+                  <div className="section-head section-head--icon-action">
+                    <div><small className="section-hint">Give this note a home so nearby paths stay oriented.</small></div>
+                    <IconToolButton
+                      label={showWorkspaceComposer ? 'Close place maker' : 'Add a new place'}
+                      kind="workspace"
+                      pressed={showWorkspaceComposer}
+                      onClick={() => setComposerSurface((current) => current === 'workspace' ? null : 'workspace')}
+                    />
+                  </div>
+                  <div className="organize-choice-list">
+                    <label className="project-membership-row project-membership-row--empty">
+                      <input type="radio" name={`workspace-${note.id}`} checked={!note.workspaceId} onChange={() => onSetWorkspaceId(note.id, null)} />
+                      <span><strong>Assign later</strong><small>Keep this note in the shared field for now.</small></span>
+                    </label>
+                    {workspaces.map((workspace) => (
+                      <label key={workspace.id} className="project-membership-row" style={{ ['--project-accent' as string]: workspace.color }}>
+                        <input type="radio" name={`workspace-${note.id}`} checked={note.workspaceId === workspace.id} onChange={() => onSetWorkspaceId(note.id, workspace.id)} />
+                        <span><strong>{workspace.name}</strong><small>{workspace.key}</small></span>
+                      </label>
+                    ))}
+                  </div>
+                  {showWorkspaceComposer ? (
+                    <div className="project-compose-inline">
+                      <div className="project-compose-grid">
+                        <input aria-label="Workspace key" placeholder="Key (OPS)" value={workspaceDraft.key ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, key: event.target.value }))} />
+                        <input aria-label="Workspace name" placeholder="Place name" value={workspaceDraft.name ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, name: event.target.value }))} />
+                        <input aria-label="Workspace color" type="color" value={workspaceDraft.color ?? '#5fbf97'} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, color: event.target.value }))} />
+                      </div>
+                      <textarea aria-label="Workspace description" placeholder="What kind of place is this note settling into?" value={workspaceDraft.description ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, description: event.target.value }))} />
+                      <button onClick={() => { if (!(workspaceDraft.key ?? workspaceDraft.name ?? '').trim()) return; onCreateWorkspace(note.id, workspaceDraft); setWorkspaceDraft(DEFAULT_WORKSPACE_DRAFT); setComposerSurface(null); }}>Create place</button>
+                    </div>
+                  ) : null}
+                </LowerDisclosure>
+
+                <LowerDisclosure title="Shared threads" summary={threadSummary} open={projectSectionOpen} onToggle={() => toggleUtilityPanel('project')}>
+                  <div className="section-head section-head--icon-action">
+                    <div><small className="section-hint">Let the note join a few larger storylines when it helps.</small></div>
+                    <IconToolButton
+                      label={showProjectComposer ? 'Close thread maker' : 'Add a new thread'}
+                      kind="project"
+                      pressed={showProjectComposer}
+                      onClick={() => setComposerSurface((current) => current === 'project' ? null : 'project')}
+                    />
+                  </div>
+                  {projects.length ? (
+                    <div className="organize-choice-list">
+                      {projects.map((project) => (
+                        <label key={project.id} className="project-membership-row" style={{ ['--project-accent' as string]: project.color }}>
+                          <input type="checkbox" checked={noteProjectIds.has(project.id)} onChange={(event) => {
+                            const next = event.target.checked ? [...note.projectIds, project.id] : note.projectIds.filter((projectId) => projectId !== project.id);
+                            onSetProjectIds(note.id, next);
+                          }} />
+                          <span><strong>{project.name}</strong><small>{project.key}</small></span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : <p className="relations-empty relations-empty--attention">No threads yet. Add one only when this note needs a shared storyline.</p>}
+                  {showProjectComposer ? (
+                    <div className="project-compose-inline">
+                      <div className="project-compose-grid">
+                        <input aria-label="Project key" placeholder="Key (SLD)" value={projectDraft.key ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, key: event.target.value }))} />
+                        <input aria-label="Project name" placeholder="Thread name" value={projectDraft.name ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, name: event.target.value }))} />
+                        <input aria-label="Project color" type="color" value={projectDraft.color ?? '#7aa2f7'} onChange={(event) => setProjectDraft((prev) => ({ ...prev, color: event.target.value }))} />
+                      </div>
+                      <textarea aria-label="Project description" placeholder="What larger thread brings these notes together?" value={projectDraft.description ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, description: event.target.value }))} />
+                      <button onClick={() => { if (!(projectDraft.key ?? projectDraft.name ?? '').trim()) return; onCreateProject(note.id, projectDraft); setProjectDraft(DEFAULT_PROJECT_DRAFT); setComposerSurface(null); }}>Create thread</button>
+                    </div>
+                  ) : null}
+                </LowerDisclosure>
+              </div>
+            </div>
+          ) : null}
+
+          {panelMode === 'source' ? (
+            <div className="expanded-note-main expanded-note-main--source-mode">
+              {note.intent === 'task' && sourceNote && note.taskSource ? (
+                <section className="detail-section detail-section--constellation-subsection" aria-label="Origin">
+                  <div className="section-head">
+                    <div>
+                      <strong>Origin</strong>
+                      <small className="section-hint">This task stays tethered to the note fragment it came from.</small>
+                    </div>
+                    <span className="section-meta">{getTaskStateLabel(note.taskState)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="task-origin-card"
+                    onClick={() => {
+                      const relationship = sceneRelationshipForTask(note.id, sourceNote.id, relationships);
+                      if (relationship) onOpenRelated(sourceNote.id, relationship.id);
+                    }}
+                  >
+                    <strong>{getCompactDisplayTitle(sourceNote, 38)}</strong>
+                    <p>{sourceSnippet}</p>
+                    <small>Open source note</small>
+                  </button>
+                </section>
+              ) : null}
+
+              <section className="detail-section detail-section--source-surface" aria-label="Source material">
+                <div className="section-head">
+                  <div>
+                    <strong>Source material</strong>
+                    <p className="section-hint">Keep proof, excerpts, and raw material close without crowding the reading surface.</p>
+                  </div>
+                  <span className="section-meta">{attachmentCount ? `${attachmentReadyCount}/${attachmentCount} ready` : 'No attachments'}</span>
+                </div>
+                <AttachmentPanel
+                  attachments={note.attachments ?? []}
+                  onAddAttachments={onAddAttachments}
+                  onRemoveAttachment={onRemoveAttachment}
+                  onRetryAttachment={onRetryAttachment}
+                />
+              </section>
+
+              <LowerDisclosure
+                title="Transform"
+                summary={thinkingActive ? 'Thinking rail is open' : 'Source-aware transforms'}
+                open={transformSectionOpen}
+                onToggle={() => toggleUtilityPanel('transform')}
+              >
+                {!thinkingActive ? (
+                  <RefinementComposer
+                    selectionActive={Boolean(selectedTextRange?.text.trim())}
+                    preview={refinementPreview}
+                    previewDraft={refinementPreviewDraft}
+                    customInstruction={customRefinementInstruction}
+                    onSelectPreset={runRefinement}
+                    onCustomInstructionChange={setCustomRefinementInstruction}
+                    onRunCustom={() => runRefinement('custom')}
+                    onPreviewDraftChange={setRefinementPreviewDraft}
+                    onApplyReplace={applyRefinementReplace}
+                    onApplyInsertBelow={applyRefinementInsertBelow}
+                    onCancelPreview={clearRefinementPreview}
+                  />
+                ) : null}
+              </LowerDisclosure>
+            </div>
+          ) : null}
+
+          {panelMode === 'constellation' ? (
+            <div className="expanded-note-main expanded-note-main--constellation-mode">
+              <section className="detail-section detail-section--constellation detail-section--constellation-orbital" aria-label="Constellation">
+                <div className="section-head">
+                  <div>
+                    <strong>Constellation</strong>
+                    <p className="section-hint section-hint--constellation">{constellationIntro}</p>
+                  </div>
+                  <span className="section-meta">{relationships.length} direct · {faintContextCount} faint context</span>
+                </div>
+
+                <div className="constellation-filter-strip" role="toolbar" aria-label="Constellation filters">
+                  <button type="button" className={constellationFilter === 'all' ? 'active' : ''} onClick={() => setConstellationFilter('all')}>All</button>
+                  {connectedGroups.filter((group) => group.items.length).map((group) => (
+                    <button key={group.key} type="button" onClick={() => setConstellationFilter(group.items[0].type)}>
+                      {group.label}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setPanelMode('read')}>Back to note</button>
+                </div>
+
+                <div className="constellation-orbital-surface">
+                  <RelationshipGraph
+                    focalNote={note}
+                    focalNotePosition={{ x: 300, y: 250 }}
+                    relationships={constellationRelationships}
+                    notes={graphNotes}
+                    activeFilter={constellationFilter === 'all' ? null : constellationFilter}
+                    ringByRelationshipId={ringByRelationshipId}
+                    onNodeClick={(noteId) => {
+                      const matching = relationships.find((relationship) => relationship.targetId === noteId) ?? constellationRelationships.find((relationship) => relationship.toId === noteId || relationship.fromId === noteId);
+                      if (matching) {
+                        onOpenRelated(noteId, matching.id);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="connections-flow-list connections-flow-list--compact" aria-label="Constellation map">
+                  {activeRelationshipRows.some((group) => group.items.length) ? activeRelationshipRows.map((group) => (
+                    group.items.length ? (
+                      <section key={group.key} className="connections-flow-group" aria-label={group.label}>
+                        <div className="connections-flow-head">
+                          <strong>{group.label}</strong>
+                          <span>{group.items.length}</span>
+                        </div>
+
+                        <div className="relations-list relations-list--quiet">
+                          {group.items.map((relationship) => (
+                            <button
+                              key={relationship.id}
+                              type="button"
+                              className={`relation-row relation-row--compact relation-row--${relationship.explicitness} relation-row--${group.key} relation-row--${getRelationshipTone(note.id, relationship)}`}
+                              onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
+                              onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
+                              onClick={() => openConstellationForRelationship(relationship)}
+                            >
                               <div className="relation-heading">
                                 <span className="relation-title">{relationship.targetTitle}</span>
                                 <small>
@@ -859,21 +1178,16 @@ export function ExpandedNote({
                               </div>
                               {relationship.explicitness === 'inferred' ? <p className="relation-explanation">{relationship.explanation}</p> : null}
                             </button>
-                            <button className="relation-open" onClick={() => onOpenRelated(relationship.targetId, relationship.id)}>Follow</button>
-                            {relationship.explicitness === 'explicit' ? (
-                              <button className="ghost-button relation-remove" onClick={() => onRemoveRelationship(relationship.id)}>Remove link</button>
-                            ) : null}
-                            {relationship.explicitness === 'inferred' && relationship.state === 'proposed' ? <button className="relation-confirm" onClick={() => onConfirmRelationship(relationship.id)}>Keep</button> : null}
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ) : null
-                )) : <p className="relations-empty">The local map is still empty.</p>}
-              </div>
+                          ))}
+                        </div>
+                      </section>
+                    ) : null
+                  )) : <p className="relations-empty">The local map is still empty.</p>}
+                </div>
+              </section>
 
               {inspectedRelationship && inspectedFrom && inspectedTo ? (
-                <section className="relationship-inspector" aria-label="Connection detail">
+                <section className="relationship-inspector relationship-inspector--modal" aria-label="Connection detail">
                   <div className="section-head">
                     <strong>Connection detail</strong>
                     <div className="relationship-inspector-actions">
@@ -962,171 +1276,15 @@ export function ExpandedNote({
                         Remove link
                       </button>
                     ) : null}
+                    {inspectedRelationship.explicitness === 'inferred' && inspectedRelationship.state === 'proposed' ? (
+                      <button className="ghost-button" onClick={() => onConfirmRelationship(inspectedRelationship.id)}>Keep inferred link</button>
+                    ) : null}
                   </div>
                 </section>
               ) : null}
-              <section ref={organizationSectionRef} className="detail-section detail-section--constellation-subsection" aria-label="Anchored in">
-                <button type="button" className="disclosure-summary" aria-expanded={workspaceSectionOpen} onClick={() => toggleSecondaryPanel('workspace')}>
-                  <span>
-                    <strong>Anchored in</strong>
-                    <small>{workspaceSummary}</small>
-                  </span>
-                  <span aria-hidden="true">{workspaceSectionOpen ? '−' : '+'}</span>
-                </button>
-                {workspaceSectionOpen ? (
-                  <>
-                    <div className="section-head section-head--icon-action">
-                      <div>
-                        <small className="section-hint">Give this note a home so nearby paths stay oriented.</small>
-                      </div>
-                      <IconToolButton
-                        label={showWorkspaceComposer ? 'Close place maker' : 'Add a new place'}
-                        kind="workspace"
-                        pressed={showWorkspaceComposer}
-                        onClick={() => setComposerSurface((current) => current === 'workspace' ? null : 'workspace')}
-                      />
-                    </div>
-                    <div className="organize-choice-list">
-                      <label className="project-membership-row project-membership-row--empty">
-                        <input type="radio" name={`workspace-${note.id}`} checked={!note.workspaceId} onChange={() => onSetWorkspaceId(note.id, null)} />
-                        <span><strong>Assign later</strong><small>Keep this note in the shared field for now.</small></span>
-                      </label>
-                      {workspaces.map((workspace) => (
-                        <label key={workspace.id} className="project-membership-row" style={{ ['--project-accent' as string]: workspace.color }}>
-                          <input type="radio" name={`workspace-${note.id}`} checked={note.workspaceId === workspace.id} onChange={() => onSetWorkspaceId(note.id, workspace.id)} />
-                          <span><strong>{workspace.name}</strong><small>{workspace.key}</small></span>
-                        </label>
-                      ))}
-                    </div>
-                    {showWorkspaceComposer ? (
-                      <div className="project-compose-inline">
-                        <div className="project-compose-grid">
-                          <input aria-label="Workspace key" placeholder="Key (OPS)" value={workspaceDraft.key ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, key: event.target.value }))} />
-                          <input aria-label="Workspace name" placeholder="Place name" value={workspaceDraft.name ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, name: event.target.value }))} />
-                          <input aria-label="Workspace color" type="color" value={workspaceDraft.color ?? '#5fbf97'} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, color: event.target.value }))} />
-                        </div>
-                        <textarea aria-label="Workspace description" placeholder="What kind of place is this note settling into?" value={workspaceDraft.description ?? ''} onChange={(event) => setWorkspaceDraft((prev) => ({ ...prev, description: event.target.value }))} />
-                        <button onClick={() => { if (!(workspaceDraft.key ?? workspaceDraft.name ?? '').trim()) return; onCreateWorkspace(note.id, workspaceDraft); setWorkspaceDraft(DEFAULT_WORKSPACE_DRAFT); setComposerSurface(null); }}>Create place</button>
-                      </div>
-                    ) : null}
-                  </>
-                ) : null}
-              </section>
-
-              <section className="detail-section detail-section--constellation-subsection" aria-label="Shared threads">
-                <button type="button" className="disclosure-summary" aria-expanded={projectSectionOpen} onClick={() => toggleSecondaryPanel('project')}>
-                  <span>
-                    <strong>Shared threads</strong>
-                    <small>{threadSummary}</small>
-                  </span>
-                  <span aria-hidden="true">{projectSectionOpen ? '−' : '+'}</span>
-                </button>
-                {projectSectionOpen ? (
-                  <>
-                    <div className="section-head section-head--icon-action">
-                      <div>
-                        <small className="section-hint">Let the note join a few larger storylines when it helps.</small>
-                      </div>
-                      <IconToolButton
-                        label={showProjectComposer ? 'Close thread maker' : 'Add a new thread'}
-                        kind="project"
-                        pressed={showProjectComposer}
-                        onClick={() => setComposerSurface((current) => current === 'project' ? null : 'project')}
-                      />
-                    </div>
-                    {projects.length ? (
-                      <div className="organize-choice-list">
-                        {projects.map((project) => (
-                          <label key={project.id} className="project-membership-row" style={{ ['--project-accent' as string]: project.color }}>
-                            <input type="checkbox" checked={noteProjectIds.has(project.id)} onChange={(event) => {
-                              const next = event.target.checked ? [...note.projectIds, project.id] : note.projectIds.filter((projectId) => projectId !== project.id);
-                              onSetProjectIds(note.id, next);
-                            }} />
-                            <span><strong>{project.name}</strong><small>{project.key}</small></span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : <p className="relations-empty relations-empty--attention">No threads yet. Add one only when this note needs a shared storyline.</p>}
-                    {showProjectComposer ? (
-                      <div className="project-compose-inline">
-                        <div className="project-compose-grid">
-                          <input aria-label="Project key" placeholder="Key (SLD)" value={projectDraft.key ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, key: event.target.value }))} />
-                          <input aria-label="Project name" placeholder="Thread name" value={projectDraft.name ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, name: event.target.value }))} />
-                          <input aria-label="Project color" type="color" value={projectDraft.color ?? '#7aa2f7'} onChange={(event) => setProjectDraft((prev) => ({ ...prev, color: event.target.value }))} />
-                        </div>
-                        <textarea aria-label="Project description" placeholder="What larger thread brings these notes together?" value={projectDraft.description ?? ''} onChange={(event) => setProjectDraft((prev) => ({ ...prev, description: event.target.value }))} />
-                        <button onClick={() => { if (!(projectDraft.key ?? projectDraft.name ?? '').trim()) return; onCreateProject(note.id, projectDraft); setProjectDraft(DEFAULT_PROJECT_DRAFT); setComposerSurface(null); }}>Create thread</button>
-                      </div>
-                    ) : null}
-                  </>
-                ) : null}
-              </section>
-            </section>
-          </aside>
+            </div>
+          ) : null}
         </div>
-        <footer className="note-footer-bands">
-          <section className="note-footer-band note-footer-band--source" aria-label="Source material tools">
-            <div className="note-footer-band__copy">
-              <strong>Source material</strong>
-              <small>{attachmentCount ? `${attachmentReadyCount}/${attachmentCount} ready` : 'Attach files when this note needs proof or raw material.'}</small>
-            </div>
-            <div className="note-footer-band__actions">
-              <button type="button" className="ghost-button" onClick={() => attachmentSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
-                Add attachments
-              </button>
-            </div>
-          </section>
-
-          <section className="note-footer-band note-footer-band--tools" aria-label="AI tools">
-            <div className="note-footer-band__copy">
-              <strong>Tools</strong>
-              <small>One quiet transform at a time.</small>
-            </div>
-            <div className="note-footer-band__actions note-footer-band__actions--tools">
-              <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('clarify')}>◌ Clarify</button>
-              <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('executive_summary')}>≡ Exec summary</button>
-              <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('summarize')}>↧ Summarize</button>
-              <button
-                type="button"
-                className={`ghost-button ${workspaceSectionOpen || projectSectionOpen ? 'active' : ''}`}
-                onClick={() => {
-                  setExpandedSecondaryPanel('workspace');
-                  organizationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                }}
-              >
-                ⌘ Organize
-              </button>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => {
-                  setBodyMode('edit');
-                  constellationSectionRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                }}
-              >
-                ↗ Relationships
-              </button>
-            </div>
-          </section>
-
-          <section className="note-footer-band note-footer-band--controls" aria-label="Note controls">
-            <div className="note-footer-band__actions note-footer-band__actions--controls">
-              <button type="button" className={`ghost-button ${bodyMode === 'edit' ? 'active' : ''}`} onClick={() => setBodyMode(bodyMode === 'edit' ? 'read' : 'edit')}>
-                {bodyMode === 'edit' ? 'Back to reading' : 'Open editor'}
-              </button>
-              <button type="button" className="ghost-button" onClick={() => (note.archived ? onRestoreArchive(note.id) : onArchive(note.id))}>
-                {note.archived ? 'Restore from archive' : 'Archive'}
-              </button>
-              <button type="button" className="ghost-button" onClick={onClose}>Close</button>
-              <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
-                <summary className="ghost-button">More</summary>
-                <div className="note-danger-menu__panel">
-                  <button type="button" className="ghost-button note-danger-action" onClick={() => onDelete(note.id)}>Delete</button>
-                </div>
-              </details>
-            </div>
-          </section>
-        </footer>
       </aside>
     </section>
   );
