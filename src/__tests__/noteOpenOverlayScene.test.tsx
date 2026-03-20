@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NoteOpenOverlayScene } from '../components/NoteOpenOverlayScene';
 import { ExpandedNote } from '../components/ExpandedNote';
+import { RelationshipWeb } from '../components/RelationshipWeb';
 import { SpatialCanvas } from '../components/SpatialCanvas';
 import { clearTraversalHistory } from '../store/sessionSlice';
 import { NoteCardModel, Project, Relationship, Workspace } from '../types';
@@ -90,6 +91,14 @@ function TestSpatialCanvas(props: ComponentProps<typeof SpatialCanvas>) {
       </button>
     </div>
   );
+}
+
+function TestRelationshipWeb() {
+  return <div className="relationship-web-layer" data-testid="relationship-web-layer" />;
+}
+
+function TestExpandedNote(props: ComponentProps<typeof ExpandedNote>) {
+  return props.note ? <div className="expanded-note-shell"><div className="note-title-field">{props.note.title}</div></div> : null;
 }
 
 const spatialCanvasProps: Omit<ComponentProps<typeof SpatialCanvas>, 'notes' | 'activeNoteId' | 'onOpen'> = {
@@ -217,7 +226,11 @@ function renderScene(activeNoteId: string | null, onOpenNote: (noteId: string) =
       onClearRelatedHover={() => {}}
       spatialCanvasProps={spatialCanvasProps}
       expandedNoteProps={expandedNoteProps}
-      components={{ SpatialCanvasComponent: TestSpatialCanvas }}
+      components={{
+        SpatialCanvasComponent: TestSpatialCanvas,
+        RelationshipWebComponent: TestRelationshipWeb as typeof RelationshipWeb,
+        ExpandedNoteComponent: TestExpandedNote as typeof ExpandedNote
+      }}
     />
   );
 }
@@ -246,7 +259,13 @@ test('note-open overlay scene keeps canvas, dimmer, relationship web, and expand
   assert.match(openMarkup, /class="expanded-note-shell"/);
   assert.match(openMarkup, /class="note-title-field"/);
   assert.match(openMarkup, /Overlay focus note/);
-  assert.match(openMarkup, /Plan the modal overlay with a calm relationship web\./);
+  const dimIndex = openMarkup.indexOf('class="canvas-dim"');
+  const relationshipWebIndex = openMarkup.indexOf('class="relationship-web-layer"');
+  const expandedNoteIndex = openMarkup.indexOf('class="expanded-note-shell"');
+
+  assert.ok(dimIndex >= 0, 'expected the dimmer layer to render');
+  assert.ok(relationshipWebIndex > dimIndex, 'expected the relationship web to render above the dimmer');
+  assert.ok(expandedNoteIndex > relationshipWebIndex, 'expected the expanded note shell to render above the relationship web');
   assert.ok(
     /canvas-dim/.test(openMarkup) && /expanded-note-shell/.test(openMarkup) && /note-title-field/.test(openMarkup),
     'expected the open-note composition to retain note UI beyond the backdrop layer'
