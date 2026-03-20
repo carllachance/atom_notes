@@ -6822,3 +6822,19 @@ body {
 .spatial-canvas {
   background: var(--canvas-bg) !important;
 }
+
+/* Expanded note panel — warm near-black lifts above the cool canvas */
+.expanded-note {
+  background: var(--modal-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Relation row separators — increase opacity so items are distinguishable */
+.relation-row {
+  border-top-color: rgba(166, 180, 208, 0.16) !important;
+}
+
+/* Section group headers in the constellation pane */
+.connections-flow-head strong {
+  color: var(--text-secondary) !important;
+}
