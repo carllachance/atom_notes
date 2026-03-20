@@ -6,10 +6,12 @@ import { NoteCardModel, RelationshipType } from '../types';
 import { FocusLensRelatedNote } from '../scene/focusLens';
 import {
   CanvasViewportMetrics,
-  buildRelationshipEdgePath,
+  getNoteCenter,
   getRelatedNodeStyle,
   getRelationshipWebPlaneStyle
 } from './relationshipWebGeometry';
+import { computeArcPath, computeRelationshipVisualProps } from '../utils/arcPath';
+import { recordTraversal, useTraversalHistory } from '../store/sessionSlice';
 
 type RelationshipWebProps = {
   activeNote: NoteCardModel;
@@ -44,45 +46,104 @@ export function RelationshipWeb({ activeNote, notes, relatedNotes, filter, canva
   const emphasis = filter === 'all' ? 'default' : 'selected';
   const emphasizedTargetId = localHoveredNoteId ?? hoveredNoteId;
   const hoverActive = visibleTargets.some(({ target }) => target.id === emphasizedTargetId);
+  const traversalHistory = useTraversalHistory();
+
+  // Build a lookup of note positions for trail rendering
+  const notePositionsById = useMemo(() => {
+    const map = new Map<string, { x: number; y: number }>();
+    for (const note of notes) {
+      map.set(note.id, getNoteCenter(note));
+    }
+    return map;
+  }, [notes]);
 
   return (
     <div className="relationship-web-layer" data-hover-active={hoverActive ? 'true' : 'false'}>
       <div className="relationship-web-plane" style={getRelationshipWebPlaneStyle(canvasMetrics)}>
-        <svg className="relationship-web" aria-hidden="true">
-          <defs>
-            <marker id="relationship-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-              <path d="M 0 0 L 8 4 L 0 8 z" fill="rgba(201, 213, 244, 0.62)" />
-            </marker>
-          </defs>
-          {visibleTargets.map(({ relationship, target, score }) => {
-            const isHovered = emphasizedTargetId === target.id;
-            const visual = getSemanticRelationshipVisual(relationship, score, isHovered ? 'hovered' : emphasis);
-            const hoverStrokeOpacity = hoverActive
-              ? isHovered
-                ? Math.min(0.92, visual.edge.opacity * 2.5)
-                : Math.max(0.06, visual.edge.opacity * 0.16)
-              : visual.edge.opacity;
-            const hoverStrokeWidth = hoverActive
-              ? isHovered
-                ? Math.max(visual.edge.strokeWidth * 2.4, visual.edge.strokeWidth + 2.2)
-                : Math.max(0.85, visual.edge.strokeWidth * 0.72)
-              : visual.edge.strokeWidth;
+        <svg className="relationship-web" aria-hidden="false" style={{ pointerEvents: 'none' }}>
+          {/* Layer 1: Memory trail arcs — rendered beneath relationship arcs */}
+          {traversalHistory.map((entry, index) => {
+            const fromPos = notePositionsById.get(entry.fromNoteId);
+            const toPos = notePositionsById.get(entry.toNoteId);
+            if (!fromPos || !toPos) return null;
+            const trailOpacity = 0.06 + (index / traversalHistory.length) * 0.09;
             return (
               <path
-                key={relationship.id}
-                d={buildRelationshipEdgePath(activeNote, target)}
-                className={`relationship-edge ${isHovered ? 'relationship-edge--hovered' : hoverActive ? 'relationship-edge--muted' : ''} ${isHovered && relationship.directional ? 'relationship-edge--flowing' : ''} ${isHovered && !relationship.directional ? 'relationship-edge--pulsing' : ''}`}
-                data-type={relationship.type}
-                data-explicitness={relationship.explicitness}
-                data-relationship-category={visual.category}
-                stroke={visual.edge.stroke}
-                strokeOpacity={hoverStrokeOpacity}
-                strokeDasharray={isHovered && relationship.directional ? '12 10' : visual.edge.dasharray === 'none' ? undefined : visual.edge.dasharray}
-                strokeWidth={hoverStrokeWidth}
-                markerEnd={relationship.directional ? 'url(#relationship-arrow)' : undefined}
-                style={{ filter: isHovered ? `drop-shadow(0 0 ${visual.edge.blurRadius + 8}px rgba(164, 196, 255, 0.34)) brightness(1.22)` : hoverActive ? 'brightness(0.72)' : `drop-shadow(0 0 ${visual.edge.blurRadius}px rgba(67, 90, 138, 0.08))` }}
-                onClick={() => onInspectRelationship(relationship.id)}
+                key={`trail-${index}`}
+                d={computeArcPath(fromPos, toPos, 0.10)}
+                stroke="rgba(123, 104, 238, 1)"
+                strokeWidth={0.8}
+                strokeDasharray="3 6"
+                opacity={trailOpacity}
+                fill="none"
+                pointerEvents="none"
               />
+            );
+          })}
+          {/* Layer 2: Relationship arcs */}
+          {visibleTargets.map(({ relationship, target }) => {
+            const isHovered = emphasizedTargetId === target.id;
+            const fromPt = getNoteCenter(activeNote);
+            const toPt = getNoteCenter(target);
+            const arcVisual = computeRelationshipVisualProps({
+              type: relationship.type,
+              explicitness: relationship.explicitness,
+              lifecycle_state: relationship.state === 'confirmed' ? 'active' : 'proposed',
+              reinforcement_score: relationship.confidence ?? 0.5,
+            });
+            const arcPath = computeArcPath(fromPt, toPt, 0.18);
+            const isFiltered = filter !== 'all';
+            const matchesFilter = filter === relationship.type;
+            const finalOpacity = isFiltered
+              ? (matchesFilter ? arcVisual.opacity : 0.04)
+              : hoverActive
+                ? (isHovered ? Math.min(arcVisual.opacity * 1.4, 1.0) : 0.04)
+                : arcVisual.opacity;
+            const finalStrokeWidth = isHovered ? arcVisual.strokeWidth * 1.5 : arcVisual.strokeWidth;
+
+            // Compute midpoint for hover label (approximate control point)
+            const midX = (fromPt.x + toPt.x) / 2;
+            const midY = (fromPt.y + toPt.y) / 2;
+
+            return (
+              <g key={relationship.id}>
+                <path
+                  d={arcPath}
+                  stroke={arcVisual.color}
+                  strokeWidth={finalStrokeWidth}
+                  strokeDasharray={arcVisual.strokeDasharray || undefined}
+                  opacity={finalOpacity}
+                  fill="none"
+                  strokeLinecap="round"
+                  style={{
+                    transition: 'opacity var(--transition-base), stroke-width var(--transition-fast)',
+                    pointerEvents: 'stroke',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={() => {
+                    setLocalHoveredNoteId(target.id);
+                    onHoverRelatedNote(target.id);
+                  }}
+                  onMouseLeave={() => {
+                    setLocalHoveredNoteId((current) => (current === target.id ? null : current));
+                    onClearRelatedHover(target.id);
+                  }}
+                  onClick={() => onInspectRelationship(relationship.id)}
+                />
+                {isHovered && (
+                  <text
+                    x={midX}
+                    y={midY - 6}
+                    textAnchor="middle"
+                    fill="var(--text-secondary)"
+                    fontSize={10}
+                    fontFamily="var(--font-stack)"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {relationship.explanation || relationship.type.replace(/_/g, ' ')}
+                  </text>
+                )}
+              </g>
             );
           })}
         </svg>
@@ -117,7 +178,10 @@ export function RelationshipWeb({ activeNote, notes, relatedNotes, filter, canva
                 setLocalHoveredNoteId((current) => (current === note.id ? null : current));
                 onClearRelatedHover(note.id);
               }}
-              onClick={() => onOpenRelated(note.id, relationship.id)}
+              onClick={() => {
+                recordTraversal(activeNote.id, note.id);
+                onOpenRelated(note.id, relationship.id);
+              }}
             >
               <span className="related-node-kind" style={{ opacity: visual.node.labelOpacity }}>{visual.label}</span>
               <span className="related-node-title">{getCompactDisplayTitle(note, 36)}</span>

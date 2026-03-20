@@ -1,0 +1,68 @@
+/* Design token system — single source of truth for all visual values */
+
+:root {
+  /* Canvas and surface */
+  --canvas-bg: #0F0E12;
+  --canvas-bg-warm: #12100F;
+  --note-card-bg: #1A1820;
+  --note-card-bg-hover: #201E2A;
+  --modal-bg: #16141C;
+  --modal-backdrop: rgba(9, 8, 11, 0.85);
+
+  /* Text */
+  --text-primary: #E8E4DC;
+  --text-secondary: #9B96A0;
+  --text-tertiary: #5C5868;
+  --text-placeholder: #3D3A48;
+
+  /* Relationship arc colors */
+  --rel-task: #F4B942;
+  --rel-reference: #7EB8F7;
+  --rel-conceptual: #A78BFA;
+  --rel-conflict: #F87171;
+  --rel-lineage: #5EEAD4;
+  --rel-inferred: #4A4858;
+
+  /* Note luminosity range */
+  --note-lum-max: 1.0;
+  --note-lum-mid: 0.65;
+  --note-lum-low: 0.35;
+  --note-lum-min: 0.18;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+
+  /* Motion */
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 400ms ease-out;
+  --pulse-duration: 4s;
+
+  /* Radii */
+  --radius-note: 12px;
+  --radius-chip: 20px;
+  --radius-modal: 16px;
+
+  /* Typography — font stacks */
+  --font-stack: 'Lexend', -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+
+  /* Font sizes */
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 15px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
+
+  /* Font weights */
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+}

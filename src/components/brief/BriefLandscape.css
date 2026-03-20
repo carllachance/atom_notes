@@ -1,0 +1,25 @@
+.brief-landscape {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+  transition: opacity 200ms ease-out;
+}
+
+.brief-landscape--entering {
+  opacity: 0;
+}
+
+.brief-landscape svg {
+  display: block;
+}
+
+.brief-landscape__arc {
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.brief-landscape__arc:hover {
+  opacity: 1 !important;
+  filter: brightness(1.15);
+}

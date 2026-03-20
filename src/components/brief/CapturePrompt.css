@@ -1,0 +1,59 @@
+.capture-prompt {
+  width: 100%;
+  position: relative;
+}
+
+.capture-prompt__input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(232, 228, 220, 0.15);
+  color: var(--text-primary);
+  font-family: var(--font-stack);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-light);
+  padding: var(--space-sm) 0;
+  resize: none;
+  outline: none;
+  line-height: 1.6;
+  transition: border-color var(--transition-base);
+  min-height: 2.8rem;
+  box-sizing: border-box;
+}
+
+.capture-prompt__input::placeholder {
+  color: var(--text-placeholder);
+  font-style: normal;
+}
+
+.capture-prompt__input:focus {
+  border-bottom-color: rgba(123, 104, 238, 0.5);
+}
+
+.capture-prompt__hint {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-xs);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.capture-prompt:focus-within .capture-prompt__hint {
+  opacity: 1;
+}
+
+.capture-prompt__confirmation {
+  font-family: var(--font-stack);
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin-top: var(--space-xs);
+  animation: fadeInOut 1.2s ease forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
