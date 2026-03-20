@@ -24,12 +24,18 @@ interface EdgeLike {
 
 // Angular zones by relationship type (degrees, [start, end])
 const ZONE_MAP: Record<string, [number, number]> = {
+  depends_on:      [315, 405],
+  supports:        [315, 405],
   task_dependency: [315, 405],   // upper-right (405 = 45 + 360)
   action_source:   [315, 405],
   references:      [45, 135],    // lower-right
   derived_from:    [45, 135],
+  related:         [135, 225],
+  leads_to:        [135, 225],
   related_concept: [135, 225],   // lower-left
   same_entity:     [135, 225],
+  contradicts:     [225, 315],
+  part_of:         [225, 315],
   conflicts_with:  [225, 315],   // upper-left
   duplicate_of:    [225, 315],
 };

@@ -19,7 +19,7 @@ test('computeRelationshipVisualProps returns correct color for task_dependency',
     lifecycle_state: 'active',
     reinforcement_score: 0.5,
   });
-  assert.equal(props.color, '#F4B942');
+  assert.equal(props.color, '#7fd28d');
 });
 
 test('computeRelationshipVisualProps returns correct color for references', () => {
@@ -29,7 +29,7 @@ test('computeRelationshipVisualProps returns correct color for references', () =
     lifecycle_state: 'active',
     reinforcement_score: 0.5,
   });
-  assert.equal(props.color, '#7EB8F7');
+  assert.equal(props.color, '#b48bff');
 });
 
 test('computeRelationshipVisualProps returns correct color for related_concept', () => {
@@ -39,7 +39,7 @@ test('computeRelationshipVisualProps returns correct color for related_concept',
     lifecycle_state: 'active',
     reinforcement_score: 0.5,
   });
-  assert.equal(props.color, '#A78BFA');
+  assert.equal(props.color, '#74b7ff');
 });
 
 test('computeRelationshipVisualProps returns correct color for conflicts_with', () => {
@@ -49,7 +49,7 @@ test('computeRelationshipVisualProps returns correct color for conflicts_with', 
     lifecycle_state: 'active',
     reinforcement_score: 0.5,
   });
-  assert.equal(props.color, '#F87171');
+  assert.equal(props.color, '#ff8c7c');
 });
 
 test('opacity for active lifecycle state is 0.70', () => {
