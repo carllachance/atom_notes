@@ -15,9 +15,9 @@ test('computeRecencyLuminosity with today timestamp returns 1.0', () => {
   assert.ok(result >= 0.99, `Expected ~1.0, got ${result}`);
 });
 
-test('computeRecencyLuminosity with 400-day-old timestamp returns 0.15', () => {
+test('computeRecencyLuminosity with 400-day-old timestamp returns 0.45 (opacity floor)', () => {
   const result = computeRecencyLuminosity(null, daysAgo(400));
-  assert.equal(result, 0.15);
+  assert.equal(result, 0.45);
 });
 
 test('computeRecencyLuminosity with null lastViewedAt falls back to updatedAt', () => {
@@ -50,6 +50,6 @@ test('luminosityToFilter(0.80) returns empty string', () => {
   assert.equal(luminosityToFilter(0.80), '');
 });
 
-test('luminosityToFilter(0.50) returns string containing brightness', () => {
-  assert.ok(luminosityToFilter(0.50).includes('brightness'));
+test('luminosityToFilter(0.50) returns empty string (brightness disabled on dark canvas)', () => {
+  assert.equal(luminosityToFilter(0.50), '');
 });

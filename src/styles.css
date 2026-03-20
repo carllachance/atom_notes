@@ -6810,3 +6810,15 @@ samp,
 .capture-composer-shell {
   grid-row: 3;
 }
+
+/* === Dark canvas anchor — must stay last to win the cascade ===
+   Earlier :root blocks in this file set gray/slate body backgrounds
+   that override the design token system. These two rules restore the
+   intended deep dark canvas from tokens.css / global.css. */
+body {
+  background: var(--canvas-bg) !important;
+}
+
+.spatial-canvas {
+  background: var(--canvas-bg) !important;
+}

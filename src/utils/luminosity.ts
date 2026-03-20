@@ -9,7 +9,7 @@ const BREAKPOINTS: Array<[days: number, lum: number]> = [
   [365, 0.22],
 ];
 
-const LUM_FLOOR = 0.15;
+const LUM_FLOOR = 0.45;
 const LUM_CEIL = 1.0;
 
 function clamp(value: number, min: number, max: number): number {
@@ -47,12 +47,10 @@ export function computeSizeFactor(reinforcementScore: number): number {
 }
 
 export function luminosityToOpacity(luminosity: number): number {
-  return clamp(luminosity, 0.15, 1.0);
+  return clamp(luminosity, 0.45, 1.0);
 }
 
-export function luminosityToFilter(luminosity: number): string {
-  if (luminosity < 0.70) {
-    return `brightness(${luminosity})`;
-  }
+export function luminosityToFilter(_luminosity: number): string {
+  // brightness() filter makes cards invisible on the dark canvas — opacity alone encodes staleness
   return '';
 }
