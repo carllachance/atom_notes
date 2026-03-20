@@ -40,5 +40,5 @@ function getSnapshot() {
 
 /** React hook that re-renders when traversal history changes */
 export function useTraversalHistory(): TraversalEntry[] {
-  return useSyncExternalStore(subscribe, getSnapshot);
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
