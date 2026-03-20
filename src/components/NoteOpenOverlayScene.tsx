@@ -143,7 +143,7 @@ export function NoteOpenOverlayScene({
         onClearRelatedHover={onClearRelatedHover}
         relationshipWebComponent={RelationshipWebComponent}
         relationshipWebOverride={relationshipWebOverride}
-        expandedNote={(
+        expandedNote={activeNote ? (
           <ExpandedNoteComponent
             {...expandedNoteProps}
             note={activeNote}
@@ -151,7 +151,7 @@ export function NoteOpenOverlayScene({
             noteProjects={activeNoteProjects}
             noteWorkspace={activeWorkspace}
           />
-        )}
+        ) : null}
       />
     </>
   );
