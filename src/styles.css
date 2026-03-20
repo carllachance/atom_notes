@@ -662,28 +662,6 @@ textarea {
   padding: 4px;
 }
 
-.expanded-note-shell {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  z-index: 8;
-  overflow: hidden;
-}
-
-.expanded-note {
-  pointer-events: auto;
-  width: min(760px, calc(100vw - 420px));
-  max-width: calc(100vw - 32px);
-  max-height: min(92vh, 920px);
-  overflow: hidden;
-  border-radius: 16px;
-  border: 1px solid rgba(70, 87, 121, 0.26);
-  background: rgba(16, 24, 37, 0.74);
-  padding: 14px;
-  box-shadow: 0 12px 20px rgba(2, 4, 9, 0.14);
-}
 
 .expanded-note textarea {
   min-height: 190px;
@@ -873,21 +851,7 @@ button {
   flex-wrap: wrap;
 }
 
-.canvas-dim {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 9, 16, 0.46);
-  z-index: 5;
-  pointer-events: none;
-}
 
-.relationship-web-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-  overflow: hidden;
-}
 
 .relationship-web-plane {
   position: absolute;
@@ -2330,10 +2294,6 @@ button {
   color: #eef4ff;
 }
 
-.expanded-note {
-  background: linear-gradient(180deg, rgba(17, 24, 37, 0.94), rgba(12, 18, 28, 0.92));
-  box-shadow: 0 30px 90px rgba(2, 5, 12, 0.42);
-}
 
 .expanded-note-main > input {
   margin-bottom: 0;
@@ -2805,11 +2765,6 @@ button {
   border-left-color: rgba(114, 167, 255, 0.48);
 }
 
-.expanded-note {
-  background:
-    linear-gradient(180deg, rgba(52, 61, 74, 0.96) 0%, rgba(31, 37, 46, 0.96) 100%);
-  border: 1px solid rgba(148, 164, 196, 0.12);
-}
 
 .expanded-note-main {
   display: grid;
@@ -3109,12 +3064,6 @@ button {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
-.expanded-note {
-  display: flex;
-  flex-direction: column;
-  min-height: min(82vh, 860px);
-  overflow: hidden;
-}
 
 .expanded-note-layout {
   flex: 1 1 auto;
@@ -3327,13 +3276,6 @@ button {
 }
 
 /* Simplified note detail hierarchy. */
-.expanded-note {
-  width: min(1080px, calc(100vw - 40px));
-  border-radius: 22px;
-  border: 1px solid rgba(148, 164, 196, 0.08);
-  background: linear-gradient(180deg, rgba(28, 33, 40, 0.97) 0%, rgba(22, 27, 33, 0.97) 100%);
-  box-shadow: 0 34px 90px rgba(4, 8, 14, 0.42);
-}
 
 .expanded-note-header {
   align-items: flex-start;
@@ -5656,25 +5598,6 @@ samp,
 }
 
 /* Interaction/state follow-through refinements */
-.canvas-dim {
-  background: radial-gradient(circle at 72% 34%, rgba(9, 14, 22, 0.1), rgba(9, 14, 22, 0.02) 48%, transparent 78%);
-  opacity: 1;
-  pointer-events: auto;
-  border: 0;
-  width: 100%;
-  cursor: default;
-}
-
-.expanded-note-shell {
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 52px min(5vw, 56px) 24px 24px;
-  pointer-events: none;
-}
-
-.expanded-note {
-  pointer-events: auto;
-}
 
 .note-header-tools {
   align-self: flex-start;
@@ -5876,11 +5799,6 @@ samp,
 }
 
 @media (max-width: 920px) {
-  .expanded-note-shell {
-    padding: 20px 12px 12px;
-    justify-content: center;
-  }
-
   .note-footer-toolbar {
     align-items: flex-start;
   }
@@ -6195,16 +6113,6 @@ samp,
   padding: 10px 12px;
 }
 
-.expanded-note-shell {
-  justify-content: flex-end;
-  align-items: flex-start;
-  padding: 52px calc(var(--thinking-rail-reserved, 24px) + 24px) 24px 24px;
-}
-
-.expanded-note {
-  width: min(760px, calc(100vw - var(--thinking-rail-reserved, 24px) - 80px));
-  max-width: calc(100vw - var(--thinking-rail-reserved, 24px) - 36px);
-}
 
 .refinement-composer {
   gap: 12px;
@@ -6299,14 +6207,6 @@ samp,
     grid-template-columns: 56px minmax(0, 1fr);
   }
 
-  .expanded-note-shell {
-    padding-right: 24px;
-  }
-
-  .expanded-note {
-    width: min(760px, calc(100vw - 36px));
-    max-width: calc(100vw - 36px);
-  }
 
   .home-surface__resume-popover {
     width: min(100%, calc(100vw - 36px));
@@ -6879,19 +6779,6 @@ body,
   animation: note-breathing 8.6s ease-in-out infinite;
 }
 
-.expanded-note--rescue {
-  width: min(860px, calc(100vw - var(--thinking-rail-reserved, 24px) - 48px));
-  max-height: min(88vh, 980px);
-  border-radius: 30px;
-  border: 1px solid rgba(255, 235, 220, 0.08);
-  background:
-    linear-gradient(180deg, rgba(30, 23, 24, 0.98), rgba(21, 16, 17, 0.98));
-  box-shadow:
-    0 28px 80px rgba(3, 2, 2, 0.42),
-    inset 0 1px 0 rgba(255, 236, 221, 0.08),
-    inset 0 0 68px rgba(255, 207, 177, 0.03);
-  overflow: hidden;
-}
 
 .expanded-note-header--calm {
   display: grid;
@@ -7098,10 +6985,7 @@ body,
   width: 100%;
 }
 
-.relationship-web-layer {
-  opacity: 0.92;
-  animation: relationship-bloom 320ms ease-out;
-}
+
 
 .related-node {
   border-radius: 22px;
@@ -7109,8 +6993,80 @@ body,
   backdrop-filter: blur(8px);
 }
 
+
+/* Note-open layering contract: backdrop < relationship web < modal shell. */
+.canvas-dim,
+.relationship-web-layer,
+.expanded-note-shell {
+  position: fixed;
+  inset: 0;
+}
+
 .canvas-dim {
+  border: 0;
+  width: 100%;
   background: radial-gradient(circle, rgba(17, 13, 14, 0.18), rgba(10, 8, 9, 0.72));
+  opacity: 1;
+  pointer-events: auto;
+  cursor: default;
+  z-index: 5;
+}
+
+.relationship-web-layer {
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 6;
+  opacity: 0.92;
+  animation: relationship-bloom 320ms ease-out;
+}
+
+.expanded-note-shell {
+  display: grid;
+  justify-content: flex-end;
+  align-items: flex-start;
+  overflow: hidden;
+  padding: 52px calc(var(--thinking-rail-reserved, 24px) + 24px) 24px 24px;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.expanded-note {
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  min-height: min(82vh, 860px);
+}
+
+.expanded-note--rescue {
+  width: min(860px, calc(100vw - var(--thinking-rail-reserved, 24px) - 48px));
+  max-width: calc(100vw - var(--thinking-rail-reserved, 24px) - 36px);
+  max-height: min(88vh, 980px);
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 235, 220, 0.08);
+  background: linear-gradient(180deg, rgba(30, 23, 24, 0.98), rgba(21, 16, 17, 0.98));
+  box-shadow:
+    0 28px 80px rgba(3, 2, 2, 0.42),
+    inset 0 1px 0 rgba(255, 236, 221, 0.08),
+    inset 0 0 68px rgba(255, 207, 177, 0.03);
+}
+
+@media (max-width: 1080px) {
+  .expanded-note-shell {
+    padding-right: 24px;
+  }
+
+  .expanded-note--rescue {
+    width: min(860px, calc(100vw - 36px));
+    max-width: calc(100vw - 36px);
+  }
+}
+
+@media (max-width: 920px) {
+  .expanded-note-shell {
+    justify-content: center;
+    padding: 20px 12px 12px;
+  }
 }
 
 @keyframes note-breathing {
