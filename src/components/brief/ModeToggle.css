@@ -1,0 +1,33 @@
+.mode-toggle {
+  display: flex;
+  gap: 2px;
+  background: rgba(26, 24, 32, 0.8);
+  border: 1px solid rgba(232, 228, 220, 0.08);
+  border-radius: var(--radius-chip);
+  padding: 3px;
+  backdrop-filter: blur(8px);
+}
+
+.mode-toggle__btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius-chip) - 3px);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.mode-toggle__btn--active {
+  background: rgba(123, 104, 238, 0.20);
+  color: rgba(123, 104, 238, 0.90);
+}
+
+.mode-toggle__btn:not(.mode-toggle__btn--active):hover {
+  color: var(--text-secondary);
+  background: rgba(232, 228, 220, 0.06);
+}

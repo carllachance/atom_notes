@@ -1,0 +1,30 @@
+.brief-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 4px var(--space-sm);
+  border-radius: var(--radius-chip);
+  border: 1px solid rgba(123, 104, 238, 0.30);
+  background: rgba(123, 104, 238, 0.08);
+  color: rgba(123, 104, 238, 0.85);
+  font-family: var(--font-stack);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+  user-select: none;
+}
+
+.brief-action-chip:hover {
+  background: rgba(123, 104, 238, 0.16);
+  border-color: rgba(123, 104, 238, 0.55);
+  color: rgba(123, 104, 238, 1.0);
+}
+
+.brief-action-chip:active {
+  background: rgba(123, 104, 238, 0.24);
+  transform: scale(0.97);
+}

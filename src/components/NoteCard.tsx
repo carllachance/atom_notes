@@ -5,6 +5,7 @@ import { describeNoteTrace, getTraceVisualBias } from '../trace';
 import { NoteCardModel } from '../types';
 import { FocusLensNodeState } from '../scene/focusLens';
 import { LensNotePresentation } from '../scene/lens';
+import { computeRecencyLuminosity, computeSizeFactor, luminosityToOpacity, luminosityToFilter } from '../utils/luminosity';
 
 type NoteCardProps = {
   note: NoteCardModel;
@@ -66,9 +67,26 @@ function NoteCardComponent({ note, position, meta, focusLensState, focusHighligh
   const intentLabel = formatIntentLabel(note.intent);
   const focusOpacity = focusModeActive && !isFocus ? 0.62 : 1;
 
+  // Luminosity system: encode recency and reinforcement as visual weight
+  const updatedAtIso = new Date(note.updatedAt).toISOString();
+  const luminosity = computeRecencyLuminosity(null, updatedAtIso);
+  const sizeFactor = computeSizeFactor(0); // reinforcement_score not in model; default 0
+  const lumOpacity = luminosityToOpacity(luminosity);
+  const brightnessFilter = luminosityToFilter(luminosity);
+
+  // Combine luminosity with existing opacity system
+  const finalOpacity = bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity * focusOpacity * focusLensOpacity * lumOpacity;
+  const finalScale = bias.scale * projectVisual.scaleMultiplier * emphasisScale * focusLensScale * dragScale * sizeFactor;
+  const biasBlur = bias.blur > 0 ? `blur(${bias.blur}px)` : '';
+  const finalFilter = [biasBlur, brightnessFilter].filter(Boolean).join(' ') || undefined;
+
+  // Active pulse: note touched within last 24 hours
+  const TWENTY_FOUR_HOURS = 86400000;
+  const isRecentlyActive = Date.now() - note.updatedAt < TWENTY_FOUR_HOURS;
+
   return (
     <article
-      className="note-card"
+      className={`note-card${isRecentlyActive ? ' note-card--active' : ''}`}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerEnter={onPointerEnter}
@@ -85,11 +103,11 @@ function NoteCardComponent({ note, position, meta, focusLensState, focusHighligh
       data-direct-dragging={isDirectlyDragging ? 'true' : 'false'}
       data-focus-lens-tier={focusLensState?.tier ?? 'none'}
       style={{
-        transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift - (isDirectlyDragging ? 6 : isDragging ? 2 : 0)}px) scale(${bias.scale * projectVisual.scaleMultiplier * emphasisScale * focusLensScale * dragScale})`,
+        transform: `translate(${resolvedPosition.x}px, ${resolvedPosition.y - bias.lift - (isDirectlyDragging ? 6 : isDragging ? 2 : 0)}px) scale(${finalScale})`,
         transformOrigin: 'top left',
         zIndex: note.z + (focusLensState?.zBoost ?? 0),
-        opacity: bias.opacity * projectVisual.opacityMultiplier * emphasisOpacity * focusOpacity * focusLensOpacity,
-        filter: `blur(${bias.blur}px)`,
+        opacity: finalOpacity,
+        filter: finalFilter,
         ['--ambient-glow-level' as string]: ambientRelated ? ambientGlowLevel.toFixed(3) : '0',
         ['--project-accent' as string]: meta?.projectAccent ?? activeProjectColor ?? 'rgba(122, 162, 247, 0.42)',
         ['--project-glow-strength' as string]: String(projectVisual.glowStrength),

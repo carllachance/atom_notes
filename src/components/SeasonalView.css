@@ -1,0 +1,95 @@
+.seasonal-view {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 8, 11, 0.92);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  backdrop-filter: blur(4px);
+}
+
+.seasonal-view__title {
+  font-family: var(--font-stack);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-light);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xl);
+  letter-spacing: 0.02em;
+}
+
+.seasonal-timeline {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding: var(--space-lg) 0;
+  max-width: 100%;
+}
+
+.seasonal-month {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  width: 72px;
+  min-width: 72px;
+  border-radius: var(--radius-note) var(--radius-note) 0 0;
+  padding: var(--space-sm) var(--space-xs);
+  cursor: pointer;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  gap: var(--space-xs);
+}
+
+.seasonal-month:hover {
+  transform: translateY(-4px);
+  opacity: 1 !important;
+}
+
+.seasonal-month__label {
+  font-family: var(--font-stack);
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-align: center;
+  writing-mode: horizontal-tb;
+  margin-top: var(--space-xs);
+}
+
+.seasonal-month__count {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.seasonal-month__topic {
+  font-family: var(--font-stack);
+  font-size: 8px;
+  color: var(--text-tertiary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.seasonal-view__close {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--space-lg);
+  background: transparent;
+  border: 1px solid rgba(232,228,220,0.12);
+  border-radius: var(--radius-chip);
+  color: var(--text-tertiary);
+  font-family: var(--font-stack);
+  font-size: var(--font-size-sm);
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.seasonal-view__close:hover {
+  color: var(--text-primary);
+  border-color: rgba(232,228,220,0.25);
+}

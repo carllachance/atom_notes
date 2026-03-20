@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { QueryLayerPrototype } from './prototypes/QueryLayerPrototype';
+import './styles/global.css';
 import './styles.css';
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/';
