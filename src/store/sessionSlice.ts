@@ -204,6 +204,14 @@ export function getTraversalHistory(): TraversalEntry[] {
   return _traversalHistory;
 }
 
+/**
+ * Clear all traversal history
+ */
+export function clearTraversalHistory(): void {
+  _traversalHistory = [];
+  notifyListeners();
+}
+
 function getTraversalSnapshot() {
   return {
     traversalHistory: _traversalHistory,

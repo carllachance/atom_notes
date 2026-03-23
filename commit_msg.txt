@@ -1,0 +1,21 @@
+fix: update test fixtures and add missing clearTraversalHistory export
+
+Minimal stabilization patch for DG-2/DG-3 merge:
+
+1. Updated all test fixtures to include required AIPanelViewState fields:
+   - communicationState: 'idle'
+   - interactionMode: 'live-stream'
+
+   Fixed in:
+   - src/__tests__/attachments.test.ts
+   - src/__tests__/connectedInsights.test.ts
+   - src/__tests__/focusLens.test.ts
+   - src/__tests__/insightTimeline.test.ts
+   - src/__tests__/lens.test.ts
+   - src/__tests__/projectActions.test.ts
+   - src/__tests__/relationshipActions.test.ts
+   - src/__tests__/sceneActions.test.ts
+   - src/__tests__/workspaceActions.test.ts
+   - src/data/demoScene.ts
+
+2. Added missing clearTraversalHistory() export to sessionSlice.ts
