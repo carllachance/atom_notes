@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FocusMode, Lens, Project, Workspace } from '../types';
 
 type RecallBandProps = {
@@ -54,6 +55,243 @@ function CaptureIcon() {
   );
 }
 
+// Primary Zone - Always visible, core actions only
+function RecallBandPrimaryZone({
+  count,
+  totalCount,
+  canClearFilters,
+  onClearFilters,
+  onOpenComposer
+}: {
+  count: number;
+  totalCount: number;
+  canClearFilters: boolean;
+  onClearFilters: () => void;
+  onOpenComposer: () => void;
+}) {
+  return (
+    <div className="recall-band__primary-zone">
+      <div className="recall-band__note-count">
+        <span className="count-value">{count}</span>
+        <span className="count-label">notes</span>
+        {totalCount !== count && (
+          <span className="count-total">of {totalCount}</span>
+        )}
+      </div>
+      <div className="recall-band__primary-actions">
+        {canClearFilters && (
+          <button
+            className="ghost-button primary-action"
+            onClick={onClearFilters}
+          >
+            Show all notes
+          </button>
+        )}
+        <button
+          className="ghost-button capture-button"
+          onClick={onOpenComposer}
+          aria-label="Capture note"
+          title="Capture note"
+        >
+          <CaptureIcon />
+          <span>Capture</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Scope Zone - Shows lens navigation when not in Universe view
+function RecallBandScopeZone({
+  lens,
+  lensLabel,
+  projects,
+  workspaces,
+  onSetLens
+}: {
+  lens: Lens;
+  lensLabel: string;
+  projects: Project[];
+  workspaces: Workspace[];
+  onSetLens: (lens: Lens) => void;
+}) {
+  const activeProjectId = lens.kind === 'project' || lens.kind === 'reveal' ? lens.projectId ?? '' : '';
+  const activeWorkspaceId = lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.workspaceId ?? '' : '';
+  const scopeMode = lens.kind === 'project' || lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.mode : 'context';
+
+  const isActive = lens.kind !== 'universe' && lens.kind !== 'archive';
+
+  if (!isActive) return null;
+
+  return (
+    <div className="recall-band__scope-zone" data-visible={isActive ? 'true' : 'false'}>
+      <nav className="view-switch" aria-label="Lens selection">
+        <button className="" onClick={() => onSetLens({ kind: 'universe' })}>
+          Universe
+        </button>
+        <button className={lens.kind === 'project' ? 'active' : ''} onClick={() => onSetLens({ kind: 'project', projectId: activeProjectId || (projects[0]?.id ?? null), mode: scopeMode })}>
+          Project
+        </button>
+        <button className={lens.kind === 'workspace' ? 'active' : ''} onClick={() => onSetLens({ kind: 'workspace', workspaceId: activeWorkspaceId || (workspaces[0]?.id ?? null), mode: scopeMode })}>
+          Workspace
+        </button>
+      </nav>
+      <span className="active-lens-badge">{lensLabel}</span>
+    </div>
+  );
+}
+
+// Filters Zone - Collapsed by default, expands to show focus/filter controls
+function RecallBandFiltersZone({
+  lens,
+  focusMode,
+  focusCount,
+  projects,
+  workspaces,
+  revealQuery,
+  revealMatchCount,
+  canClearFocus,
+  onSetLens,
+  onSetFocusMode,
+  onRevealQueryChange,
+  onReveal,
+  onRevealNext,
+  onRevealPrev,
+  onClearFocus,
+  onResetView,
+  onFitAllNotes
+}: {
+  lens: Lens;
+  focusMode: FocusMode;
+  focusCount: number;
+  projects: Project[];
+  workspaces: Workspace[];
+  revealQuery: string;
+  revealMatchCount: number;
+  canClearFocus: boolean;
+  onSetLens: (lens: Lens) => void;
+  onSetFocusMode: (updates: Partial<FocusMode>) => void;
+  onRevealQueryChange: (query: string) => void;
+  onReveal: () => void;
+  onRevealNext: () => void;
+  onRevealPrev: () => void;
+  onClearFocus: () => void;
+  onResetView: () => void;
+  onFitAllNotes: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const activeProjectId = lens.kind === 'project' || lens.kind === 'reveal' ? lens.projectId ?? '' : '';
+  const activeWorkspaceId = lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.workspaceId ?? '' : '';
+  const scopeMode = lens.kind === 'project' || lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.mode : 'context';
+
+  const hasActiveFilters = focusMode.highlight || focusMode.isolate || revealQuery;
+
+  return (
+    <div className="recall-band__filters-zone">
+      <button
+        className={`ghost-button filters-toggle ${hasActiveFilters ? 'has-active-filters' : ''}`}
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-controls="filters-panel"
+      >
+        Filters
+        {hasActiveFilters && <span className="filters-active-dot" />}
+      </button>
+
+      {expanded && (
+        <div id="filters-panel" className="filters-panel">
+          {/* Archive lens toggle */}
+          <div className="filters-section">
+            <label className="filters-section-label">View</label>
+            <div className="view-switch">
+              <button className={lens.kind === 'universe' ? 'active' : ''} onClick={() => onSetLens({ kind: 'universe' })}>
+                Universe
+              </button>
+              <button className={lens.kind === 'archive' ? 'active' : ''} onClick={() => onSetLens({ kind: 'archive' })}>
+                Archive
+              </button>
+            </div>
+          </div>
+
+          {/* Focus controls */}
+          <div className="filters-section">
+            <label className="filters-section-label">Focus</label>
+            <div className="focus-controls">
+              <button
+                className={`ghost-button ${focusMode.highlight ? 'active' : ''}`}
+                onClick={() => onSetFocusMode({ highlight: !focusMode.highlight })}
+              >
+                Highlight Focus
+              </button>
+              <button
+                className={`ghost-button ${focusMode.isolate ? 'active' : ''}`}
+                onClick={() => onSetFocusMode({ isolate: !focusMode.isolate })}
+              >
+                Focus only
+              </button>
+              <span className="focus-count-chip">{focusCount} Focus</span>
+            </div>
+          </div>
+
+          {/* Project selector */}
+          <div className="filters-section">
+            <label className="project-reveal-label" htmlFor="project-lens-select">Project</label>
+            <select
+              id="project-lens-select"
+              value={activeProjectId}
+              onChange={(event) => onSetLens(event.target.value ? { kind: 'project', projectId: event.target.value, mode: scopeMode } : { kind: 'universe' })}
+            >
+              <option value="">All projects</option>
+              {projects.map((project) => <option key={project.id} value={project.id}>{project.key} · {project.name}</option>)}
+            </select>
+          </div>
+
+          {/* Workspace selector */}
+          <div className="filters-section">
+            <label className="project-reveal-label" htmlFor="workspace-lens-select">Workspace</label>
+            <select
+              id="workspace-lens-select"
+              value={activeWorkspaceId}
+              onChange={(event) => onSetLens(event.target.value ? { kind: 'workspace', workspaceId: event.target.value, mode: scopeMode } : { kind: 'universe' })}
+            >
+              <option value="">All workspaces</option>
+              {workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.key} · {workspace.name}</option>)}
+            </select>
+          </div>
+
+          {/* Reveal controls */}
+          <div className="filters-section">
+            <label className="filters-section-label">Reveal</label>
+            <div className="reveal-controls">
+              <input
+                aria-label="Reveal query"
+                placeholder="Search notes…"
+                value={revealQuery}
+                onChange={(event) => onRevealQueryChange(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter') onReveal(); }}
+              />
+              <button className="ghost-button" onClick={onReveal}>Reveal</button>
+              <button className="ghost-button" onClick={onRevealPrev} disabled={revealMatchCount < 2}>‹</button>
+              <button className="ghost-button" onClick={onRevealNext} disabled={revealMatchCount < 2}>›</button>
+            </div>
+          </div>
+
+          {/* Canvas recovery */}
+          <div className="filters-section canvas-recovery-controls">
+            <label className="filters-section-label">Canvas</label>
+            <div className="canvas-actions">
+              <button className="ghost-button" onClick={onResetView}>Reset view</button>
+              <button className="ghost-button" onClick={onFitAllNotes}>Fit all notes</button>
+              <button className="ghost-button" onClick={onClearFocus} disabled={!canClearFocus}>Clear focus</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RecallBand({
   count,
   totalCount,
@@ -84,30 +322,29 @@ export function RecallBand({
   onClearRecallCue,
   demoLinks = []
 }: RecallBandProps) {
-  const activeProjectId = lens.kind === 'project' || lens.kind === 'reveal' ? lens.projectId ?? '' : '';
-  const activeWorkspaceId = lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.workspaceId ?? '' : '';
-  const scopeMode = lens.kind === 'project' || lens.kind === 'workspace' || lens.kind === 'reveal' ? lens.mode : 'context';
   const focusState = describeFocusState(focusMode, focusCount);
 
   return (
     <header className="recall-band">
-      <div className="recall-meta">
-        <span>{count} notes</span>
-        {totalCount !== count ? <span>{totalCount} total in universe</span> : null}
-        <span>{archivedCount} archived</span>
-      </div>
-      <nav className="view-switch" aria-label="Lens selection">
-        <button className={lens.kind === 'universe' ? 'active' : ''} onClick={() => onSetLens({ kind: 'universe' })}>Universe</button>
-        <button className={lens.kind === 'project' ? 'active' : ''} onClick={() => onSetLens({ kind: 'project', projectId: activeProjectId || (projects[0]?.id ?? null), mode: scopeMode })}>Project</button>
-        <button className={lens.kind === 'workspace' ? 'active' : ''} onClick={() => onSetLens({ kind: 'workspace', workspaceId: activeWorkspaceId || (workspaces[0]?.id ?? null), mode: scopeMode })}>Workspace</button>
-        <button className={lens.kind === 'archive' ? 'active' : ''} onClick={() => onSetLens({ kind: 'archive' })}>Archive</button>
-      </nav>
+      {/* Primary Zone - Always visible */}
+      <RecallBandPrimaryZone
+        count={count}
+        totalCount={totalCount}
+        canClearFilters={canClearFilters}
+        onClearFilters={onClearFilters}
+        onOpenComposer={onOpenComposer}
+      />
 
-      <div className="active-lens-indicator" aria-live="polite">
-        <span className="active-lens-label">Active lens</span>
-        <strong>{lensLabel}</strong>
-      </div>
+      {/* Scope Zone - Shows lens navigation when not Universe/Archive */}
+      <RecallBandScopeZone
+        lens={lens}
+        lensLabel={lensLabel}
+        projects={projects}
+        workspaces={workspaces}
+        onSetLens={onSetLens}
+      />
 
+      {/* Recall cue - persists in the band */}
       {recallCue ? (
         <div className="recall-resume" aria-live="polite">
           <button
@@ -132,73 +369,40 @@ export function RecallBand({
         </div>
       ) : null}
 
-      <div className="project-reveal-controls focus-controls">
-        <button
-          className={`ghost-button ${focusMode.highlight ? 'active' : ''}`}
-          title="Highlight Focus notes"
-          onClick={() => onSetFocusMode({ highlight: !focusMode.highlight })}
-        >
-          Highlight Focus
-        </button>
-        <button
-          className={`ghost-button ${focusMode.isolate ? 'active' : ''}`}
-          title="Show only Focus notes"
-          onClick={() => onSetFocusMode({ isolate: !focusMode.isolate })}
-        >
-          Focus only
-        </button>
-        <span className="focus-count-chip">{focusCount} Focus</span>
-      </div>
+      {/* Filters Zone - Collapsed by default */}
+      <RecallBandFiltersZone
+        lens={lens}
+        focusMode={focusMode}
+        focusCount={focusCount}
+        projects={projects}
+        workspaces={workspaces}
+        revealQuery={revealQuery}
+        revealMatchCount={revealMatchCount}
+        canClearFocus={canClearFocus}
+        onSetLens={onSetLens}
+        onSetFocusMode={onSetFocusMode}
+        onRevealQueryChange={onRevealQueryChange}
+        onReveal={onReveal}
+        onRevealNext={onRevealNext}
+        onRevealPrev={onRevealPrev}
+        onClearFocus={onClearFocus}
+        onResetView={onResetView}
+        onFitAllNotes={onFitAllNotes}
+      />
 
+      {/* Focus state indicator */}
       <div className="focus-state-indicator" aria-live="polite">
         <span className="active-lens-label">Focus filter</span>
         <strong>{focusMode.isolate ? 'Focus only' : focusMode.highlight ? 'Highlight Focus' : 'Focus tags only'}</strong>
         <small>{focusState}</small>
       </div>
 
-      <div className="project-reveal-controls">
-        <label className="project-reveal-label" htmlFor="project-lens-select">Project</label>
-        <select id="project-lens-select" value={activeProjectId} onChange={(event) => onSetLens(event.target.value ? { kind: 'project', projectId: event.target.value, mode: scopeMode } : { kind: 'universe' })}>
-          <option value="">All projects</option>
-          {projects.map((project) => <option key={project.id} value={project.id}>{project.key} · {project.name}</option>)}
-        </select>
-      </div>
-
-      <div className="project-reveal-controls">
-        <label className="project-reveal-label" htmlFor="workspace-lens-select">Workspace</label>
-        <select id="workspace-lens-select" value={activeWorkspaceId} onChange={(event) => onSetLens(event.target.value ? { kind: 'workspace', workspaceId: event.target.value, mode: scopeMode } : { kind: 'universe' })}>
-          <option value="">All workspaces</option>
-          {workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.key} · {workspace.name}</option>)}
-        </select>
-        <button className={`ghost-button ${scopeMode === 'strict' ? 'active' : ''}`} disabled={lens.kind !== 'project' && lens.kind !== 'workspace' && lens.kind !== 'reveal'} onClick={() => {
-          if (lens.kind === 'project' || lens.kind === 'workspace' || lens.kind === 'reveal') onSetLens({ ...lens, mode: lens.mode === 'strict' ? 'context' : 'strict' } as Lens);
-        }}>
-          {scopeMode === 'strict' ? 'Strict scope' : 'Keep context'}
-        </button>
-      </div>
-
-      <div className="reveal-controls">
-        <input aria-label="Reveal query" placeholder="Reveal across the universe…" value={revealQuery} onChange={(event) => onRevealQueryChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onReveal(); }} />
-        <button className="ghost-button" onClick={onReveal}>Reveal</button>
-        <button className="ghost-button" onClick={onRevealPrev} disabled={revealMatchCount < 2}>‹</button>
-        <button className="ghost-button" onClick={onRevealNext} disabled={revealMatchCount < 2}>›</button>
-      </div>
-
-      <div className="project-reveal-controls canvas-recovery-controls" aria-label="Canvas recovery">
-        <button className="ghost-button" onClick={onResetView}>Reset view</button>
-        <button className="ghost-button" onClick={onFitAllNotes}>Fit all notes</button>
-        <button className="ghost-button" onClick={onClearFocus} disabled={!canClearFocus}>Clear focus</button>
-        <button className="ghost-button" onClick={onClearFilters} disabled={!canClearFilters}>Show all notes</button>
-      </div>
-
+      {/* Demo links */}
       {demoLinks.map((link) => (
-        <a key={link.href} className="ghost-button recall-capture-toggle recall-demo-link" href={link.href}>
+        <a key={link.href} className="ghost-button recall-demo-link" href={link.href}>
           {link.label}
         </a>
       ))}
-      <button className="ghost-button recall-capture-toggle recall-capture-toggle--icon" onClick={onOpenComposer} aria-label="Capture note" title="Capture note">
-        <CaptureIcon />
-      </button>
     </header>
   );
 }
