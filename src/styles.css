@@ -235,6 +235,249 @@ textarea {
   color: #deebff;
 }
 
+/* ========================
+   RecallBand 3-Zone Layout
+   ======================== */
+
+/* Primary Zone - Always visible */
+.recall-band__primary-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recall-band__note-count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #9badd4;
+  font-size: 0.74rem;
+}
+
+.recall-band__note-count .count-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #dde8ff;
+}
+
+.recall-band__note-count .count-label {
+  color: #8fa2cc;
+}
+
+.recall-band__note-count .count-total {
+  color: #7a91b8;
+  font-size: 0.72rem;
+}
+
+.recall-band__primary-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ghost-button.primary-action {
+  background: rgba(74, 97, 143, 0.35);
+  border: 1px solid rgba(123, 162, 247, 0.3);
+  color: #d8e8ff;
+  font-weight: 500;
+}
+
+.ghost-button.primary-action:hover {
+  background: rgba(100, 130, 200, 0.45);
+  border-color: rgba(123, 162, 247, 0.5);
+}
+
+.ghost-button.capture-button {
+  background: rgba(123, 104, 238, 0.25);
+  border: 1px solid rgba(123, 104, 238, 0.35);
+  color: #d8e8ff;
+}
+
+.ghost-button.capture-button:hover {
+  background: rgba(123, 104, 238, 0.4);
+  border-color: rgba(123, 104, 238, 0.5);
+}
+
+.ghost-button.capture-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Scope Zone - Shows when lens is active */
+.recall-band__scope-zone {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.recall-band__scope-zone[data-visible="true"] {
+  display: flex;
+}
+
+.active-lens-badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(123, 162, 247, 0.3);
+  background: rgba(10, 15, 26, 0.4);
+  color: #b8ceff;
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+/* Filters Zone - Collapsible */
+.recall-band__filters-zone {
+  position: relative;
+}
+
+.ghost-button.filters-toggle {
+  position: relative;
+  background: transparent;
+  border: 1px solid rgba(75, 91, 126, 0.35);
+}
+
+.ghost-button.filters-toggle:hover {
+  background: rgba(58, 78, 119, 0.25);
+  border-color: rgba(123, 162, 247, 0.4);
+}
+
+.ghost-button.filters-toggle.has-active-filters {
+  background: rgba(74, 97, 143, 0.3);
+  border-color: rgba(123, 162, 247, 0.45);
+  color: #d8e8ff;
+}
+
+.filters-active-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7ac4ff;
+  margin-left: 4px;
+}
+
+.filters-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 280px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(62, 76, 108, 0.35);
+  background: rgba(10, 15, 26, 0.92);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.filters-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filters-section-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7a91b8;
+}
+
+.focus-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.focus-count-chip {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(242, 201, 111, 0.15);
+  border: 1px solid rgba(242, 201, 111, 0.25);
+  color: rgba(242, 201, 111, 0.9);
+  font-size: 0.7rem;
+  margin-left: 4px;
+}
+
+.filters-section select {
+  max-width: 100%;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(66, 86, 124, 0.3);
+  background: rgba(10, 15, 26, 0.5);
+  color: #cfdaf4;
+  padding: 5px 8px;
+  font-size: 0.74rem;
+}
+
+.canvas-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Focus state indicator */
+.focus-state-indicator {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #8fa2cc;
+  font-size: 0.72rem;
+}
+
+.focus-state-indicator strong {
+  color: #c4d6f4;
+  font-weight: 500;
+}
+
+.focus-state-indicator small {
+  color: #7a91b8;
+  font-size: 0.68rem;
+}
+
+.recall-demo-link {
+  margin-left: auto;
+}
+
+/* Ghost button base styles */
+.ghost-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: var(--toolbar-button-height, 30px);
+  padding: 0 var(--toolbar-button-padding-x, 10px);
+  border-radius: 999px;
+  border: 1px solid rgba(75, 91, 126, 0.3);
+  background: rgba(10, 15, 26, 0.4);
+  color: #9badd4;
+  font-size: var(--toolbar-button-font-size, 0.72rem);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.ghost-button:hover {
+  background: rgba(58, 78, 119, 0.3);
+  border-color: rgba(123, 162, 247, 0.35);
+  color: #c4d6f4;
+}
+
+.ghost-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghost-button.active {
+  background: rgba(74, 97, 143, 0.35);
+  border-color: rgba(123, 162, 247, 0.4);
+  color: #d8e8ff;
+}
+
 .view-stack {
   position: relative;
   min-height: 0;
