@@ -29,7 +29,7 @@ function makeScene(): SceneState {
     expandedSecondarySurface: 'none',
     captureComposer: { draft: '', lastCreatedNoteId: null },
     focusMode: { highlight: true, isolate: false },
-    aiPanel: { mode: 'ask', query: '', response: null, transcript: [], loading: false },
+    aiPanel: { mode: 'ask', query: '', response: null, transcript: [], loading: false, communicationState: 'idle', interactionMode: 'live-stream' },
     lastCtrlTapTs: 0,
     lens: { kind: 'universe' },
     canvasScrollLeft: 0,
