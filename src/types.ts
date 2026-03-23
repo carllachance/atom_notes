@@ -258,6 +258,8 @@ export type AITranscriptEntry = {
   mode: AIInteractionMode;
   content: string;
   createdAt: number;
+  /** Source of the content for AI transparency (DG-2 AN-013) */
+  contentSource: 'user-authored' | 'ai-generated' | 'ai-inferred' | 'ai-sourced';
 };
 
 export type AIPanelViewState = {
@@ -266,6 +268,10 @@ export type AIPanelViewState = {
   response: InsightsResponse | null;
   transcript: AITranscriptEntry[];
   loading: boolean;
+  /** Current AI communication state for transparency (DG-2 AN-015) */
+  communicationState: 'idle' | 'sending' | 'receiving' | 'streaming' | 'review-mode';
+  /** Interaction mode: live-streaming vs review-before-send (DG-2 AN-016) */
+  interactionMode: 'live-stream' | 'review-before-send';
 };
 
 export type SceneState = {

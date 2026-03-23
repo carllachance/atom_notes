@@ -1,12 +1,85 @@
 import { FormEvent, PointerEvent, useEffect, useMemo, useState } from 'react';
 import { ThinkingGlyph } from './ThinkingGlyph';
 import { ActionSuggestion, AIInteractionMode, AIPanelViewState, InsightTimelineEntry, InsightsResponse, NoteCardModel } from '../types';
+import { AICommunicationState, ContentSource } from '../types/reeentory';
 
 type ThinkingSuggestion = {
   id: string;
   title: string;
   meta: string;
 };
+
+// DG-2 AN-015: AI Communication State Indicator
+function AIStateIndicator({
+  state,
+  interactionMode,
+  onInteractionModeChange
+}: {
+  state: AICommunicationState;
+  interactionMode: 'live-stream' | 'review-before-send';
+  onInteractionModeChange: (mode: 'live-stream' | 'review-before-send') => void;
+}) {
+  const stateConfig: Record<AICommunicationState, { label: string; colorClass: string }> = {
+    idle: { label: 'Ready', colorClass: 'ai-state-idle' },
+    sending: { label: 'Sending…', colorClass: 'ai-state-sending' },
+    receiving: { label: 'Receiving…', colorClass: 'ai-state-receiving' },
+    streaming: { label: 'Thinking…', colorClass: 'ai-state-streaming' },
+    'review-mode': { label: 'Review', colorClass: 'ai-state-review' }
+  };
+
+  const config = stateConfig[state];
+
+  return (
+    <div className="ai-state-indicator" role="status" aria-live="polite">
+      <span className={`ai-state-badge ${config.colorClass}`}>
+        <span className="ai-state-dot" aria-hidden="true" />
+        {config.label}
+      </span>
+      <div className="ai-mode-toggle" role="group" aria-label="AI interaction mode">
+        <button
+          className={`ai-mode-button ${interactionMode === 'live-stream' ? 'active' : ''}`}
+          onClick={() => onInteractionModeChange('live-stream')}
+          title="Live streaming - responses appear as they're generated"
+        >
+          Live
+        </button>
+        <button
+          className={`ai-mode-button ${interactionMode === 'review-before-send' ? 'active' : ''}`}
+          onClick={() => onInteractionModeChange('review-before-send')}
+          title="Review before send - see full response before it's used"
+        >
+          Review
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// DG-2 AN-013: AI Content Label for transparency
+function AIContentLabel({ source }: { source: ContentSource }) {
+  if (source === 'user-authored') return null;
+
+  const labels: Record<ContentSource, { text: string; className: string }> = {
+    'user-authored': { text: '', className: '' },
+    'ai-generated': { text: 'AI-generated', className: 'ai-label-generated' },
+    'ai-inferred': { text: 'AI-inferred', className: 'ai-label-inferred' },
+    'ai-sourced': { text: 'Based on your notes', className: 'ai-label-sourced' }
+  };
+
+  const label = labels[source];
+
+  return (
+    <div className={`ai-content-label ${label.className}`} role="note">
+      <span className="ai-content-label-icon" aria-hidden="true">
+        <svg viewBox="0 0 12 12" width="10" height="10">
+          <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+          <text x="6" y="9" textAnchor="middle" fontSize="8" fill="currentColor">i</text>
+        </svg>
+      </span>
+      {label.text}
+    </div>
+  );
+}
 
 type AIPanelProps = {
   panel: AIPanelViewState;
@@ -28,6 +101,7 @@ type AIPanelProps = {
   onConfirmAction: () => void;
   onCancelAction: () => void;
   onWidthChange: (width: number) => void;
+  onInteractionModeChange: (mode: 'live-stream' | 'review-before-send') => void;
 };
 
 const RAIL_MIN_WIDTH = 320;
@@ -97,13 +171,22 @@ export function AIPanel({
   onPreviewAction,
   onConfirmAction,
   onCancelAction,
-  onWidthChange
+  onWidthChange,
+  onInteractionModeChange
 }: AIPanelProps) {
   const [showWhy, setShowWhy] = useState(false);
   const activeResponse = streamedResponse ?? panel.response;
   const lastAssistant = latestAssistantMessage(panel);
   const timelineSummary = summarizeTimeline(timelineEntries, selectedNote?.id ?? null);
   const primaryMessage = activeResponse?.answer || (streaming ? 'Thinking through the local context…' : lastAssistant?.content) || '';
+
+  // DG-2 AN-015: Derive communication state from panel state
+  const communicationState: AICommunicationState = streaming
+    ? 'streaming'
+    : panel.loading
+      ? panel.communicationState === 'sending' ? 'sending' : 'receiving'
+      : 'idle';
+
   const suggestionCards = useMemo(
     () => buildSuggestions(activeResponse, notes, 'Nearby context'),
     [activeResponse, notes]
@@ -173,6 +256,13 @@ export function AIPanel({
                 <small>{selectedNote?.title ?? contextLabel}</small>
               </div>
 
+              {/* DG-2 AN-015: AI State Indicator */}
+              <AIStateIndicator
+                state={communicationState}
+                interactionMode={panel.interactionMode}
+                onInteractionModeChange={onInteractionModeChange}
+              />
+
               <div className="ai-action-row" role="toolbar" aria-label="Thinking actions">
                 {ACTIONS.map((action) => (
                   <button
@@ -205,7 +295,10 @@ export function AIPanel({
               </section>
             ) : null}
 
+            {/* DG-2 AN-013: AI Content Labels */}
             <section className="ai-primary-response" aria-live="polite">
+              {/* Show AI content label when there's a response */}
+              {primaryMessage && <AIContentLabel source={lastAssistant?.contentSource ?? 'ai-generated'} />}
               <p>{primaryMessage || 'Ask for a quick read, the why behind the note, or the next move.'}</p>
               {whyBullets.length ? (
                 <button type="button" className="ghost-button ai-why-toggle" onClick={() => setShowWhy((current) => !current)}>

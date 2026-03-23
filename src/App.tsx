@@ -11,10 +11,17 @@ import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
 import { summarizeCanvasVisibility } from './scene/canvasVisibility';
 import { useSceneController } from './scene/useSceneController';
+import { useHistoryStack, useBookmarks } from './store/sessionSlice';
 
 export function App() {
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [reentryExpanded, setReentryExpanded] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+
+  // DG-2 AN-007/AN-008: Re-entry hooks
+  const historyStack = useHistoryStack();
+  const bookmarks = useBookmarks();
   const [thinkingRailWidth, setThinkingRailWidth] = useState(360);
   const hasAutoRecoveredRef = useRef(false);
   const demoLinks = [{ href: '/query-prototype', label: 'Query demo' }];
@@ -134,6 +141,37 @@ export function App() {
     fitAllNotes();
   }, [canvasVisibility.isBlankBecauseNotesAreOffCanvas, fitAllNotes]);
 
+  // DG-2 AN-007/AN-008/AN-009: Re-entry handlers
+  const handleRestoreHistory = useCallback((entry: { noteId: string | null; lensKind: string; focusMode: { highlight: boolean; isolate: boolean } }) => {
+    if (entry.noteId) {
+      onOpenNote(entry.noteId);
+    }
+    if (entry.lensKind === 'universe') {
+      setLens({ kind: 'universe' });
+    } else if (entry.lensKind === 'project') {
+      setLens({ kind: 'project', projectId: null, mode: 'context' });
+    } else if (entry.lensKind === 'workspace') {
+      setLens({ kind: 'workspace', workspaceId: null, mode: 'context' });
+    }
+    setFocusMode(entry.focusMode);
+    setReentryExpanded(false);
+  }, [onOpenNote, setLens, setFocusMode]);
+
+  const handleDropPin = useCallback((label: string) => {
+    // AN-009: Create bookmark - will be wired to scene controller
+    console.log('Drop pin:', label);
+    setPinDialogOpen(false);
+  }, []);
+
+  const handleRestoreBookmark = useCallback((bookmark: { activeNoteId: string | null; lens: { kind: string }; focusMode: { highlight: boolean; isolate: boolean } }) => {
+    if (bookmark.activeNoteId) {
+      onOpenNote(bookmark.activeNoteId);
+    }
+    setLens(bookmark.lens as any);
+    setFocusMode(bookmark.focusMode);
+    setReentryExpanded(false);
+  }, [onOpenNote, setLens, setFocusMode]);
+
   return (
     <ThinkingSurface>
       <RecallBand
@@ -165,6 +203,16 @@ export function App() {
         onAdvanceRecallCue={onAdvanceRecallCue}
         onClearRecallCue={onClearRecallCue}
         demoLinks={demoLinks}
+        // DG-2 AN-007/AN-008/AN-009: Re-entry props
+        historyStack={historyStack}
+        bookmarks={bookmarks}
+        memorySummary={null}
+        memorySummarySource={null}
+        reentryExpanded={reentryExpanded}
+        onToggleReentry={() => setReentryExpanded(!reentryExpanded)}
+        onRestoreHistory={handleRestoreHistory}
+        onDropPin={handleDropPin}
+        onRestoreBookmark={handleRestoreBookmark}
       />
 
       <section className="workspace-shell">
@@ -339,6 +387,8 @@ export function App() {
           onCancelAction={cancelPendingAction}
           width={thinkingRailWidth}
           onWidthChange={setThinkingRailWidth}
+          // DG-2 AN-015/AN-016: AI interaction mode
+          onInteractionModeChange={(mode) => setAIPanel({ interactionMode: mode })}
         />
       </section>
 

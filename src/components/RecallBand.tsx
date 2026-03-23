@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FocusMode, Lens, Project, Workspace } from '../types';
+import { HistoryStackEntry, StateSnapshot } from '../types/reeentory';
 
 type RecallBandProps = {
   count: number;
@@ -33,6 +34,16 @@ type RecallBandProps = {
     href: string;
     label: string;
   }>;
+  // DG-2 Re-entry surface props (AN-007, AN-008, AN-009)
+  historyStack: HistoryStackEntry[];
+  bookmarks: StateSnapshot[];
+  memorySummary: string | null;
+  memorySummarySource: 'ai-generated' | 'ai-inferred' | null;
+  reentryExpanded: boolean;
+  onToggleReentry: () => void;
+  onRestoreHistory: (entry: HistoryStackEntry) => void;
+  onDropPin: (label: string) => void;
+  onRestoreBookmark: (bookmark: StateSnapshot) => void;
 };
 
 function describeFocusState(focusMode: FocusMode, focusCount: number) {
@@ -52,6 +63,186 @@ function CaptureIcon() {
     <svg viewBox="0 0 16 16" aria-hidden="true">
       <path d="M8 3.4v9.2M3.4 8h9.2" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.35" />
     </svg>
+  );
+}
+
+// DG-2 AN-007, AN-008, AN-009: Re-entry Surface Component
+function formatRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
+function ReentrySurface({
+  history,
+  bookmarks,
+  memorySummary,
+  memorySummarySource,
+  isExpanded,
+  onToggleReentry,
+  onRestoreHistory,
+  onDropPin,
+  onRestoreBookmark
+}: {
+  history: HistoryStackEntry[];
+  bookmarks: StateSnapshot[];
+  memorySummary: string | null;
+  memorySummarySource: 'ai-generated' | 'ai-inferred' | null;
+  isExpanded: boolean;
+  onToggleReentry: () => void;
+  onRestoreHistory: (entry: HistoryStackEntry) => void;
+  onDropPin: (label: string) => void;
+  onRestoreBookmark: (bookmark: StateSnapshot) => void;
+}) {
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [pinLabel, setPinLabel] = useState('');
+
+  const recentHistory = history.slice(0, 5);
+  const hasContent = recentHistory.length > 0 || bookmarks.length > 0 || memorySummary;
+
+  const handleDropPin = () => {
+    if (pinLabel.trim()) {
+      onDropPin(pinLabel.trim());
+      setPinLabel('');
+      setShowPinDialog(false);
+    }
+  };
+
+  return (
+    <div className="reentry-surface">
+      <button
+        className={`ghost-button reentry-toggle ${isExpanded ? 'active' : ''}`}
+        onClick={onToggleReentry}
+        aria-expanded={isExpanded}
+        aria-controls="reentry-panel"
+        title="Where was I? - Resume your context"
+      >
+        <span className="reentry-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16" width="14" height="14">
+            <path d="M8 2C4.7 2 2 4.7 2 8s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 10c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z" fill="currentColor"/>
+            <path d="M8 4.5v3.5l2.5 1.5" fill="none" stroke="currentColor" strokeLinecap="round"/>
+          </svg>
+        </span>
+        <span>Where was I?</span>
+      </button>
+
+      {isExpanded && (
+        <div id="reentry-panel" className="reentry-panel">
+          {/* Jog My Memory Summary - AN-010 stub */}
+          {memorySummary && (
+            <section className="reentry-section">
+              <div className="reentry-section-header">
+                <span className="ai-badge ai-badge-generated">AI-generated</span>
+                <span>summary</span>
+              </div>
+              <p className="reentry-summary-text">{memorySummary}</p>
+              <small className="reentry-summary-note">Based on your recent activity</small>
+            </section>
+          )}
+
+          {!memorySummary && (
+            <section className="reentry-section reentry-section-placeholder">
+              <p className="reentry-placeholder-text">
+                Your summary will appear here as you work. Check back soon.
+              </p>
+            </section>
+          )}
+
+          {/* Recent History - AN-008 */}
+          {recentHistory.length > 0 && (
+            <section className="reentry-section">
+              <div className="reentry-section-header">
+                <span>Recent</span>
+              </div>
+              <div className="reentry-history-list">
+                {recentHistory.map((entry) => (
+                  <button
+                    key={entry.id}
+                    className="reentry-history-item"
+                    onClick={() => onRestoreHistory(entry)}
+                    title={`Restore to ${entry.noteTitle || 'this point'}`}
+                  >
+                    <span className="reentry-history-note">
+                      {entry.noteTitle || 'Untitled note'}
+                    </span>
+                    <span className="reentry-history-time">
+                      {formatRelativeTime(entry.timestamp)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Bookmarks / Pins - AN-009 */}
+          {bookmarks.length > 0 && (
+            <section className="reentry-section">
+              <div className="reentry-section-header">
+                <span>Pins</span>
+              </div>
+              <div className="reentry-bookmarks-list">
+                {bookmarks.map((bookmark) => (
+                  <button
+                    key={bookmark.id}
+                    className="reentry-bookmark-item"
+                    onClick={() => onRestoreBookmark(bookmark)}
+                    title={`Restore ${bookmark.label}`}
+                  >
+                    <span className="reentry-bookmark-icon" aria-hidden="true">📌</span>
+                    <span className="reentry-bookmark-label">{bookmark.label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Drop a Pin - AN-009 */}
+          {showPinDialog ? (
+            <div className="reentry-pin-dialog">
+              <input
+                type="text"
+                className="reentry-pin-input"
+                placeholder="Name this pin..."
+                value={pinLabel}
+                onChange={(e) => setPinLabel(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleDropPin()}
+                autoFocus
+              />
+              <div className="reentry-pin-actions">
+                <button
+                  className="ghost-button"
+                  onClick={() => setShowPinDialog(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="ghost-button primary-action"
+                  onClick={handleDropPin}
+                  disabled={!pinLabel.trim()}
+                >
+                  Save pin
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="ghost-button reentry-drop-pin"
+              onClick={() => setShowPinDialog(true)}
+            >
+              <span aria-hidden="true">📌</span>
+              Drop a pin here
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -320,12 +511,35 @@ export function RecallBand({
   recallCue,
   onAdvanceRecallCue,
   onClearRecallCue,
-  demoLinks = []
+  demoLinks = [],
+  // DG-2 Re-entry props
+  historyStack = [],
+  bookmarks = [],
+  memorySummary = null,
+  memorySummarySource = null,
+  reentryExpanded = false,
+  onToggleReentry,
+  onRestoreHistory,
+  onDropPin,
+  onRestoreBookmark
 }: RecallBandProps) {
   const focusState = describeFocusState(focusMode, focusCount);
 
   return (
     <header className="recall-band">
+      {/* Re-entry Surface - DG-2 AN-007 */}
+      <ReentrySurface
+        history={historyStack}
+        bookmarks={bookmarks}
+        memorySummary={memorySummary}
+        memorySummarySource={memorySummarySource}
+        isExpanded={reentryExpanded}
+        onToggleReentry={onToggleReentry}
+        onRestoreHistory={onRestoreHistory}
+        onDropPin={onDropPin}
+        onRestoreBookmark={onRestoreBookmark}
+      />
+
       {/* Primary Zone - Always visible */}
       <RecallBandPrimaryZone
         count={count}

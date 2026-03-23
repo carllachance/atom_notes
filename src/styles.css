@@ -5127,6 +5127,426 @@ samp,
   inset: 8px;
 }
 
+/* DG-2 AN-007/AN-008/AN-009: Re-entry Surface Styles */
+.reentry-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reentry-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 201, 111, 0.24);
+  background: rgba(24, 20, 12, 0.46);
+  color: rgba(248, 241, 225, 0.94);
+  font-size: 0.72rem;
+}
+
+.reentry-toggle:hover,
+.reentry-toggle:focus-visible {
+  border-color: rgba(242, 201, 111, 0.38);
+  background: rgba(32, 26, 16, 0.56);
+}
+
+.reentry-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(91, 112, 151, 0.18);
+  background: rgba(12, 18, 29, 0.54);
+}
+
+.reentry-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reentry-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reentry-section-header strong {
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(203, 213, 231, 0.7);
+}
+
+.reentry-history-list,
+.reentry-bookmarks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reentry-history-item,
+.reentry-bookmark-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(91, 112, 151, 0.12);
+  background: rgba(10, 15, 26, 0.36);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.reentry-history-item:hover,
+.reentry-bookmark-item:hover {
+  border-color: rgba(171, 124, 255, 0.22);
+  background: rgba(171, 124, 255, 0.06);
+}
+
+.reentry-history-item strong,
+.reentry-bookmark-item strong {
+  font-size: 0.74rem;
+  color: rgba(224, 232, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reentry-history-item span,
+.reentry-bookmark-item span {
+  font-size: 0.66rem;
+  color: rgba(150, 168, 197, 0.74);
+  white-space: nowrap;
+}
+
+.reentry-empty {
+  font-size: 0.72rem;
+  color: rgba(150, 168, 197, 0.64);
+  font-style: italic;
+}
+
+.reentry-pin-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(171, 124, 255, 0.18);
+  background: rgba(171, 124, 255, 0.06);
+}
+
+.reentry-pin-input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(89, 111, 153, 0.34);
+  background: rgba(7, 11, 20, 0.9);
+  color: #eef4ff;
+  font-size: 0.76rem;
+}
+
+.reentry-pin-input:focus {
+  outline: 1px solid rgba(171, 124, 255, 0.42);
+  box-shadow: 0 0 0 3px rgba(171, 124, 255, 0.12);
+}
+
+.reentry-memory-summary {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed rgba(91, 112, 151, 0.18);
+  background: rgba(10, 15, 26, 0.28);
+  font-size: 0.72rem;
+  color: rgba(173, 191, 219, 0.8);
+  line-height: 1.45;
+}
+
+/* DG-2 AN-015: AI State Indicator Styles */
+.ai-state-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.ai-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+}
+
+.ai-state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: ai-state-pulse 1.4s ease-in-out infinite;
+}
+
+.ai-state-idle {
+  background: rgba(95, 211, 154, 0.12);
+  color: rgba(95, 211, 154, 0.8);
+}
+
+.ai-state-idle .ai-state-dot {
+  background: rgba(95, 211, 154, 0.6);
+  animation: none;
+}
+
+.ai-state-sending {
+  background: rgba(127, 181, 255, 0.12);
+  color: rgba(127, 181, 255, 0.9);
+}
+
+.ai-state-sending .ai-state-dot {
+  background: rgba(127, 181, 255, 0.7);
+}
+
+.ai-state-receiving {
+  background: rgba(242, 201, 111, 0.12);
+  color: rgba(242, 201, 111, 0.9);
+}
+
+.ai-state-receiving .ai-state-dot {
+  background: rgba(242, 201, 111, 0.7);
+}
+
+.ai-state-streaming {
+  background: rgba(171, 124, 255, 0.15);
+  color: rgba(187, 140, 255, 0.95);
+}
+
+.ai-state-streaming .ai-state-dot {
+  background: rgba(171, 124, 255, 0.8);
+}
+
+.ai-state-review {
+  background: rgba(95, 211, 154, 0.12);
+  color: rgba(95, 211, 154, 0.9);
+}
+
+.ai-state-review .ai-state-dot {
+  background: rgba(95, 211, 154, 0.7);
+  animation: none;
+}
+
+.ai-mode-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(10, 15, 26, 0.42);
+}
+
+.ai-mode-button {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: rgba(173, 191, 219, 0.7);
+  font-size: 0.64rem;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.ai-mode-button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(224, 232, 255, 0.9);
+}
+
+.ai-mode-button.active {
+  background: rgba(171, 124, 255, 0.2);
+  color: rgba(239, 243, 255, 0.95);
+}
+
+@keyframes ai-state-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+/* DG-2 AN-013: AI Content Label Styles */
+.ai-content-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.64rem;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.ai-content-label-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+}
+
+.ai-label-generated {
+  background: rgba(171, 124, 255, 0.12);
+  color: rgba(187, 140, 255, 0.9);
+}
+
+.ai-label-inferred {
+  background: rgba(242, 201, 111, 0.12);
+  color: rgba(242, 201, 111, 0.85);
+}
+
+.ai-label-sourced {
+  background: rgba(95, 211, 154, 0.12);
+  color: rgba(95, 211, 154, 0.85);
+}
+
+.ai-primary-response {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-primary-response p {
+  margin: 0;
+  color: rgba(201, 214, 243, 0.9);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.ai-why-toggle {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: 0.7rem;
+}
+
+.ai-why-panel {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(91, 112, 151, 0.16);
+  background: rgba(10, 15, 26, 0.36);
+}
+
+.ai-why-panel ul {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-why-panel li {
+  font-size: 0.74rem;
+  color: rgba(173, 191, 219, 0.8);
+  line-height: 1.45;
+}
+
+.ai-suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-suggestion-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(91, 112, 151, 0.14);
+  background: rgba(10, 15, 26, 0.32);
+}
+
+.ai-suggestion-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ai-suggestion-card strong {
+  font-size: 0.76rem;
+  color: rgba(224, 232, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-suggestion-card span {
+  font-size: 0.68rem;
+  color: rgba(150, 168, 197, 0.74);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-suggestion-card .ghost-button {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  padding: 4px 8px;
+}
+
+/* Additional Re-entry Surface styles */
+.reentry-summary-text,
+.reentry-placeholder-text {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.reentry-placeholder-text {
+  color: rgba(150, 168, 197, 0.6);
+  font-style: italic;
+}
+
+.reentry-summary-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.64rem;
+  color: rgba(150, 168, 197, 0.7);
+}
+
+.reentry-history-note,
+.reentry-bookmark-label {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reentry-history-note {
+  flex: 1;
+}
+
+.reentry-bookmark-icon {
+  font-size: 0.75rem;
+}
+
+.reentry-pin-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.reentry-empty-state {
+  padding: 12px;
+  text-align: center;
+  color: rgba(150, 168, 197, 0.6);
+  font-size: 0.72rem;
+  font-style: italic;
+}
+
 .note-body-field,
 .inline-link-editor .note-body-field,
 .note-body-surface .markdown-projection,
