@@ -1,9 +1,72 @@
 import { normalizeOptionalTitle } from '../noteText';
 import { normalizeProjectIds } from '../projects/projectModel';
 import { normalizeAttachment } from '../attachments/attachmentModel';
-import { NoteCardModel, NoteIntent, SuggestedRelationship } from '../types';
+import { NoteCardModel, NoteIntent, NoteProvenance, NoteSourceOrigin, SuggestedRelationship, ExternalReference } from '../types';
 
 export const now = () => Date.now();
+
+/**
+ * Normalize an external reference (EPIC-006)
+ */
+export function normalizeExternalReference(raw: unknown, index: number): ExternalReference | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const candidate = raw as Partial<ExternalReference>;
+  if (typeof candidate.value !== 'string') return null;
+
+  const validKinds = ['url', 'file', 'citation', 'cross-note'];
+  const kind = validKinds.includes(candidate.kind as string) ? candidate.kind as ExternalReference['kind'] : 'url';
+
+  return {
+    id: String(candidate.id ?? `ref-${index}`),
+    kind,
+    label: String(candidate.label ?? candidate.value),
+    value: candidate.value,
+    metadata: candidate.metadata && typeof candidate.metadata === 'object' ? candidate.metadata : undefined,
+    confidence: typeof candidate.confidence === 'number' ? Math.max(0, Math.min(1, candidate.confidence)) : 0.8,
+    isInferred: Boolean(candidate.isInferred),
+    createdAt: Number(candidate.createdAt ?? now())
+  };
+}
+
+/**
+ * Normalize provenance metadata (EPIC-006)
+ */
+export function normalizeProvenance(raw: unknown): NoteProvenance | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const candidate = raw as Partial<NoteProvenance>;
+
+  const validOrigins = ['manual', 'ai-generated', 'imported', 'clipboard-paste', 'quick-capture', 'file-import'];
+  const origin = validOrigins.includes(candidate.origin as string)
+    ? candidate.origin as NoteSourceOrigin
+    : 'manual';
+
+  const externalReferences = Array.isArray(candidate.externalReferences)
+    ? candidate.externalReferences.map((ref, i) => normalizeExternalReference(ref, i)).filter(Boolean) as ExternalReference[]
+    : [];
+
+  return {
+    origin,
+    createdAt: Number(candidate.createdAt ?? now()),
+    updatedAt: Number(candidate.updatedAt ?? now()),
+    externalReferences,
+    derivedFromNoteId: typeof candidate.derivedFromNoteId === 'string' ? candidate.derivedFromNoteId : undefined,
+    aiSessionId: typeof candidate.aiSessionId === 'string' ? candidate.aiSessionId : undefined,
+    contentHash: typeof candidate.contentHash === 'string' ? candidate.contentHash : undefined
+  };
+}
+
+/**
+ * Create default provenance for a new note (EPIC-006)
+ */
+export function createProvenance(origin: NoteSourceOrigin = 'manual'): NoteProvenance {
+  const t = now();
+  return {
+    origin,
+    createdAt: t,
+    updatedAt: t,
+    externalReferences: []
+  };
+}
 
 export function inferNoteTitleAndBody(text: string): Pick<NoteCardModel, 'title' | 'body'> {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
@@ -181,6 +244,7 @@ export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: strin
     taskSource: normalizeTaskSource(note.taskSource),
     promotedTaskFragments: normalizePromotedTaskFragments(note.promotedTaskFragments),
     inferredRelationships: normalizeSuggestedRelationships(note.inferredRelationships),
-    attachments: normalizeAttachments(note.attachments)
+    attachments: normalizeAttachments(note.attachments),
+    provenance: normalizeProvenance(note.provenance)
   };
 }

@@ -165,6 +165,8 @@ export type NoteCardModel = {
   }>;
   inferredRelationships?: SuggestedRelationship[];
   attachments?: NoteAttachment[];
+  /** Provenance metadata for source tracking (EPIC-006) */
+  provenance?: NoteProvenance;
 };
 
 export type Relationship = {
@@ -290,4 +292,99 @@ export type SceneState = {
   lens: Lens;
   canvasScrollLeft: number;
   canvasScrollTop: number;
+};
+
+/**
+ * Source origin types for provenance tracking (EPIC-006)
+ */
+export type NoteSourceOrigin =
+  | 'manual'           // User typed it manually
+  | 'ai-generated'     // Created by AI
+  | 'imported'         // Imported from external source
+  | 'clipboard-paste'  // Pasted from clipboard
+  | 'quick-capture'   // Created via quick capture
+  | 'file-import';     // Imported from file attachment
+
+/**
+ * External reference types (EPIC-006)
+ */
+export type ExternalReferenceKind = 'url' | 'file' | 'citation' | 'cross-note';
+
+/**
+ * External reference with provenance metadata (EPIC-006)
+ */
+export type ExternalReference = {
+  id: string;
+  kind: ExternalReferenceKind;
+  /** Human-readable label for the reference */
+  label: string;
+  /** The actual reference value (URL, file path, citation key, note ID) */
+  value: string;
+  /** Optional metadata like page numbers, timestamps, etc. */
+  metadata?: Record<string, string>;
+  /** Confidence that this reference is valid/relevant */
+  confidence: number;
+  /** Whether this reference was inferred by AI or explicitly added */
+  isInferred: boolean;
+  createdAt: number;
+};
+
+/**
+ * Provenance metadata for a note (EPIC-006)
+ */
+export type NoteProvenance = {
+  /** Where the note content originated */
+  origin: NoteSourceOrigin;
+  /** When the note was first created */
+  createdAt: number;
+  /** When provenance was last updated */
+  updatedAt: number;
+  /** External references linked to this note */
+  externalReferences: ExternalReference[];
+  /** Optional source note if this note was derived from another */
+  derivedFromNoteId?: string;
+  /** Optional AI session ID if created during AI interaction */
+  aiSessionId?: string;
+  /** Content hash for integrity verification */
+  contentHash?: string;
+};
+
+/**
+ * Backup metadata for privacy-respecting export (EPIC-013)
+ */
+export type BackupMetadata = {
+  version: string;
+  exportedAt: number;
+  schemaVersion: number;
+  includesAttachments: boolean;
+  includesAiTranscript: boolean;
+  includesExternalReferences: boolean;
+  privacyMode: 'full' | 'redacted' | 'minimal';
+};
+
+/**
+ * Export format types (EPIC-013)
+ */
+export type ExportFormat = 'json' | 'markdown' | 'csv';
+
+/**
+ * Privacy options for export (EPIC-013)
+ */
+export type PrivacyOptions = {
+  includeAttachments: boolean;
+  includeAiTranscript: boolean;
+  includeExternalReferences: boolean;
+  includeProvenance: boolean;
+  redactTimestamps: boolean;
+  redactAiSessionIds: boolean;
+};
+
+/**
+ * Schema version for migrations (EPIC-010)
+ */
+export type SchemaVersion = {
+  major: number;
+  minor: number;
+  patch: number;
+  label?: string;
 };
