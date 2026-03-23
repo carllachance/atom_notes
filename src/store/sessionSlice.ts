@@ -4,9 +4,20 @@ import { HistoryStackEntry, StateSnapshot } from '../types/reeentory';
 
 const MAX_HISTORY_STACK = 20;
 const MAX_RECENT_NOTES = 5;
+const MAX_TRAVERSAL_HISTORY = 50;
 
 let _historyStack: HistoryStackEntry[] = [];
 let _bookmarks: StateSnapshot[] = [];
+
+// Traversal history for relationship web trail visualization
+export type TraversalEntry = {
+  id: string;
+  fromNoteId: string;
+  toNoteId: string;
+  at: number;
+};
+
+let _traversalHistory: TraversalEntry[] = [];
 const _listeners = new Set<() => void>();
 
 function notifyListeners() {
@@ -163,4 +174,47 @@ export function useHistoryStack(): HistoryStackEntry[] {
 export function useBookmarks(): StateSnapshot[] {
   const { bookmarks } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return bookmarks;
+}
+
+/**
+ * Record a note traversal for the relationship web trail
+ * Called when user navigates from one note to a related note
+ */
+export function recordTraversal(fromNoteId: string, toNoteId: string): void {
+  const entry: TraversalEntry = {
+    id: generateId(),
+    fromNoteId,
+    toNoteId,
+    at: Date.now(),
+  };
+
+  // Don't add duplicate consecutive entries
+  if (_traversalHistory.length > 0 && _traversalHistory[0].toNoteId === toNoteId) {
+    return;
+  }
+
+  _traversalHistory = [entry, ..._traversalHistory].slice(0, MAX_TRAVERSAL_HISTORY);
+  notifyListeners();
+}
+
+/**
+ * Get the traversal history for rendering memory trails
+ */
+export function getTraversalHistory(): TraversalEntry[] {
+  return _traversalHistory;
+}
+
+function getTraversalSnapshot() {
+  return {
+    traversalHistory: _traversalHistory,
+  };
+}
+
+/**
+ * React hook for traversal history
+ * Re-renders when traversal history changes
+ */
+export function useTraversalHistory(): TraversalEntry[] {
+  const { traversalHistory } = useSyncExternalStore(subscribe, getTraversalSnapshot, getTraversalSnapshot);
+  return traversalHistory;
 }
