@@ -388,3 +388,129 @@ export type SchemaVersion = {
   patch: number;
   label?: string;
 };
+
+/**
+ * Platform types for cross-platform support (EPIC-011)
+ */
+export type PlatformType = 'web' | 'mac' | 'windows' | 'linux' | 'ios' | 'android';
+
+/**
+ * Platform capabilities (EPIC-011)
+ */
+export type PlatformCapabilities = {
+  /** Native file system access */
+  fileSystem: boolean;
+  /** Native notifications */
+  notifications: boolean;
+  /** Global keyboard shortcuts */
+  globalShortcuts: boolean;
+  /** System tray integration */
+  systemTray: boolean;
+  /** Background process support */
+  backgroundProcess: boolean;
+  /** Native menus */
+  nativeMenus: boolean;
+  /** Touch/pointer input type */
+  pointerType: 'mouse' | 'touch' | 'pen' | 'mixed';
+};
+
+/**
+ * Platform configuration (EPIC-011)
+ */
+export type PlatformConfig = {
+  platform: PlatformType;
+  capabilities: PlatformCapabilities;
+  isNative: boolean;
+  version: string;
+  arch?: string;
+};
+
+/**
+ * Extension trust levels (EPIC-012)
+ */
+export type ExtensionTrustLevel = 'system' | 'trusted' | 'untrusted' | 'sandboxed';
+
+/**
+ * Extension permissions (EPIC-012)
+ */
+export type ExtensionPermission =
+  | 'read_notes'
+  | 'write_notes'
+  | 'read_relationships'
+  | 'write_relationships'
+  | 'access_ai'
+  | 'import_files'
+  | 'export_data'
+  | 'network_access'
+  | 'custom_lens';
+
+/**
+ * Extension manifest (EPIC-012)
+ */
+export type ExtensionManifest = {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  homepage?: string;
+  permissions: ExtensionPermission[];
+  trustLevel: ExtensionTrustLevel;
+  minAppVersion: string;
+  lenses?: LensExtension[];
+  entryPoint?: string;
+  enabled: boolean;
+  installedAt: number;
+};
+
+/**
+ * Lens extension definition (EPIC-012)
+ */
+export type LensExtension = {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  query: string;
+  scope?: {
+    projects?: string[];
+    workspaces?: string[];
+    tags?: string[];
+  };
+};
+
+/**
+ * Extension runtime context (EPIC-012)
+ */
+export type ExtensionContext = {
+  manifest: ExtensionManifest;
+  platform: PlatformConfig;
+  capabilities: {
+    canReadNotes: boolean;
+    canWriteNotes: boolean;
+    canAccessAI: boolean;
+    canImportFiles: boolean;
+    canExportData: boolean;
+  };
+};
+
+/**
+ * Extension error types (EPIC-012)
+ */
+export type ExtensionError = {
+  code: string;
+  message: string;
+  extensionId: string;
+  timestamp: number;
+};
+
+/**
+ * Extension lifecycle events (EPIC-012)
+ */
+export type ExtensionEvent =
+  | { type: 'enabled'; extensionId: string }
+  | { type: 'disabled'; extensionId: string }
+  | { type: 'error'; error: ExtensionError }
+  | { type: 'lens_activated'; extensionId: string; lensId: string }
+  | { type: 'permission_granted'; extensionId: string; permission: ExtensionPermission }
+  | { type: 'permission_revoked'; extensionId: string; permission: ExtensionPermission };
