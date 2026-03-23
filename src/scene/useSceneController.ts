@@ -629,7 +629,8 @@ export function useSceneController() {
       role: 'user' as const,
       mode: scene.aiPanel.mode,
       content: query,
-      createdAt: now()
+      createdAt: now(),
+      contentSource: 'user-authored' as const
     };
 
     mutations.setAIPanel({
@@ -656,7 +657,8 @@ export function useSceneController() {
         role: 'assistant' as const,
         mode: scene.aiPanel.mode,
         content: response.answer,
-        createdAt: now()
+        createdAt: now(),
+        contentSource: 'ai-generated' as const
       };
 
       setScene((prev) => {
