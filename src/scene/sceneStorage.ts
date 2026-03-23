@@ -142,9 +142,12 @@ function normalizeAIPanel(raw: Partial<AIPanelViewState> | undefined): AIPanelVi
       role: (entry?.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
       mode: entry?.mode === 'explore' || entry?.mode === 'summarize' || entry?.mode === 'act' ? entry.mode : mode,
       content: String(entry?.content ?? ''),
-      createdAt: Number(entry?.createdAt ?? now())
+      createdAt: Number(entry?.createdAt ?? now()),
+      contentSource: entry?.contentSource ?? (entry?.role === 'assistant' ? 'ai-generated' : 'user-authored')
     })).filter((entry) => entry.content.trim()) : [],
-    loading: false
+    loading: false,
+    communicationState: raw?.communicationState ?? 'idle',
+    interactionMode: raw?.interactionMode ?? 'live-stream'
   };
 }
 
