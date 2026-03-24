@@ -1,10 +1,23 @@
 /**
  * Data import/export utilities for schema migration and privacy-respecting backup (EPIC-010, EPIC-013)
+ *
+ * Privacy semantics:
+ * - includeProvenance: include provenance metadata (origin, timestamps, derivedFromNoteId)
+ * - includeExternalReferences: include external references within provenance (URLs, files, citations)
+ * - redactTimestamps: set all timestamps to 0
+ * - redactAiSessionIds: remove aiSessionId from provenance
+ *
+ * These options compose predictably:
+ * - includeProvenance=false → provenance stripped entirely
+ * - includeProvenance=true + includeExternalReferences=false → provenance retained but externalReferences=[]
+ * - redactTimestamps=true → all timestamps set to 0 (includes provenance timestamps)
+ * - redactAiSessionIds=true → aiSessionId set to undefined
  */
 import {
   BackupMetadata,
   ExportFormat,
   NoteCardModel,
+  NoteProvenance,
   PrivacyOptions,
   Project,
   Relationship,
@@ -40,6 +53,7 @@ export function isSchemaCompatible(target: SchemaVersion): boolean {
 
 /**
  * Default privacy options (EPIC-013)
+ * Rich export with provenance but no AI transcript
  */
 export const DEFAULT_PRIVACY_OPTIONS: PrivacyOptions = {
   includeAttachments: true,
@@ -52,8 +66,22 @@ export const DEFAULT_PRIVACY_OPTIONS: PrivacyOptions = {
 
 /**
  * Full privacy options (EPIC-013)
+ * All privacy features disabled - maximum data
  */
 export const FULL_PRIVACY_OPTIONS: PrivacyOptions = {
+  includeAttachments: true,
+  includeAiTranscript: true,
+  includeExternalReferences: true,
+  includeProvenance: true,
+  redactTimestamps: false,
+  redactAiSessionIds: false
+};
+
+/**
+ * Minimal privacy options (EPIC-013)
+ * Sanitized export with no sensitive metadata
+ */
+export const MINIMAL_PRIVACY_OPTIONS: PrivacyOptions = {
   includeAttachments: false,
   includeAiTranscript: false,
   includeExternalReferences: false,
@@ -63,7 +91,100 @@ export const FULL_PRIVACY_OPTIONS: PrivacyOptions = {
 };
 
 /**
+ * Derive privacy mode from options (EPIC-013)
+ *
+ * - "full": all data included, no redaction
+ * - "redacted": some metadata redacted (timestamps), but rich data intact
+ * - "minimal": sanitized export with no provenance, references, or timestamps
+ */
+export function derivePrivacyMode(options: PrivacyOptions): 'full' | 'redacted' | 'minimal' {
+  // Check if minimal mode
+  if (
+    !options.includeProvenance &&
+    !options.includeExternalReferences &&
+    !options.includeAttachments &&
+    options.redactTimestamps
+  ) {
+    return 'minimal';
+  }
+
+  // Check if timestamps are redacted
+  if (options.redactTimestamps || options.redactAiSessionIds) {
+    return 'redacted';
+  }
+
+  return 'full';
+}
+
+/**
+ * Filter provenance for export based on privacy options (EPIC-013)
+ *
+ * Privacy composition rules:
+ * - includeProvenance=false → return undefined (strip entirely)
+ * - includeProvenance=true + includeExternalReferences=false → keep provenance but set externalReferences=[]
+ * - redactTimestamps → set createdAt/updatedAt to 0
+ * - redactAiSessionIds → set aiSessionId to undefined
+ */
+export function filterProvenanceForExport(
+  provenance: NoteProvenance | undefined,
+  options: PrivacyOptions
+): NoteProvenance | undefined {
+  // Strip provenance entirely if not included
+  if (!options.includeProvenance || !provenance) {
+    return undefined;
+  }
+
+  // Build filtered provenance
+  const filtered: NoteProvenance = {
+    ...provenance,
+    // Filter external references if not included
+    externalReferences: options.includeExternalReferences
+      ? provenance.externalReferences
+      : [],
+    // Redact timestamps if requested
+    createdAt: options.redactTimestamps ? 0 : provenance.createdAt,
+    updatedAt: options.redactTimestamps ? 0 : provenance.updatedAt,
+    // Redact AI session ID if requested
+    aiSessionId: options.redactAiSessionIds ? undefined : provenance.aiSessionId
+  };
+
+  return filtered;
+}
+
+/**
+ * Filter a note for export based on privacy options (EPIC-013)
+ */
+export function filterNoteForExport(
+  note: NoteCardModel,
+  options: PrivacyOptions
+): NoteCardModel {
+  const filtered: NoteCardModel = {
+    ...note,
+    // Filter provenance
+    provenance: filterProvenanceForExport(note.provenance, options),
+    // Redact note timestamps if requested
+    createdAt: options.redactTimestamps ? 0 : note.createdAt,
+    updatedAt: options.redactTimestamps ? 0 : note.updatedAt
+  };
+
+  // Filter attachments if not included
+  if (!options.includeAttachments) {
+    filtered.attachments = [];
+  }
+
+  return filtered;
+}
+
+/**
  * Apply privacy options to scene export (EPIC-013)
+ *
+ * Composable privacy filtering:
+ * - includeProvenance: include provenance metadata
+ * - includeExternalReferences: include external references (only applies if includeProvenance=true)
+ * - redactTimestamps: set all timestamps to 0
+ * - redactAiSessionIds: remove aiSessionId
+ * - includeAttachments: include note attachments
+ * - includeAiTranscript: include AI panel transcript
  */
 function applyPrivacyOptions<T extends Partial<SceneState>>(
   scene: T,
@@ -73,47 +194,7 @@ function applyPrivacyOptions<T extends Partial<SceneState>>(
 
   // Filter notes based on privacy options
   if (Array.isArray(result.notes)) {
-    result.notes = result.notes.map((note) => {
-      const filtered = { ...note };
-
-      // Remove attachments if not included
-      if (!options.includeAttachments) {
-        filtered.attachments = [];
-      }
-
-      // Remove provenance if not included
-      if (!options.includeProvenance && filtered.provenance) {
-        filtered.provenance = {
-          ...filtered.provenance,
-          externalReferences: [],
-          aiSessionId: undefined,
-          contentHash: undefined
-        };
-      }
-
-      // Redact timestamps if requested
-      if (options.redactTimestamps) {
-        filtered.createdAt = 0;
-        filtered.updatedAt = 0;
-        if (filtered.provenance) {
-          filtered.provenance = {
-            ...filtered.provenance,
-            createdAt: 0,
-            updatedAt: 0
-          };
-        }
-      }
-
-      // Redact AI session IDs if requested
-      if (options.redactAiSessionIds && filtered.provenance) {
-        filtered.provenance = {
-          ...filtered.provenance,
-          aiSessionId: undefined
-        };
-      }
-
-      return filtered;
-    });
+    result.notes = result.notes.map((note) => filterNoteForExport(note, options));
   }
 
   // Filter AI panel transcript if not included
@@ -143,8 +224,8 @@ export function exportSceneToJson(
     schemaVersion: CURRENT_SCHEMA_VERSION.major,
     includesAttachments: options.includeAttachments,
     includesAiTranscript: options.includeAiTranscript,
-    includesExternalReferences: options.includeExternalReferences,
-    privacyMode: options.redactTimestamps ? 'redacted' : 'full'
+    includesExternalReferences: options.includeExternalReferences && options.includeProvenance,
+    privacyMode: derivePrivacyMode(options)
   };
 
   return JSON.stringify({
@@ -211,9 +292,10 @@ export function exportSceneToMarkdown(
     // Content
     lines.push('\n```\n' + note.body + '\n```\n');
 
-    // External references from provenance
-    if (options.includeExternalReferences && note.provenance?.externalReferences) {
-      const refs = note.provenance.externalReferences.filter((ref) => ref.kind === 'url');
+    // External references from provenance (respecting privacy options)
+    const filteredProvenance = filterProvenanceForExport(note.provenance, options);
+    if (filteredProvenance?.externalReferences?.length) {
+      const refs = filteredProvenance.externalReferences.filter((ref) => ref.kind === 'url');
       if (refs.length > 0) {
         lines.push('\n**References:**\n');
         for (const ref of refs) {
@@ -248,22 +330,24 @@ export function exportSceneToCsv(
   for (const note of scene.notes) {
     if (note.deleted) continue;
 
+    const filteredNote = filterNoteForExport(note, options);
+
     const row = [
-      escapeCsv(note.id),
-      escapeCsv(note.title || ''),
-      escapeCsv(note.body),
-      options.redactTimestamps ? '' : note.createdAt.toString(),
-      options.redactTimestamps ? '' : note.updatedAt.toString(),
-      escapeCsv(note.projectIds.join(';')),
-      escapeCsv(note.workspaceId || ''),
-      note.archived ? 'true' : 'false',
+      escapeCsv(filteredNote.id),
+      escapeCsv(filteredNote.title || ''),
+      escapeCsv(filteredNote.body),
+      options.redactTimestamps ? '' : filteredNote.createdAt.toString(),
+      options.redactTimestamps ? '' : filteredNote.updatedAt.toString(),
+      escapeCsv(filteredNote.projectIds.join(';')),
+      escapeCsv(filteredNote.workspaceId || ''),
+      filteredNote.archived ? 'true' : 'false',
       'false'
     ];
 
     if (options.includeProvenance) {
       row.push(
-        escapeCsv(note.provenance?.origin || 'manual'),
-        note.provenance?.externalReferences?.length ? 'true' : 'false'
+        escapeCsv(filteredNote.provenance?.origin || 'manual'),
+        filteredNote.provenance?.externalReferences?.length ? 'true' : 'false'
       );
     }
 
@@ -301,7 +385,36 @@ export function exportScene(
 }
 
 /**
+ * Generate content hash for duplicate detection (EPIC-010)
+ * NOTE: This is a non-cryptographic hash for deduplication purposes only.
+ * Do not use for security-critical integrity verification.
+ */
+function generateContentHash(content: string): string {
+  // Non-cryptographic hash for demo/dedup purposes
+  // For stronger integrity verification, use crypto.subtle.digest in production
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(16);
+}
+
+/**
+ * Check if two notes are exact duplicates (EPIC-010)
+ * Uses title + body content hash for comparison
+ */
+function isDuplicateNote(a: NoteCardModel, b: NoteCardModel): boolean {
+  // Both must have same content hash
+  const aHash = generateContentHash(`${a.title ?? ''}|${a.body}`);
+  const bHash = generateContentHash(`${b.title ?? ''}|${b.body}`);
+  return aHash === bHash;
+}
+
+/**
  * Import scene from JSON (EPIC-010)
+ * Preserves full scene state including canvas scroll position
  */
 export function importSceneFromJson(
   jsonString: string
@@ -361,8 +474,9 @@ export function importSceneFromJson(
     },
     lastCtrlTapTs: 0,
     lens: sceneData.lens || { kind: 'universe' },
-    canvasScrollLeft: 0,
-    canvasScrollTop: 0
+    // Preserve canvas scroll position from import
+    canvasScrollLeft: typeof sceneData.canvasScrollLeft === 'number' ? sceneData.canvasScrollLeft : 0,
+    canvasScrollTop: typeof sceneData.canvasScrollTop === 'number' ? sceneData.canvasScrollTop : 0
   };
 
   return { scene, metadata };
@@ -486,4 +600,25 @@ export async function importFromFile(
     default:
       return [];
   }
+}
+
+/**
+ * Filter duplicate notes based on content hash (EPIC-010)
+ * Only filters exact duplicates (same title + body)
+ * Does not filter notes with same title but different content
+ */
+export function filterDuplicateNotes(
+  newNotes: NoteCardModel[],
+  existingNotes: NoteCardModel[]
+): NoteCardModel[] {
+  // Build a set of existing note hashes for O(1) lookup
+  const existingHashes = new Set(
+    existingNotes.map((note) => generateContentHash(`${note.title ?? ''}|${note.body}`))
+  );
+
+  // Filter out notes that already exist
+  return newNotes.filter((note) => {
+    const noteHash = generateContentHash(`${note.title ?? ''}|${note.body}`);
+    return !existingHashes.has(noteHash);
+  });
 }

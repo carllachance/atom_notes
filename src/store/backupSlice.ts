@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_PRIVACY_OPTIONS,
   exportScene,
+  filterDuplicateNotes,
   importFromFile,
   importSceneFromJson,
   getSchemaVersion
@@ -158,6 +159,7 @@ export function exportWithPrivacy(
 
 /**
  * Import notes from a file (EPIC-010)
+ * Uses content hash for duplicate detection instead of title-only
  */
 export async function importNotesFromFile(
   file: File,
@@ -166,9 +168,8 @@ export async function importNotesFromFile(
 ): Promise<NoteCardModel[]> {
   const newNotes = await importFromFile(file, z);
 
-  // Check for duplicates by title
-  const existingTitles = new Set(existingNotes.map((n) => n.title?.toLowerCase()));
-  const uniqueNewNotes = newNotes.filter((n) => !existingTitles.has(n.title?.toLowerCase()));
+  // Use content hash-based duplicate filtering
+  const uniqueNewNotes = filterDuplicateNotes(newNotes, existingNotes);
 
   _lastImportTime = now();
   _importCount++;
@@ -179,9 +180,10 @@ export async function importNotesFromFile(
 
 /**
  * Import full scene from JSON backup (EPIC-010)
+ * Returns complete scene state for full restore workflows
  */
 export function importFullSceneFromJson(jsonString: string): {
-  notes: NoteCardModel[];
+  scene: SceneState;
   metadata?: import('../types').BackupMetadata;
 } {
   const { scene, metadata } = importSceneFromJson(jsonString);
@@ -190,7 +192,7 @@ export function importFullSceneFromJson(jsonString: string): {
   _importCount++;
   notifyListeners();
 
-  return { notes: scene.notes, metadata };
+  return { scene, metadata };
 }
 
 /**
