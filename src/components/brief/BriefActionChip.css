@@ -4,9 +4,9 @@
   gap: var(--space-xs);
   padding: 4px var(--space-sm);
   border-radius: var(--radius-chip);
-  border: 1px solid rgba(123, 104, 238, 0.30);
-  background: rgba(123, 104, 238, 0.08);
-  color: rgba(123, 104, 238, 0.85);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface-2));
+  color: color-mix(in srgb, var(--accent-primary) 72%, var(--text-primary));
   font-family: var(--font-stack);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
@@ -19,12 +19,12 @@
 }
 
 .brief-action-chip:hover {
-  background: rgba(123, 104, 238, 0.16);
-  border-color: rgba(123, 104, 238, 0.55);
-  color: rgba(123, 104, 238, 1.0);
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface-3));
+  border-color: color-mix(in srgb, var(--accent-primary) 68%, var(--line-strong));
+  color: var(--text-primary);
 }
 
 .brief-action-chip:active {
-  background: rgba(123, 104, 238, 0.24);
+  background: color-mix(in srgb, var(--accent-soft) 82%, var(--surface-3));
   transform: scale(0.97);
 }

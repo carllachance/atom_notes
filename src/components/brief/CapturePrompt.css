@@ -7,7 +7,7 @@
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(232, 228, 220, 0.15);
+  border-bottom: 1px solid var(--line-subtle);
   color: var(--text-primary);
   font-family: var(--font-stack);
   font-size: var(--font-size-lg);
@@ -27,7 +27,7 @@
 }
 
 .capture-prompt__input:focus {
-  border-bottom-color: rgba(123, 104, 238, 0.5);
+  border-bottom-color: var(--accent-focus);
 }
 
 .capture-prompt__hint {
