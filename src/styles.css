@@ -15,10 +15,10 @@ body,
   --note-body-color: var(--text-secondary);
   --note-body-strong-color: var(--text-primary);
   --note-trace-font-size: 0.73rem;
-  --note-hover-border: rgba(232, 228, 220, 0.18);
-  --note-hover-glow: rgba(123, 104, 238, 0.24);
-  color: var(--text-primary);
-  background: var(--canvas-bg);
+  --note-hover-border: var(--rule-dark-strong);
+  --note-hover-glow: rgba(110, 78, 116, 0.22);
+  color: var(--text-primary-dark);
+  background: var(--bg-app);
 }
 
 * {
@@ -27,7 +27,7 @@ body,
 
 body {
   margin: 0;
-  background: var(--canvas-bg);
+  background: var(--bg-app);
 }
 
 button,
@@ -58,9 +58,8 @@ textarea {
   gap: 10px 12px;
   padding: 6px 8px;
   border-radius: 18px;
-  border: 1px solid rgba(62, 76, 108, 0.2);
-  background: rgba(10, 15, 26, 0.3);
-  backdrop-filter: blur(4px);
+  border: 1px solid var(--rule-dark);
+  background: color-mix(in srgb, var(--bg-shell) 84%, transparent);
 }
 
 .recall-band button,
@@ -90,21 +89,21 @@ textarea {
   max-width: min(100%, 320px);
   padding: 7px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(242, 201, 111, 0.24);
-  background: rgba(24, 20, 12, 0.46);
-  color: rgba(248, 241, 225, 0.94);
-  box-shadow: 0 6px 18px rgba(15, 12, 7, 0.08);
+  border: 1px solid color-mix(in srgb, var(--accent-brass) 42%, transparent);
+  background: color-mix(in srgb, var(--bg-shell) 78%, transparent);
+  color: var(--text-primary-dark);
+  box-shadow: var(--shadow-xs);
 }
 
 .recall-resume-chip:hover,
 .recall-resume-chip:focus-visible {
-  border-color: rgba(242, 201, 111, 0.34);
-  background: rgba(30, 24, 14, 0.62);
+  border-color: color-mix(in srgb, var(--accent-brass) 55%, transparent);
+  background: color-mix(in srgb, var(--bg-panel) 84%, transparent);
 }
 
 .recall-resume-chip__label {
   font-size: 0.72rem;
-  color: rgba(242, 201, 111, 0.9);
+  color: color-mix(in srgb, var(--accent-brass) 85%, var(--text-primary-dark) 15%);
   white-space: nowrap;
 }
 
@@ -399,7 +398,7 @@ textarea {
   border-radius: 999px;
   background: rgba(242, 201, 111, 0.15);
   border: 1px solid rgba(242, 201, 111, 0.25);
-  color: rgba(242, 201, 111, 0.9);
+  color: color-mix(in srgb, var(--accent-brass) 85%, var(--text-primary-dark) 15%);
   font-size: 0.7rem;
   margin-left: 4px;
 }
@@ -517,7 +516,7 @@ textarea {
   min-height: 0;
   overflow: auto;
   border-radius: 14px;
-  background: var(--canvas-bg);
+  background: var(--bg-app);
 }
 
 .spatial-canvas::before {
@@ -4827,7 +4826,7 @@ samp,
 .project-membership-row--attention strong,
 .project-membership-row--attention small,
 .relations-empty--attention {
-  color: rgba(242, 201, 111, 0.9);
+  color: color-mix(in srgb, var(--accent-brass) 85%, var(--text-primary-dark) 15%);
 }
 
 .project-membership-row--empty strong,
@@ -5312,7 +5311,7 @@ samp,
 
 .ai-state-receiving {
   background: rgba(242, 201, 111, 0.12);
-  color: rgba(242, 201, 111, 0.9);
+  color: color-mix(in srgb, var(--accent-brass) 85%, var(--text-primary-dark) 15%);
 }
 
 .ai-state-receiving .ai-state-dot {
