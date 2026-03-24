@@ -11,6 +11,8 @@ import {
 } from '../types';
 import {
   DEFAULT_PRIVACY_OPTIONS,
+  FULL_PRIVACY_OPTIONS,
+  MINIMAL_PRIVACY_OPTIONS,
   exportScene,
   filterDuplicateNotes,
   importFromFile,
@@ -137,22 +139,8 @@ export function exportWithPrivacy(
   mode: 'full' | 'minimal'
 ): void {
   const options: Partial<PrivacyOptions> = mode === 'minimal'
-    ? {
-        includeAttachments: false,
-        includeAiTranscript: false,
-        includeExternalReferences: false,
-        includeProvenance: false,
-        redactTimestamps: true,
-        redactAiSessionIds: true
-      }
-    : {
-        includeAttachments: true,
-        includeAiTranscript: true,
-        includeExternalReferences: true,
-        includeProvenance: true,
-        redactTimestamps: false,
-        redactAiSessionIds: false
-      };
+    ? MINIMAL_PRIVACY_OPTIONS
+    : FULL_PRIVACY_OPTIONS;
 
   exportSceneToFile(scene, 'json', options);
 }
@@ -186,6 +174,9 @@ export function importFullSceneFromJson(jsonString: string): {
   scene: SceneState;
   metadata?: import('../types').BackupMetadata;
 } {
+  // importSceneFromJson restores durable scene state from backup payload,
+  // but intentionally resets ephemeral runtime interaction fields
+  // (e.g. drag/tap state and active selection) to safe defaults.
   const { scene, metadata } = importSceneFromJson(jsonString);
 
   _lastImportTime = now();
