@@ -8162,11 +8162,12 @@ body {
 }
 
 .recall-band {
-  border: 1px solid var(--line-subtle);
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 68%, transparent);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-1) 84%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 90%, transparent);
   backdrop-filter: blur(8px);
-  box-shadow: var(--glow-soft);
+  box-shadow: 0 10px 24px rgba(11, 8, 14, 0.28);
+  justify-content: space-between;
 }
 
 .workspace-shell {
@@ -8201,10 +8202,10 @@ body {
 .capture-composer,
 .capture-composer-shell,
 .capture-composer--compact-bar {
-  border: 1px solid var(--line-subtle);
-  background: color-mix(in srgb, var(--surface-1) 92%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 62%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 95%, var(--bg-panel));
   border-radius: 16px;
-  box-shadow: 0 10px 26px rgba(3, 6, 12, 0.34);
+  box-shadow: 0 8px 20px rgba(13, 10, 16, 0.24);
 }
 
 .home-surface__panel-head strong,
@@ -8220,13 +8221,13 @@ body {
 .home-surface__capture-head p,
 .capture-composer header small,
 .capture-composer footer span {
-  color: var(--text-secondary);
+  color: color-mix(in srgb, var(--text-secondary) 90%, var(--text-primary));
 }
 
 .home-surface__note-row {
   border-radius: 12px;
   border: 1px solid transparent;
-  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 54%, transparent);
 }
 
 .home-surface__note-row:hover,
@@ -8248,7 +8249,7 @@ body {
 .home-surface__empty-prompt,
 .capture-composer textarea::placeholder,
 .capture-composer__compact-row input::placeholder {
-  color: var(--text-secondary);
+  color: color-mix(in srgb, var(--text-secondary) 88%, var(--text-primary) 12%);
 }
 
 .canvas-dim {
@@ -8355,9 +8356,9 @@ body {
 .reveal-controls .ghost-button,
 .project-reveal-controls .ghost-button,
 .ghost-button.filters-toggle {
-  border-color: var(--line-subtle);
-  background: color-mix(in srgb, var(--surface-2) 84%, transparent);
-  color: var(--text-secondary);
+  border-color: color-mix(in srgb, var(--line-subtle) 62%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 74%, transparent);
+  color: color-mix(in srgb, var(--text-secondary) 92%, var(--text-primary));
 }
 
 .ghost-button:hover,
@@ -8400,7 +8401,7 @@ body {
 .link-suggestions-dock-panel,
 .link-suggestions-dock-toggle {
   border-color: var(--line-subtle);
-  background: color-mix(in srgb, var(--surface-1) 88%, var(--bg-panel));
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--bg-panel));
 }
 
 .focus-count-chip,
@@ -8424,12 +8425,16 @@ body {
 }
 
 .ai-panel {
-  --horizon-paper: var(--surface-1);
+  --horizon-paper: color-mix(in srgb, var(--surface-1) 92%, #291f2c 8%);
 }
 
 .ai-panel-shell {
-  border-left: 1px solid var(--line-subtle);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-1) 94%, var(--bg-panel)), color-mix(in srgb, var(--surface-2) 94%, var(--bg-canvas)));
+  border-left: 1px solid color-mix(in srgb, var(--line-subtle) 56%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-1) 90%, #261f29 10%),
+    color-mix(in srgb, var(--surface-2) 88%, #231d24 12%)
+  );
 }
 
 .ai-panel-toggle,
@@ -8451,6 +8456,126 @@ body {
 .ai-primary-response p,
 .ai-why-panel li {
   color: var(--text-secondary);
+}
+
+.recall-band__primary-zone {
+  gap: 10px;
+}
+
+.recall-band__note-count {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.recall-band__note-count .count-value {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.reentry-toggle {
+  border: none;
+  background: transparent;
+  padding-inline: 4px 8px;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.reentry-toggle .reentry-icon {
+  color: var(--text-muted);
+}
+
+.reentry-toggle:hover,
+.reentry-toggle:focus-visible {
+  background: color-mix(in srgb, var(--surface-2) 46%, transparent);
+  border-color: transparent;
+}
+
+.reentry-panel {
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 56%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 94%, #271f2a 6%);
+  box-shadow: 0 16px 26px rgba(8, 6, 10, 0.24);
+}
+
+.reentry-section {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.reentry-history-list,
+.reentry-bookmarks-list {
+  gap: 4px;
+}
+
+.reentry-history-item,
+.reentry-bookmark-item {
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--surface-2) 44%, transparent);
+}
+
+.reentry-history-item:hover,
+.reentry-bookmark-item:hover {
+  border-color: color-mix(in srgb, var(--line-subtle) 46%, transparent);
+  background: color-mix(in srgb, var(--surface-3) 56%, transparent);
+}
+
+.focus-state-indicator {
+  align-items: flex-start;
+  gap: 2px 8px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 45%, transparent);
+  border-radius: 10px;
+}
+
+.focus-state-indicator strong {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.focus-state-indicator small {
+  display: block;
+  width: 100%;
+  color: color-mix(in srgb, var(--text-muted) 95%, var(--text-secondary));
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.recall-demo-link {
+  margin-left: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--line-subtle) 70%, transparent);
+  text-underline-offset: 2px;
+}
+
+.capture-composer {
+  border-color: color-mix(in srgb, var(--line-subtle) 56%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 90%, #2b222a 10%);
+  box-shadow: 0 10px 20px rgba(14, 10, 15, 0.2);
+}
+
+.capture-composer__compact-row input,
+.capture-composer textarea {
+  border-color: color-mix(in srgb, var(--line-subtle) 42%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 88%, #2c232b 12%);
+}
+
+.capture-composer__actions .ghost-button,
+.capture-composer__compact-row .ghost-button {
+  border-color: color-mix(in srgb, var(--line-subtle) 48%, transparent);
+}
+
+.capture-composer__compact-row .tertiary-action {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding-inline: 4px;
 }
 
 @media (max-width: 1200px) {
