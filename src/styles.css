@@ -6850,52 +6850,25 @@ samp,
 }
 
 .home-surface__resume {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  gap: 10px;
 }
 
-.home-surface__resume-chip,
-.home-surface__empty-prompt {
-  display: inline-grid;
-  gap: 4px;
-  padding: 10px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(84, 103, 145, 0.2);
-  background: rgba(10, 15, 26, 0.52);
-  color: #e6eefc;
-  text-align: left;
+.home-surface__resume-head h1 {
+  margin: 0;
+  font-size: clamp(1.08rem, 1rem + 0.38vw, 1.34rem);
+  font-weight: 560;
+  letter-spacing: -0.01em;
 }
 
-.home-surface__resume-chip {
-  cursor: pointer;
-}
-
-.home-surface__resume-chip:hover,
-.home-surface__resume-chip:focus-visible {
-  border-color: rgba(118, 138, 184, 0.34);
-}
-
-.home-surface__resume-label {
-  font-size: 0.67rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.home-surface__resume-head p {
+  margin: 4px 0 0;
+  font-size: 0.84rem;
   color: #9fb2da;
 }
 
-.home-surface__resume-popover {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  width: min(460px, calc(100vw - 56px));
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 18px;
-  border: 1px solid rgba(84, 103, 145, 0.2);
-  background: rgba(10, 15, 26, 0.94);
-  box-shadow: 0 18px 34px rgba(3, 6, 10, 0.24);
-  z-index: 2;
+.home-surface__resume-list {
+  margin-top: 4px;
 }
 
 .home-surface__empty-prompt {
@@ -7173,9 +7146,6 @@ samp,
     grid-template-columns: 56px minmax(0, 1fr);
   }
 
-  .home-surface__resume-popover {
-    width: min(100%, calc(100vw - 36px));
-  }
 }
 
 @media (max-width: 720px) {
@@ -8196,8 +8166,6 @@ body {
 }
 
 .home-surface__panel,
-.home-surface__resume-popover,
-.home-surface__resume-chip,
 .home-surface__empty-prompt,
 .capture-composer,
 .capture-composer-shell,
@@ -8209,13 +8177,13 @@ body {
 }
 
 .home-surface__panel-head strong,
-.home-surface__resume-chip strong,
+.home-surface__resume-head h1,
 .home-surface__capture-head h1 {
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
-.home-surface__resume-label,
+.home-surface__resume-head p,
 .home-surface__panel-head p,
 .home-surface__note-row small,
 .home-surface__capture-head p,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
 import { NoteCardModel } from '../types';
 
@@ -46,25 +46,18 @@ export function HomeSurface({
 }: HomeSurfaceProps) {
   const openWork = useMemo(() => summarizeOpenWork(notes), [notes]);
   const recentNotes = useMemo(() => summarizeRecentNotes(notes, lastCreatedNoteId), [notes, lastCreatedNoteId]);
-  const [showResume, setShowResume] = useState(true);
-
   const resumeItems = [...recentNotes.slice(0, 3), ...openWork.filter((note) => !recentNotes.some((recent) => recent.id === note.id)).slice(0, 2)].slice(0, 5);
   const leadResume = resumeItems[0] ?? null;
 
   return (
     <section className="home-surface home-surface--light" aria-label="Workspace overview">
       <section className="home-surface__resume" aria-label="Where was I">
-        <button
-          type="button"
-          className="home-surface__resume-chip"
-          onClick={() => setShowResume((current) => !current)}
-          aria-expanded={showResume}
-        >
-          <span className="home-surface__resume-label">Where was I?</span>
-          <strong>{leadResume ? getCompactDisplayTitle(leadResume, 52) : 'Pick up your latest thread'}</strong>
-        </button>
-        {showResume && resumeItems.length ? (
-          <div className="home-surface__resume-popover">
+        <header className="home-surface__resume-head">
+          <h1>{leadResume ? getCompactDisplayTitle(leadResume, 60) : 'Pick up your latest thread'}</h1>
+          {leadResume ? <p>{leadResume.kicker} · continue where momentum was last highest.</p> : null}
+        </header>
+        {resumeItems.length ? (
+          <div className="home-surface__list home-surface__resume-list">
             {resumeItems.map((note) => (
               <button key={note.id} type="button" className="home-surface__note-row" onClick={() => onOpenNote(note.id)}>
                 <div>
