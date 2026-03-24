@@ -1,95 +1,162 @@
-/* Design token system — single source of truth for all visual values */
+/* Design token system — premium editorial notebook language */
 
 :root {
-  /* App-wide foundation palette (cool dark slate + restrained accents) */
-  --bg-app: #090d16;
-  --bg-canvas: #0d1320;
-  --bg-panel: #111b2d;
-  --surface-1: #172237;
-  --surface-2: #1d2940;
-  --surface-3: #24324b;
+  /* Core surfaces */
+  --bg-app: #161416;
+  --bg-shell: #1d1a1e;
+  --bg-canvas: #211d22;
+  --bg-paper: #eae3d6;
+  --bg-paper-soft: #ddd4c6;
+  --bg-paper-muted: #cfc5b7;
+  --bg-panel: #2a242b;
+  --bg-panel-soft: #312a32;
 
-  /* Backward-compatible surface aliases */
+  /* Backward-compatible aliases */
   --canvas-bg: var(--bg-app);
   --canvas-bg-warm: var(--bg-canvas);
-  --note-card-bg: var(--surface-1);
-  --note-card-bg-hover: var(--surface-2);
+  --note-card-bg: var(--bg-panel);
+  --note-card-bg-hover: var(--bg-panel-soft);
   --modal-bg: var(--bg-panel);
-  --modal-backdrop: rgba(9, 8, 11, 0.85);
+  --modal-backdrop: rgba(22, 20, 22, 0.78);
+  --surface-1: var(--bg-panel);
+  --surface-2: var(--bg-panel-soft);
+  --surface-3: #3a313b;
 
-  /* Text */
-  --text-primary: #e8edf8;
-  --text-secondary: #b8c2db;
-  --text-muted: #8a95b0;
-  --text-tertiary: var(--text-muted);
-  --text-placeholder: #6b7691;
+  /* Text on dark */
+  --text-primary-dark: #f2ece3;
+  --text-secondary-dark: #c9bfb2;
+  --text-muted-dark: #9a9087;
 
-  /* Interaction */
-  --accent-primary: #8e7bff;
-  --accent-soft: rgba(142, 123, 255, 0.2);
-  --accent-focus: #5d7dff;
-  --accent-focus-soft: rgba(93, 125, 255, 0.24);
+  /* Text on paper */
+  --text-primary-paper: #2a2420;
+  --text-secondary-paper: #5d554d;
+  --text-muted-paper: #857b72;
 
-  /* Semantics */
-  --masked-send: #c78c2a;
-  --masked-send-soft: rgba(199, 140, 42, 0.24);
-  --success: #4fb989;
-  --warning: #d9a34b;
-  --danger: #de6b75;
+  /* Backward-compatible text aliases */
+  --text-primary: var(--text-primary-dark);
+  --text-secondary: var(--text-secondary-dark);
+  --text-muted: var(--text-muted-dark);
+  --text-tertiary: var(--text-muted-dark);
+  --text-placeholder: #82786f;
 
-  /* Border and elevation helpers */
-  --line-subtle: rgba(154, 172, 212, 0.2);
-  --line-strong: rgba(154, 172, 212, 0.36);
-  --glow-soft: 0 10px 28px rgba(5, 8, 14, 0.48);
+  /* Accent palette */
+  --accent-plum: #6e4e74;
+  --accent-forest: #536b58;
+  --accent-brass: #8c6f4a;
+  --accent-ink-blue: #465468;
+  --accent-wine: #6a4348;
+
+  /* Interaction aliases */
+  --accent-primary: var(--accent-plum);
+  --accent-soft: rgba(110, 78, 116, 0.2);
+  --accent-focus: #7c5a84;
+  --accent-focus-soft: rgba(110, 78, 116, 0.24);
+
+  /* Semantic states */
+  --state-grounded: #5a745f;
+  --state-uncertain: #8a7452;
+  --state-orphaned: #7a4d52;
+  --state-masked: #6c5a7c;
+  --state-active: #56706d;
+  --state-waiting: #7a684d;
+
+  /* Backward-compatible semantics */
+  --masked-send: var(--state-masked);
+  --masked-send-soft: rgba(108, 90, 124, 0.24);
+  --success: var(--state-grounded);
+  --warning: var(--state-uncertain);
+  --danger: var(--state-orphaned);
+
+  /* Border/rule tokens */
+  --rule-dark: rgba(242, 236, 227, 0.1);
+  --rule-dark-strong: rgba(242, 236, 227, 0.16);
+  --rule-paper: rgba(42, 36, 32, 0.12);
+  --rule-paper-strong: rgba(42, 36, 32, 0.2);
+
+  /* Backward-compatible border aliases */
+  --line-subtle: var(--rule-dark);
+  --line-strong: var(--rule-dark-strong);
+  --glow-soft: 0 10px 24px rgba(0, 0, 0, 0.2);
 
   /* Relationship arc colors */
-  --rel-task: #72b986;
-  --rel-reference: #8e7bff;
-  --rel-conceptual: #67a7ff;
-  --rel-conflict: #de6b75;
-  --rel-lineage: #d9a34b;
-  --rel-inferred: #7a869f;
+  --rel-task: #536b58;
+  --rel-reference: #6e4e74;
+  --rel-conceptual: #465468;
+  --rel-conflict: #6a4348;
+  --rel-lineage: #8c6f4a;
+  --rel-inferred: #7f756c;
 
   /* Note luminosity range */
-  --note-lum-max: 1.0;
-  --note-lum-mid: 0.65;
-  --note-lum-low: 0.35;
-  --note-lum-min: 0.18;
+  --note-lum-max: 1;
+  --note-lum-mid: 0.68;
+  --note-lum-low: 0.4;
+  --note-lum-min: 0.2;
 
-  /* Spacing */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 40px;
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Backward-compatible spacing aliases */
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-4);
+  --space-lg: var(--space-6);
+  --space-xl: var(--space-10);
   --space-2xl: 64px;
 
-  /* Motion */
-  --transition-fast: 150ms ease-out;
-  --transition-base: 250ms ease-out;
-  --transition-slow: 400ms ease-out;
+  /* Motion (restrained) */
+  --transition-fast: 120ms ease-out;
+  --transition-base: 180ms ease-out;
+  --transition-slow: 240ms ease-out;
   --pulse-duration: 4s;
 
-  /* Radii */
-  --radius-note: 12px;
-  --radius-chip: 20px;
-  --radius-modal: 16px;
+  /* Elevation */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.24);
 
-  /* Typography — font stacks */
-  --font-stack: 'Lexend', -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 
-  /* Font sizes */
-  --font-size-xs: 11px;
+  /* Backward-compatible radii */
+  --radius-note: var(--radius-md);
+  --radius-chip: 999px;
+  --radius-modal: var(--radius-lg);
+
+  /* Typography */
+  --font-ui: 'Inter', 'SF Pro Text', system-ui, sans-serif;
+  --font-editorial: 'Iowan Old Style', 'Georgia', serif;
+  --font-stack: var(--font-ui);
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --font-size-xs: 12px;
   --font-size-sm: 13px;
   --font-size-base: 15px;
   --font-size-lg: 18px;
   --font-size-xl: 24px;
   --font-size-2xl: 32px;
 
-  /* Font weights */
-  --font-weight-light: 300;
+  --font-weight-light: 400;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
+
+  --tracking-label: 0.08em;
+  --tracking-tight: -0.02em;
+
+  /* Material texture helpers (subtle defaults) */
+  --texture-shell: linear-gradient(0deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.015));
+  --texture-paper: linear-gradient(0deg, rgba(42, 36, 32, 0.015), rgba(42, 36, 32, 0.015));
+  --texture-canvas: linear-gradient(0deg, rgba(242, 236, 227, 0.03), rgba(242, 236, 227, 0.03));
 }
