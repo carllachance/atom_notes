@@ -8096,7 +8096,7 @@ body,
 }
 
 .expanded-note {
-  width: min(760px, calc(100vw - var(--thinking-rail-reserved, 24px) - 80px));
+  width: min(960px, calc(100vw - var(--thinking-rail-reserved, 24px) - 56px));
   max-width: calc(100vw - var(--thinking-rail-reserved, 24px) - 36px);
   pointer-events: auto;
 }

@@ -9,6 +9,14 @@ type ThinkingSuggestion = {
   meta: string;
 };
 
+function toDisplayText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map((item) => toDisplayText(item)).filter(Boolean).join(' ');
+  if (value && typeof value === 'object' && 'text' in value) return toDisplayText((value as { text: unknown }).text);
+  return '';
+}
+
 // DG-2 AN-015: AI Communication State Indicator
 function AIStateIndicator({
   state,
@@ -120,7 +128,9 @@ function latestAssistantMessage(panel: AIPanelViewState) {
 function summarizeTimeline(entries: InsightTimelineEntry[], noteId: string | null) {
   const noteEntries = noteId ? entries.filter((entry) => entry.noteId === noteId) : entries;
   const latest = [...noteEntries].sort((a, b) => b.createdAt - a.createdAt)[0];
-  return latest ? `${latest.title}: ${latest.detail}` : '';
+  const title = toDisplayText(latest?.title);
+  const detail = toDisplayText(latest?.detail);
+  return latest ? [title, detail].filter(Boolean).join(': ') : '';
 }
 
 function placeholderForMode(mode: AIInteractionMode, selectedNote: NoteCardModel | null) {
@@ -136,14 +146,14 @@ function buildSuggestions(
   fallbackLabel: string
 ): ThinkingSuggestion[] {
   const notesById = new Map(notes.map((note) => [note.id, note]));
-  const responseSuggestions = response?.results
+  const responseSuggestions = (response?.results ?? [])
     .map((result) => {
       const note = notesById.get(result.noteId);
       if (!note) return null;
       return {
         id: note.id,
         title: note.title ?? 'Untitled note',
-        meta: result.reasons[0] ?? fallbackLabel
+        meta: toDisplayText(result.reasons?.[0]) || fallbackLabel
       } satisfies ThinkingSuggestion;
     })
     .filter((entry): entry is ThinkingSuggestion => Boolean(entry))
@@ -178,7 +188,7 @@ export function AIPanel({
   const activeResponse = streamedResponse ?? panel.response;
   const lastAssistant = latestAssistantMessage(panel);
   const timelineSummary = summarizeTimeline(timelineEntries, selectedNote?.id ?? null);
-  const primaryMessage = activeResponse?.answer || (streaming ? 'Thinking through the local context…' : lastAssistant?.content) || '';
+  const primaryMessage = toDisplayText(activeResponse?.answer) || (streaming ? 'Thinking through the local context…' : toDisplayText(lastAssistant?.content)) || '';
 
   // DG-2 AN-015: Derive communication state from panel state
   const communicationState: AICommunicationState = streaming
@@ -194,7 +204,11 @@ export function AIPanel({
   const whyBullets = useMemo(() => {
     const bullets = [
       timelineSummary,
-      ...((activeResponse?.sections ?? []).map((section) => `${section.title}: ${section.body}`))
+      ...((activeResponse?.sections ?? []).map((section) => {
+        const sectionTitle = toDisplayText(section.title);
+        const sectionBody = toDisplayText(section.body);
+        return [sectionTitle, sectionBody].filter(Boolean).join(': ');
+      }))
     ].filter(Boolean);
     return bullets.slice(0, 3);
   }, [activeResponse?.sections, timelineSummary]);
