@@ -10,6 +10,7 @@ const NOTE_WIDTH = 270;
 const NOTE_HEIGHT = 170;
 const RECENT_CLOSE_CLEAR_MS = 2200;
 const PULSE_CLEAR_MS = 900;
+const VIEWPORT_CENTER_EPSILON = 0.5;
 
 type CanvasCenter = { x: number; y: number };
 type RecenterTarget = { x: number; y: number; requestId: number };
@@ -153,7 +154,12 @@ export function useAmbientGuidance({ visibleNotes, visibleNoteIds, relationships
   }, [animateAmbientGlow]);
 
   const onViewportCenterChange = useCallback((x: number, y: number) => {
-    setRecentViewportCenter({ x, y });
+    setRecentViewportCenter((current) => {
+      if (current && Math.abs(current.x - x) < VIEWPORT_CENTER_EPSILON && Math.abs(current.y - y) < VIEWPORT_CENTER_EPSILON) {
+        return current;
+      }
+      return { x, y };
+    });
   }, []);
 
   const onNoteOpened = useCallback(

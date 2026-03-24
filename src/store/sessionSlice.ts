@@ -151,11 +151,24 @@ function subscribe(callback: () => void) {
   return () => _listeners.delete(callback);
 }
 
+type ReentrySnapshot = {
+  history: HistoryStackEntry[];
+  bookmarks: StateSnapshot[];
+};
+
+let _reentrySnapshot: ReentrySnapshot = {
+  history: _historyStack,
+  bookmarks: _bookmarks,
+};
+
 function getSnapshot() {
-  return {
-    history: _historyStack,
-    bookmarks: _bookmarks,
-  };
+  if (_reentrySnapshot.history !== _historyStack || _reentrySnapshot.bookmarks !== _bookmarks) {
+    _reentrySnapshot = {
+      history: _historyStack,
+      bookmarks: _bookmarks,
+    };
+  }
+  return _reentrySnapshot;
 }
 
 /**
@@ -219,10 +232,17 @@ export function clearTraversalHistory(): void {
 }
 
 function getTraversalSnapshot() {
-  return {
-    traversalHistory: _traversalHistory,
-  };
+  if (_traversalSnapshot.traversalHistory !== _traversalHistory) {
+    _traversalSnapshot = {
+      traversalHistory: _traversalHistory,
+    };
+  }
+  return _traversalSnapshot;
 }
+
+let _traversalSnapshot: { traversalHistory: TraversalEntry[] } = {
+  traversalHistory: _traversalHistory,
+};
 
 /**
  * React hook for traversal history

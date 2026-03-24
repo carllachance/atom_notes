@@ -22,6 +22,7 @@ const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
 const NOTE_HEIGHT = 170;
 const AI_STREAM_STEP_MS = 26;
+const VIEWPORT_CENTER_EPSILON = 0.5;
 
 function getNoteCenter(note: { x: number; y: number }) {
   return { x: note.x + NOTE_WIDTH / 2, y: note.y + NOTE_HEIGHT / 2 };
@@ -366,9 +367,14 @@ export function useSceneController() {
   const revealMatchedNoteIds = [...new Set([...visibleRevealMatchIds, ...highlightedNoteIds])];
 
   const onViewportCenterChange = useCallback((x: number, y: number) => {
-    setViewportCenter({ x, y });
+    setViewportCenter((current) => {
+      if (Math.abs(current.x - x) < VIEWPORT_CENTER_EPSILON && Math.abs(current.y - y) < VIEWPORT_CENTER_EPSILON) {
+        return current;
+      }
+      return { x, y };
+    });
     ambient.onViewportCenterChange(x, y);
-  }, [ambient]);
+  }, [ambient.onViewportCenterChange]);
 
   const onRevealQueryChange = useCallback((query: string) => {
     setScene((prev) => {
