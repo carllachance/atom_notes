@@ -103,7 +103,9 @@ export function derivePrivacyMode(options: PrivacyOptions): 'full' | 'redacted' 
     !options.includeProvenance &&
     !options.includeExternalReferences &&
     !options.includeAttachments &&
-    options.redactTimestamps
+    !options.includeAiTranscript &&
+    options.redactTimestamps &&
+    options.redactAiSessionIds
   ) {
     return 'minimal';
   }
@@ -402,14 +404,11 @@ function generateContentHash(content: string): string {
 }
 
 /**
- * Check if two notes are exact duplicates (EPIC-010)
- * Uses title + body content hash for comparison
+ * Build duplicate-comparison key for a note (EPIC-010)
+ * Exact duplicate means same effective title + same body.
  */
-function isDuplicateNote(a: NoteCardModel, b: NoteCardModel): boolean {
-  // Both must have same content hash
-  const aHash = generateContentHash(`${a.title ?? ''}|${a.body}`);
-  const bHash = generateContentHash(`${b.title ?? ''}|${b.body}`);
-  return aHash === bHash;
+function getDuplicateNoteKey(note: NoteCardModel): string {
+  return generateContentHash(`${note.title ?? ''}|${note.body}`);
 }
 
 /**
@@ -453,6 +452,11 @@ export function importSceneFromJson(
     : [];
 
   const scene: SceneState = {
+    // Durable scene data is restored from backup payload (notes/relationships/projects/workspaces,
+    // plus stable view state such as canvas scroll and lens).
+    // Ephemeral runtime interaction state is intentionally reset so import opens in a safe baseline:
+    // - isDragging and activeNoteId reset to avoid stale interaction handles
+    // - lastCtrlTapTs reset to avoid carrying gesture timing between sessions
     notes: normalizedNotes,
     relationships: normalizedRelationships,
     projects: normalizedProjects,
@@ -474,7 +478,7 @@ export function importSceneFromJson(
     },
     lastCtrlTapTs: 0,
     lens: sceneData.lens || { kind: 'universe' },
-    // Preserve canvas scroll position from import
+    // Preserve canvas scroll position because it is durable spatial context, not transient runtime state.
     canvasScrollLeft: typeof sceneData.canvasScrollLeft === 'number' ? sceneData.canvasScrollLeft : 0,
     canvasScrollTop: typeof sceneData.canvasScrollTop === 'number' ? sceneData.canvasScrollTop : 0
   };
@@ -611,14 +615,18 @@ export function filterDuplicateNotes(
   newNotes: NoteCardModel[],
   existingNotes: NoteCardModel[]
 ): NoteCardModel[] {
-  // Build a set of existing note hashes for O(1) lookup
-  const existingHashes = new Set(
-    existingNotes.map((note) => generateContentHash(`${note.title ?? ''}|${note.body}`))
-  );
+  // Build a key set from existing notes, then extend it as we keep in-batch notes.
+  // This deduplicates against existing content and exact duplicates inside the incoming batch
+  // while preserving first-seen ordering.
+  const seenKeys = new Set(existingNotes.map((note) => getDuplicateNoteKey(note)));
 
-  // Filter out notes that already exist
   return newNotes.filter((note) => {
-    const noteHash = generateContentHash(`${note.title ?? ''}|${note.body}`);
-    return !existingHashes.has(noteHash);
+    const noteKey = getDuplicateNoteKey(note);
+    if (seenKeys.has(noteKey)) {
+      return false;
+    }
+
+    seenKeys.add(noteKey);
+    return true;
   });
 }

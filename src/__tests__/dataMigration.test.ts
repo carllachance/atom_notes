@@ -141,6 +141,32 @@ test('derivePrivacyMode returns "minimal" when provenance and references are exc
   assert.strictEqual(mode, 'minimal');
 });
 
+
+test('derivePrivacyMode does not return "minimal" when AI transcript is included', () => {
+  const mode = derivePrivacyMode({
+    ...MINIMAL_PRIVACY_OPTIONS,
+    includeAiTranscript: true
+  });
+
+  assert.notStrictEqual(mode, 'minimal');
+  assert.strictEqual(mode, 'redacted');
+});
+
+test('derivePrivacyMode does not return "minimal" when provenance is excluded but transcript is included', () => {
+  const mode = derivePrivacyMode({
+    ...FULL_PRIVACY_OPTIONS,
+    includeProvenance: false,
+    includeExternalReferences: false,
+    includeAttachments: false,
+    includeAiTranscript: true,
+    redactTimestamps: true,
+    redactAiSessionIds: true
+  });
+
+  assert.notStrictEqual(mode, 'minimal');
+  assert.strictEqual(mode, 'redacted');
+});
+
 // ============================================================================
 // Provenance Filtering Tests
 // ============================================================================
@@ -427,10 +453,47 @@ test('filterDuplicateNotes handles null titles correctly', () => {
   assert.strictEqual(filtered[0].id, 'new-2');
 });
 
-test('filterDuplicateNotes returns all new notes when no existing notes', () => {
+
+test('filterDuplicateNotes collapses exact duplicates within incoming batch', () => {
   const newNotes: NoteCardModel[] = [
-    createTestNote({ id: 'new-1' }),
-    createTestNote({ id: 'new-2' })
+    createTestNote({ id: 'new-1', title: 'Duplicate', body: 'Same Body' }),
+    createTestNote({ id: 'new-2', title: 'Duplicate', body: 'Same Body' }),
+    createTestNote({ id: 'new-3', title: 'Unique', body: 'Different Body' })
+  ];
+
+  const filtered = filterDuplicateNotes(newNotes, []);
+
+  assert.strictEqual(filtered.length, 2);
+  assert.strictEqual(filtered[0].id, 'new-1');
+  assert.strictEqual(filtered[1].id, 'new-3');
+});
+
+test('filterDuplicateNotes keeps first-in-order when duplicate appears later in batch', () => {
+  const existing: NoteCardModel[] = [
+    createTestNote({ id: 'existing-1', title: 'Already There', body: 'Body A' })
+  ];
+
+  const newNotes: NoteCardModel[] = [
+    createTestNote({ id: 'new-1', title: 'Fresh', body: 'Body B' }),
+    createTestNote({ id: 'new-2', title: 'Fresh', body: 'Body B' }),
+    createTestNote({ id: 'new-3', title: 'Already There', body: 'Body A' }),
+    createTestNote({ id: 'new-4', title: null, body: 'Null Title' }),
+    createTestNote({ id: 'new-5', title: null, body: 'Null Title' }),
+    createTestNote({ id: 'new-6', title: null, body: 'Different Null Title Body' })
+  ];
+
+  const filtered = filterDuplicateNotes(newNotes, existing);
+
+  assert.deepStrictEqual(
+    filtered.map((note) => note.id),
+    ['new-1', 'new-4', 'new-6']
+  );
+});
+
+test('filterDuplicateNotes returns all unique new notes when no existing notes', () => {
+  const newNotes: NoteCardModel[] = [
+    createTestNote({ id: 'new-1', title: 'Unique 1', body: 'Body 1' }),
+    createTestNote({ id: 'new-2', title: 'Unique 2', body: 'Body 2' })
   ];
 
   const filtered = filterDuplicateNotes(newNotes, []);
