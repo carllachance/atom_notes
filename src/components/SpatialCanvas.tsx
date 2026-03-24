@@ -60,6 +60,7 @@ const OPEN_THRESHOLD_PX = 6;
 const CLUSTER_FORCE_RESTORE_MS = 420;
 const NOTE_WIDTH = 270;
 const NOTE_HEIGHT = 170;
+const VIEWPORT_CENTER_EPSILON = 0.5;
 
 export function SpatialCanvas({
   notes,
@@ -99,6 +100,7 @@ export function SpatialCanvas({
   const clusterRestoreTargetIdRef = useRef<string | null>(null);
   const pendingDragPositionRef = useRef<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
+  const lastViewportCenterRef = useRef<{ x: number; y: number } | null>(null);
   const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(null);
   const [clusterForceScaleById, setClusterForceScaleById] = useState<Record<string, number>>({});
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
@@ -212,7 +214,18 @@ export function SpatialCanvas({
   const emitViewportCenter = () => {
     const node = canvasRef.current;
     if (!node) return;
-    onViewportCenterChange(node.scrollLeft + node.clientWidth / 2, node.scrollTop + node.clientHeight / 2);
+    const nextX = node.scrollLeft + node.clientWidth / 2;
+    const nextY = node.scrollTop + node.clientHeight / 2;
+    const previous = lastViewportCenterRef.current;
+    if (
+      previous &&
+      Math.abs(previous.x - nextX) < VIEWPORT_CENTER_EPSILON &&
+      Math.abs(previous.y - nextY) < VIEWPORT_CENTER_EPSILON
+    ) {
+      return;
+    }
+    lastViewportCenterRef.current = { x: nextX, y: nextY };
+    onViewportCenterChange(nextX, nextY);
   };
 
   const emitCanvasMetrics = () => {
