@@ -80,7 +80,7 @@ export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, o
                 }
               }}
             />
-            <button type="button" className="ghost-button" onClick={onExpand}>
+            <button type="button" className="ghost-button tertiary-action" onClick={onExpand}>
               Expand
             </button>
             {canUndo ? (

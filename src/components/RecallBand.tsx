@@ -48,14 +48,14 @@ type RecallBandProps = {
 
 function describeFocusState(focusMode: FocusMode, focusCount: number) {
   if (focusMode.isolate) {
-    return `${focusCount} Focus notes shown globally. Non-Focus notes are hidden until Focus only is turned off.`;
+    return `${focusCount} notes remain visible while Focus only is active.`;
   }
 
   if (focusMode.highlight) {
-    return `${focusCount} Focus notes stay visibly marked across the canvas. Turn off Highlight Focus to soften the extra emphasis, not to remove the Focus state.`;
+    return `${focusCount} notes remain tagged with subtle emphasis across the canvas.`;
   }
 
-  return `${focusCount} Focus notes remain tagged, but without extra canvas emphasis.`;
+  return `${focusCount} notes remain tagged without extra canvas emphasis.`;
 }
 
 function CaptureIcon() {
@@ -264,8 +264,7 @@ function RecallBandPrimaryZone({
   return (
     <div className="recall-band__primary-zone">
       <div className="recall-band__note-count">
-        <span className="count-value">{count}</span>
-        <span className="count-label">notes</span>
+        <span className="count-value">{count} notes</span>
         {totalCount !== count && (
           <span className="count-total">of {totalCount}</span>
         )}
