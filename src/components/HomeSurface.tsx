@@ -48,6 +48,7 @@ export function HomeSurface({
   const recentNotes = useMemo(() => summarizeRecentNotes(notes, lastCreatedNoteId), [notes, lastCreatedNoteId]);
   const resumeItems = [...recentNotes.slice(0, 3), ...openWork.filter((note) => !recentNotes.some((recent) => recent.id === note.id)).slice(0, 2)].slice(0, 5);
   const leadResume = resumeItems[0] ?? null;
+  const secondaryResumeItems = leadResume ? resumeItems.filter((note) => note.id !== leadResume.id) : resumeItems;
 
   return (
     <section className="home-surface home-surface--light" aria-label="Workspace overview">
@@ -56,9 +57,9 @@ export function HomeSurface({
           <h1>{leadResume ? getCompactDisplayTitle(leadResume, 60) : 'Pick up your latest thread'}</h1>
           {leadResume ? <p>{leadResume.kicker} · continue where momentum was last highest.</p> : null}
         </header>
-        {resumeItems.length ? (
+        {secondaryResumeItems.length ? (
           <div className="home-surface__list home-surface__resume-list">
-            {resumeItems.map((note) => (
+            {secondaryResumeItems.map((note) => (
               <button key={note.id} type="button" className="home-surface__note-row" onClick={() => onOpenNote(note.id)}>
                 <div>
                   <small>{note.kicker}</small>
