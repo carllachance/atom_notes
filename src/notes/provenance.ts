@@ -1,5 +1,17 @@
 /**
  * Provenance utilities for source tracking (EPIC-006)
+ *
+ * Storage strategy:
+ * - Primary source of truth: Provenance is stored inside NoteCardModel.provenance
+ *   and persists with the scene via sceneStorage.ts
+ * - Secondary index: This module provides a separate localStorage index
+ *   (atom-notes.provenance.v1) for fast lookup by note ID
+ *
+ * The separate storage exists to support:
+ * 1. Quick provenance lookups without parsing full scene
+ * 2. Provenance-only operations (batch updates, analytics)
+ *
+ * When in doubt, prefer the scene-based storage as the source of truth.
  */
 import { ExternalReference, ExternalReferenceKind, NoteProvenance, NoteSourceOrigin } from '../types';
 import { now } from './noteModel';
@@ -103,9 +115,14 @@ export function setProvenanceAiSession(
 
 /**
  * Generate content hash for integrity verification (EPIC-006)
+ *
+ * NOTE: This is a non-cryptographic hash for integrity verification and
+ * duplicate detection purposes. Do not use for security-critical verification.
+ * For stronger integrity verification, use crypto.subtle.digest in production.
  */
 export function generateContentHash(content: string): string {
-  // Simple hash for demo - in production, use crypto.subtle.digest
+  // Non-cryptographic hash for demo/dedup purposes
+  // For stronger integrity verification, use crypto.subtle.digest in production
   let hash = 0;
   for (let i = 0; i < content.length; i++) {
     const char = content.charCodeAt(i);
