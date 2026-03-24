@@ -167,6 +167,10 @@ export type NoteCardModel = {
   attachments?: NoteAttachment[];
   /** Provenance metadata for source tracking (EPIC-006) */
   provenance?: NoteProvenance;
+  /** Whether note conclusions need source verification */
+  verificationState?: 'verified' | 'needs-review';
+  /** Human-readable reason for verification state */
+  verificationReason?: string;
 };
 
 export type Relationship = {
@@ -310,6 +314,9 @@ export type NoteSourceOrigin =
  */
 export type ExternalReferenceKind = 'url' | 'file' | 'citation' | 'cross-note';
 
+export type SourceHealthStatus = 'grounded' | 'cached' | 'uncertain' | 'orphaned' | 'regrounded';
+export type SourceBreakType = 'access_break' | 'identity_break' | 'meaning_break';
+
 /**
  * External reference with provenance metadata (EPIC-006)
  */
@@ -326,6 +333,24 @@ export type ExternalReference = {
   confidence: number;
   /** Whether this reference was inferred by AI or explicitly added */
   isInferred: boolean;
+  /** Access condition at last evaluation */
+  accessStatus?: 'reachable' | 'restricted' | 'missing' | 'unknown';
+  /** Identity integrity at last evaluation */
+  identityStatus?: 'verified' | 'mismatch' | 'unknown';
+  /** Meaning alignment at last evaluation */
+  meaningStatus?: 'aligned' | 'drifted' | 'unknown';
+  /** Derived source health lifecycle status */
+  sourceHealth?: SourceHealthStatus;
+  /** Explicit break category if degraded */
+  breakType?: SourceBreakType;
+  /** Optional one-line explanation for degraded links */
+  breakDetail?: string;
+  /** Timestamp of last health check */
+  lastCheckedAt?: number;
+  /** Timestamp when source became orphaned */
+  orphanedAt?: number;
+  /** Previous reference id when a source is regrounded */
+  regroundedFromReferenceId?: string;
   createdAt: number;
 };
 

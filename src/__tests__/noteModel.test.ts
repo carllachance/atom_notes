@@ -10,6 +10,7 @@ test('createNote infers title/body and preserves project/workspace affinity', (t
   assert.deepEqual(note.body, 'Body line');
   assert.deepEqual(note.projectIds, ['proj-1']);
   assert.equal(note.workspaceId, 'ws-1');
+  assert.equal(note.verificationState, 'verified');
 });
 
 test('inferNoteTitleAndBody uses first non-empty line as title', () => {
@@ -27,4 +28,5 @@ test('normalizeNote preserves contract defaults and coercions', (t: any) => {
   assert.equal(normalized.taskState, 'done');
   assert.deepEqual(normalized.taskSource, { sourceNoteId: 'source-1', promotionId: 'task-source-id', text: 'fragment', start: 2, end: 10, createdAt: 1234 });
   assert.deepEqual(normalized.promotedTaskFragments, [{ id: 'promotion-1', taskNoteId: 'task-1', text: 'fragment', start: 2, end: 10, createdAt: 1234 }]);
+  assert.equal(normalized.verificationState, 'verified');
 });

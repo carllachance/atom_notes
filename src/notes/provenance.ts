@@ -13,8 +13,9 @@
  *
  * When in doubt, prefer the scene-based storage as the source of truth.
  */
-import { ExternalReference, ExternalReferenceKind, NoteProvenance, NoteSourceOrigin } from '../types';
-import { now } from './noteModel';
+import { ExternalReference, ExternalReferenceKind, NoteCardModel, NoteProvenance, NoteSourceOrigin, SourceBreakType, SourceHealthStatus } from '../types';
+
+const now = () => Date.now();
 
 const PROVENANCE_STORAGE_KEY = 'atom-notes.provenance.v1';
 
@@ -31,7 +32,7 @@ export function createExternalReference(
     isInferred?: boolean;
   }
 ): ExternalReference {
-  return {
+  return evaluateExternalReferenceHealth({
     id: crypto.randomUUID(),
     kind,
     label: label ?? value,
@@ -39,7 +40,73 @@ export function createExternalReference(
     metadata: options?.metadata,
     confidence: options?.confidence ?? 0.8,
     isInferred: options?.isInferred ?? false,
+    accessStatus: 'unknown',
+    identityStatus: 'unknown',
+    meaningStatus: 'unknown',
+    lastCheckedAt: now(),
     createdAt: now()
+  });
+}
+
+export function evaluateExternalReferenceHealth(reference: ExternalReference): ExternalReference {
+  const hasAccessBreak = reference.accessStatus === 'missing' || reference.accessStatus === 'restricted';
+  const hasIdentityBreak = reference.identityStatus === 'mismatch';
+  const hasMeaningBreak = reference.meaningStatus === 'drifted';
+  const isRegrounded =
+    Boolean(reference.orphanedAt || reference.regroundedFromReferenceId) &&
+    reference.accessStatus === 'reachable' &&
+    reference.identityStatus === 'verified' &&
+    reference.meaningStatus !== 'drifted';
+
+  let sourceHealth: SourceHealthStatus;
+  let breakType: SourceBreakType | undefined;
+  if (isRegrounded) {
+    sourceHealth = 'regrounded';
+  } else if (hasAccessBreak || hasIdentityBreak) {
+    sourceHealth = 'orphaned';
+    breakType = hasAccessBreak ? 'access_break' : 'identity_break';
+  } else if (hasMeaningBreak) {
+    sourceHealth = 'uncertain';
+    breakType = 'meaning_break';
+  } else if (
+    reference.accessStatus === 'unknown' &&
+    reference.identityStatus === 'unknown' &&
+    reference.meaningStatus === 'unknown'
+  ) {
+    sourceHealth = 'cached';
+  } else {
+    sourceHealth = 'grounded';
+  }
+
+  return {
+    ...reference,
+    sourceHealth,
+    breakType,
+    orphanedAt: sourceHealth === 'orphaned' ? reference.orphanedAt ?? now() : reference.orphanedAt
+  };
+}
+
+export function relinkExternalReference(
+  provenance: NoteProvenance,
+  referenceId: string,
+  nextValue?: string
+): NoteProvenance {
+  return {
+    ...provenance,
+    updatedAt: now(),
+    externalReferences: provenance.externalReferences.map((reference) => {
+      if (reference.id !== referenceId) return reference;
+      return evaluateExternalReferenceHealth({
+        ...reference,
+        value: nextValue?.trim() ? nextValue.trim() : reference.value,
+        accessStatus: 'reachable',
+        identityStatus: 'verified',
+        meaningStatus: 'aligned',
+        lastCheckedAt: now(),
+        orphanedAt: reference.orphanedAt ?? (reference.sourceHealth === 'orphaned' ? now() : undefined),
+        regroundedFromReferenceId: reference.sourceHealth === 'orphaned' ? reference.id : reference.regroundedFromReferenceId
+      });
+    })
   };
 }
 
@@ -52,7 +119,7 @@ export function addExternalReference(
 ): NoteProvenance {
   return {
     ...provenance,
-    externalReferences: [...provenance.externalReferences, reference],
+    externalReferences: [...provenance.externalReferences, evaluateExternalReferenceHealth(reference)],
     updatedAt: now()
   };
 }
@@ -193,15 +260,19 @@ export function createClipboardPasteProvenance(): NoteProvenance {
 export function createFileImportProvenance(fileName?: string): NoteProvenance {
   const t = now();
   const refs: ExternalReference[] = fileName
-    ? [{
+    ? [evaluateExternalReferenceHealth({
         id: crypto.randomUUID(),
         kind: 'file' as const,
         label: fileName,
         value: fileName,
         confidence: 1.0,
         isInferred: false,
+        accessStatus: 'reachable',
+        identityStatus: 'verified',
+        meaningStatus: 'aligned',
+        lastCheckedAt: t,
         createdAt: t
-      }]
+      })]
     : [];
 
   return {
@@ -210,6 +281,52 @@ export function createFileImportProvenance(fileName?: string): NoteProvenance {
     updatedAt: t,
     externalReferences: refs
   };
+}
+
+export type NoteSourceHealthSummary = {
+  hasOrphanedEvidence: boolean;
+  hasUnverifiedConclusions: boolean;
+  sourceHealthStatus: SourceHealthStatus;
+  breakTypes: SourceBreakType[];
+};
+
+export function summarizeNoteSourceHealth(note: NoteCardModel): NoteSourceHealthSummary {
+  const references = note.provenance?.externalReferences ?? [];
+  const evaluated = references.map((reference) => evaluateExternalReferenceHealth(reference));
+  const hasOrphanedEvidence = evaluated.some((reference) => reference.sourceHealth === 'orphaned');
+  const hasUncertainEvidence = evaluated.some((reference) => reference.sourceHealth === 'uncertain');
+  const breakTypes = [...new Set(evaluated.map((reference) => reference.breakType).filter(Boolean))] as SourceBreakType[];
+  const hasUnverifiedConclusions = note.verificationState === 'needs-review' || hasOrphanedEvidence || hasUncertainEvidence;
+  const sourceHealthStatus: SourceHealthStatus = hasOrphanedEvidence
+    ? 'orphaned'
+    : hasUncertainEvidence
+      ? 'uncertain'
+      : evaluated.some((reference) => reference.sourceHealth === 'regrounded')
+        ? 'regrounded'
+        : evaluated.length
+          ? 'grounded'
+          : 'cached';
+
+  return {
+    hasOrphanedEvidence,
+    hasUnverifiedConclusions,
+    sourceHealthStatus,
+    breakTypes
+  };
+}
+
+export function getNotesWithOrphanedEvidence(notes: NoteCardModel[]): NoteCardModel[] {
+  return notes.filter((note) => summarizeNoteSourceHealth(note).hasOrphanedEvidence);
+}
+
+export function getNotesWithUnverifiedConclusions(notes: NoteCardModel[]): NoteCardModel[] {
+  const missingSourceTasks = new Set(getTasksDerivedFromMissingSources(notes).map((note) => note.id));
+  return notes.filter((note) => summarizeNoteSourceHealth(note).hasUnverifiedConclusions || missingSourceTasks.has(note.id));
+}
+
+export function getTasksDerivedFromMissingSources(notes: NoteCardModel[]): NoteCardModel[] {
+  const orphanedById = new Set(getNotesWithOrphanedEvidence(notes).map((note) => note.id));
+  return notes.filter((note) => note.intent === 'task' && Boolean(note.taskSource?.sourceNoteId) && orphanedById.has(note.taskSource!.sourceNoteId));
 }
 
 /**

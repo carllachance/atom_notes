@@ -70,3 +70,46 @@ test('sceneStorage migrates legacy project reveal state into a formal project le
   assert.equal(persisted.projects[0].id, 'p-1');
   assert.equal(persisted.workspaces[0].id, 'w-1');
 });
+
+test('sceneStorage persists source health and note verification fields', () => {
+  localStorage.setItem(
+    SCENE_KEY,
+    JSON.stringify({
+      notes: [{
+        id: 'n-health',
+        title: 'Health',
+        body: 'Body',
+        provenance: {
+          origin: 'imported',
+          createdAt: 100,
+          updatedAt: 100,
+          externalReferences: [{
+            id: 'ref-1',
+            kind: 'url',
+            label: 'Broken ref',
+            value: 'https://example.com',
+            confidence: 0.9,
+            isInferred: false,
+            accessStatus: 'missing',
+            identityStatus: 'unknown',
+            meaningStatus: 'unknown',
+            createdAt: 100
+          }]
+        },
+        verificationState: 'needs-review',
+        verificationReason: 'Source missing'
+      }],
+      relationships: [],
+      projects: [],
+      workspaces: []
+    })
+  );
+
+  const loaded = loadScene();
+  assert.equal(loaded.notes[0].verificationState, 'needs-review');
+  assert.equal(loaded.notes[0].provenance?.externalReferences[0].sourceHealth, 'orphaned');
+  saveScene(loaded as SceneState);
+  const persisted = JSON.parse(localStorage.getItem(SCENE_KEY) as string) as SceneState;
+  assert.equal(persisted.notes[0].verificationState, 'needs-review');
+  assert.equal(persisted.notes[0].provenance?.externalReferences[0].sourceHealth, 'orphaned');
+});
