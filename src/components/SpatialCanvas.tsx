@@ -61,6 +61,7 @@ const CLUSTER_FORCE_RESTORE_MS = 420;
 const NOTE_WIDTH = 270;
 const NOTE_HEIGHT = 170;
 const VIEWPORT_CENTER_EPSILON = 0.5;
+const METRICS_EPSILON = 0.5;
 
 export function SpatialCanvas({
   notes,
@@ -101,8 +102,24 @@ export function SpatialCanvas({
   const pendingDragPositionRef = useRef<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
   const lastViewportCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const lastMetricsRef = useRef<CanvasViewportMetrics | null>(null);
+  const onScrollRef = useRef(onScroll);
+  const onViewportCenterChangeRef = useRef(onViewportCenterChange);
+  const onMetricsChangeRef = useRef(onMetricsChange);
   const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(null);
   const [clusterForceScaleById, setClusterForceScaleById] = useState<Record<string, number>>({});
+  useEffect(() => {
+    onScrollRef.current = onScroll;
+  }, [onScroll]);
+
+  useEffect(() => {
+    onViewportCenterChangeRef.current = onViewportCenterChange;
+  }, [onViewportCenterChange]);
+
+  useEffect(() => {
+    onMetricsChangeRef.current = onMetricsChange;
+  }, [onMetricsChange]);
+
   const relatedGlowIdsSet = useMemo(() => new Set(relatedGlowNoteIds), [relatedGlowNoteIds]);
   const revealMatchedIdsSet = useMemo(() => new Set(revealMatchedNoteIds), [revealMatchedNoteIds]);
   const focusNoteIds = useMemo(() => notes.filter((note) => Boolean(note.isFocus ?? note.inFocus)).map((note) => note.id), [notes]);
@@ -225,21 +242,35 @@ export function SpatialCanvas({
       return;
     }
     lastViewportCenterRef.current = { x: nextX, y: nextY };
-    onViewportCenterChange(nextX, nextY);
+    onViewportCenterChangeRef.current(nextX, nextY);
   };
 
   const emitCanvasMetrics = () => {
     const node = canvasRef.current;
     if (!node) return;
     const rect = node.getBoundingClientRect();
-    onMetricsChange({
+    const nextMetrics = {
       left: rect.left,
       top: rect.top,
       scrollLeft: node.scrollLeft,
       scrollTop: node.scrollTop,
       width: node.clientWidth,
       height: node.clientHeight
-    });
+    };
+    const previous = lastMetricsRef.current;
+    if (
+      previous &&
+      Math.abs(previous.left - nextMetrics.left) < METRICS_EPSILON &&
+      Math.abs(previous.top - nextMetrics.top) < METRICS_EPSILON &&
+      Math.abs(previous.scrollLeft - nextMetrics.scrollLeft) < METRICS_EPSILON &&
+      Math.abs(previous.scrollTop - nextMetrics.scrollTop) < METRICS_EPSILON &&
+      previous.width === nextMetrics.width &&
+      previous.height === nextMetrics.height
+    ) {
+      return;
+    }
+    lastMetricsRef.current = nextMetrics;
+    onMetricsChangeRef.current(nextMetrics);
   };
 
   useLayoutEffect(() => {
@@ -254,7 +285,7 @@ export function SpatialCanvas({
     const node = canvasRef.current;
     if (!node) return;
     const onScrollEvent = () => {
-      onScroll(node.scrollLeft, node.scrollTop);
+      onScrollRef.current(node.scrollLeft, node.scrollTop);
       emitViewportCenter();
       emitCanvasMetrics();
     };
@@ -262,7 +293,7 @@ export function SpatialCanvas({
     emitViewportCenter();
     emitCanvasMetrics();
     return () => node.removeEventListener('scroll', onScrollEvent);
-  }, [onMetricsChange, onScroll]);
+  }, []);
 
   useEffect(() => {
     const node = canvasRef.current;
@@ -288,7 +319,7 @@ export function SpatialCanvas({
       observer.disconnect();
       window.removeEventListener('resize', updateMetrics);
     };
-  }, [onMetricsChange, onViewportCenterChange]);
+  }, []);
 
   useEffect(() => {
     return () => {
