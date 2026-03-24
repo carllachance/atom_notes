@@ -1,27 +1,54 @@
 /* Design token system — single source of truth for all visual values */
 
 :root {
-  /* Canvas and surface */
-  --canvas-bg: #0F0E12;
-  --canvas-bg-warm: #12100F;
-  --note-card-bg: #1A1820;
-  --note-card-bg-hover: #201E2A;
-  --modal-bg: #16141C;
+  /* App-wide foundation palette (cool dark slate + restrained accents) */
+  --bg-app: #090d16;
+  --bg-canvas: #0d1320;
+  --bg-panel: #111b2d;
+  --surface-1: #172237;
+  --surface-2: #1d2940;
+  --surface-3: #24324b;
+
+  /* Backward-compatible surface aliases */
+  --canvas-bg: var(--bg-app);
+  --canvas-bg-warm: var(--bg-canvas);
+  --note-card-bg: var(--surface-1);
+  --note-card-bg-hover: var(--surface-2);
+  --modal-bg: var(--bg-panel);
   --modal-backdrop: rgba(9, 8, 11, 0.85);
 
   /* Text */
-  --text-primary: #E8E4DC;
-  --text-secondary: #9B96A0;
-  --text-tertiary: #5C5868;
-  --text-placeholder: #3D3A48;
+  --text-primary: #e8edf8;
+  --text-secondary: #b8c2db;
+  --text-muted: #8a95b0;
+  --text-tertiary: var(--text-muted);
+  --text-placeholder: #6b7691;
+
+  /* Interaction */
+  --accent-primary: #8e7bff;
+  --accent-soft: rgba(142, 123, 255, 0.2);
+  --accent-focus: #5d7dff;
+  --accent-focus-soft: rgba(93, 125, 255, 0.24);
+
+  /* Semantics */
+  --masked-send: #c78c2a;
+  --masked-send-soft: rgba(199, 140, 42, 0.24);
+  --success: #4fb989;
+  --warning: #d9a34b;
+  --danger: #de6b75;
+
+  /* Border and elevation helpers */
+  --line-subtle: rgba(154, 172, 212, 0.2);
+  --line-strong: rgba(154, 172, 212, 0.36);
+  --glow-soft: 0 10px 28px rgba(5, 8, 14, 0.48);
 
   /* Relationship arc colors */
-  --rel-task: #F4B942;
-  --rel-reference: #7EB8F7;
-  --rel-conceptual: #A78BFA;
-  --rel-conflict: #F87171;
-  --rel-lineage: #5EEAD4;
-  --rel-inferred: #4A4858;
+  --rel-task: #72b986;
+  --rel-reference: #8e7bff;
+  --rel-conceptual: #67a7ff;
+  --rel-conflict: #de6b75;
+  --rel-lineage: #d9a34b;
+  --rel-inferred: #7a869f;
 
   /* Note luminosity range */
   --note-lum-max: 1.0;

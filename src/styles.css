@@ -8127,21 +8127,17 @@ body,
 }
 
 /* =====================================================
-   Warm Academic App Pass — Shell, Home, Editor, Rails
+   Unified Dark Slate Theme Pass — Shell, Home, Editor
    ===================================================== */
 :root {
   --app-font: "Inter", "Avenir Next", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --paper-0: #f9f3e9;
-  --paper-1: #f4ecde;
-  --paper-2: #ecdfca;
-  --ink-0: #2d251f;
-  --ink-1: #45392d;
-  --ink-2: #76695d;
-  --line-warm: rgba(109, 88, 66, 0.18);
-  --line-warm-strong: rgba(109, 88, 66, 0.28);
-  --accent-warm: #8e6d4d;
-  --accent-soft: #b78f68;
-  --surface-elevated: #fffaf1;
+  --ink-0: var(--text-primary);
+  --ink-1: var(--text-secondary);
+  --ink-2: var(--text-muted);
+  --line-warm: var(--line-subtle);
+  --line-warm-strong: var(--line-strong);
+  --accent-warm: var(--accent-primary);
+  --surface-elevated: var(--surface-1);
 }
 
 body,
@@ -8155,9 +8151,9 @@ select {
 
 body {
   background:
-    radial-gradient(circle at 10% 8%, rgba(255, 250, 240, 0.9), transparent 42%),
-    radial-gradient(circle at 86% 4%, rgba(244, 227, 198, 0.45), transparent 40%),
-    var(--paper-0);
+    radial-gradient(circle at 10% 8%, rgba(93, 125, 255, 0.12), transparent 44%),
+    radial-gradient(circle at 86% 4%, rgba(142, 123, 255, 0.09), transparent 42%),
+    var(--bg-app);
 }
 
 .thinking-surface {
@@ -8167,18 +8163,18 @@ body {
 }
 
 .recall-band {
-  border: 1px solid var(--line-warm);
+  border: 1px solid var(--line-subtle);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
-  backdrop-filter: none;
-  box-shadow: 0 8px 24px rgba(88, 61, 36, 0.08);
+  background: color-mix(in srgb, var(--surface-1) 84%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--glow-soft);
 }
 
 .workspace-shell {
-  border: 1px solid var(--line-warm);
+  border: 1px solid var(--line-subtle);
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(248, 240, 228, 0.94));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 24px 50px rgba(88, 61, 36, 0.1);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 95%, black 5%), var(--bg-canvas));
+  box-shadow: inset 0 1px 0 rgba(188, 204, 244, 0.06), 0 24px 50px rgba(3, 5, 10, 0.55);
 }
 
 .view-stack {
@@ -8202,40 +8198,64 @@ body {
 .home-surface__panel,
 .home-surface__resume-popover,
 .home-surface__resume-chip,
-.home-surface__empty-prompt {
-  border: 1px solid var(--line-warm);
-  background: color-mix(in srgb, var(--surface-elevated) 92%, var(--paper-1));
+.home-surface__empty-prompt,
+.capture-composer,
+.capture-composer-shell,
+.capture-composer--compact-bar {
+  border: 1px solid var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--bg-panel));
   border-radius: 16px;
-  box-shadow: 0 8px 20px rgba(94, 67, 43, 0.07);
+  box-shadow: 0 10px 26px rgba(3, 6, 12, 0.34);
 }
 
 .home-surface__panel-head strong,
-.home-surface__resume-chip strong {
-  color: var(--ink-0);
+.home-surface__resume-chip strong,
+.home-surface__capture-head h1 {
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .home-surface__resume-label,
 .home-surface__panel-head p,
-.home-surface__note-row small {
-  color: var(--ink-2);
+.home-surface__note-row small,
+.home-surface__capture-head p,
+.capture-composer header small,
+.capture-composer footer span {
+  color: var(--text-secondary);
 }
 
 .home-surface__note-row {
   border-radius: 12px;
   border: 1px solid transparent;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
 }
 
 .home-surface__note-row:hover,
-.home-surface__note-row:focus-visible {
-  border-color: var(--line-warm-strong);
-  background: rgba(255, 248, 237, 0.9);
+.home-surface__note-row:focus-visible,
+.capture-followups__row:hover,
+.capture-followups__row:focus-within {
+  border-color: var(--accent-soft);
+  background: color-mix(in srgb, var(--surface-3) 68%, var(--accent-soft));
+}
+
+.home-surface__note-row > span,
+.capture-followups__row .ghost-button,
+.ghost-button.primary-action,
+.ghost-button.capture-button {
+  color: var(--text-primary);
+}
+
+.home-surface__note-row p,
+.home-surface__empty-prompt,
+.capture-composer textarea::placeholder,
+.capture-composer__compact-row input::placeholder {
+  color: var(--text-secondary);
 }
 
 .canvas-dim {
   background:
-    radial-gradient(circle at 62% 28%, rgba(125, 98, 67, 0.08), rgba(84, 62, 45, 0.04) 52%, transparent 76%),
-    rgba(76, 56, 42, 0.22);
+    radial-gradient(circle at 62% 28%, rgba(93, 125, 255, 0.14), rgba(58, 78, 119, 0.08) 52%, transparent 76%),
+    rgba(8, 13, 24, 0.5);
 }
 
 .expanded-note-shell {
@@ -8246,18 +8266,18 @@ body {
   width: min(1240px, calc(100vw - var(--thinking-rail-reserved, 24px) - 44px));
   max-width: calc(100vw - var(--thinking-rail-reserved, 24px) - 30px);
   border-radius: 20px;
-  border: 1px solid var(--line-warm);
-  background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(250, 242, 230, 0.96));
-  box-shadow: 0 30px 70px rgba(80, 58, 36, 0.18);
+  border: 1px solid var(--line-subtle);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-1) 94%, var(--bg-panel)), color-mix(in srgb, var(--surface-2) 94%, var(--bg-canvas)));
+  box-shadow: 0 30px 70px rgba(3, 5, 10, 0.52);
 }
 
 .expanded-note-header--calm {
-  background: rgba(255, 250, 241, 0.92);
-  border-bottom: 1px solid var(--line-warm);
+  background: color-mix(in srgb, var(--surface-2) 90%, transparent);
+  border-bottom: 1px solid var(--line-subtle);
 }
 
 .note-title-field {
-  color: var(--ink-0);
+  color: var(--text-primary);
   font-size: clamp(1.1rem, 1.2vw, 1.34rem);
   letter-spacing: -0.01em;
 }
@@ -8296,73 +8316,142 @@ body {
   overflow: auto;
   padding: 10px;
   border-radius: 14px;
-  border: 1px solid var(--line-warm);
-  background: rgba(255, 249, 238, 0.78);
+  border: 1px solid var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-1) 76%, transparent);
 }
 
 .note-cornell-body {
   grid-area: body;
   min-height: 58vh;
-  border: 1px solid var(--line-warm);
+  border: 1px solid var(--line-subtle);
   border-radius: 16px;
-  background: var(--surface-elevated);
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--bg-panel));
   padding: 20px 22px;
 }
 
 .note-cornell-summary {
   grid-area: summary;
-  border: 1px solid var(--line-warm);
+  border: 1px solid var(--line-subtle);
   border-radius: 14px;
-  background: rgba(252, 244, 232, 0.75);
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--bg-canvas));
 }
 
 .note-trace-link {
-  border: 1px solid var(--line-warm);
-  background: rgba(255, 249, 239, 0.84);
+  border: 1px solid var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent);
   border-radius: 10px;
 }
 
 .note-trace-link span {
-  color: var(--ink-2);
+  color: var(--text-secondary);
 }
 
 .relationship-strip,
 .relationship-strip-grid {
-  border-top: 1px solid var(--line-warm);
+  border-top: 1px solid var(--line-subtle);
+}
+
+.ghost-button,
+.recall-band .ghost-button,
+.reveal-controls .ghost-button,
+.project-reveal-controls .ghost-button,
+.ghost-button.filters-toggle {
+  border-color: var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent);
+  color: var(--text-secondary);
+}
+
+.ghost-button:hover,
+.ghost-button:focus-visible,
+.project-reveal-controls .ghost-button:hover,
+.project-reveal-controls .ghost-button:focus-visible,
+.ghost-button.filters-toggle:hover {
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--surface-3) 84%, var(--accent-soft));
+  color: var(--text-primary);
+}
+
+.ghost-button.active,
+.project-reveal-controls .ghost-button.active,
+.view-switch button.active,
+.focus-lens-chip--active,
+.focus-lens-chip:hover,
+.focus-lens-chip:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-primary) 64%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent-soft) 62%, var(--surface-2));
+  color: var(--text-primary);
+}
+
+.ghost-button:focus-visible,
+.view-switch button:focus-visible,
+.capture-composer textarea:focus,
+.capture-composer__compact-row input:focus,
+.filters-section select:focus,
+.reveal-controls input:focus,
+.project-reveal-controls select:focus {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--accent-focus-soft);
+}
+
+.filters-panel,
+.focus-state-indicator,
+.active-lens-indicator,
+.capture-followups,
+.link-suggestions-dock-panel,
+.link-suggestions-dock-toggle {
+  border-color: var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-1) 88%, var(--bg-panel));
+}
+
+.focus-count-chip,
+.recall-resume-chip,
+.recall-resume-dismiss,
+.focus-badge {
+  border-color: var(--masked-send-soft);
+  background: color-mix(in srgb, var(--masked-send-soft) 40%, var(--surface-2));
+  color: color-mix(in srgb, var(--masked-send) 72%, var(--text-primary));
+}
+
+.recall-meta,
+.recall-band__note-count,
+.filters-section-label,
+.project-reveal-label,
+.active-lens-label,
+.focus-state-indicator small,
+.capture-followups__row small,
+.home-surface__note-row small {
+  color: var(--text-muted);
 }
 
 .ai-panel {
-  --horizon-paper: #f8efe1;
+  --horizon-paper: var(--surface-1);
 }
 
 .ai-panel-shell {
-  border-left: 1px solid var(--line-warm);
-  background: linear-gradient(180deg, rgba(250, 241, 228, 0.96), rgba(244, 232, 214, 0.94));
+  border-left: 1px solid var(--line-subtle);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-1) 94%, var(--bg-panel)), color-mix(in srgb, var(--surface-2) 94%, var(--bg-canvas)));
 }
 
-.ai-panel-toggle {
-  border: 1px solid var(--line-warm);
-  background: rgba(255, 249, 239, 0.85);
-  color: var(--ink-1);
-}
-
+.ai-panel-toggle,
 .ai-panel-header,
 .ai-primary-response,
 .ai-why-panel,
 .ai-action-preview {
-  border-color: var(--line-warm);
-  background: rgba(255, 250, 242, 0.8);
+  border-color: var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-2) 86%, var(--bg-panel));
+  color: var(--text-secondary);
 }
 
 .ai-panel-context strong,
 .ai-action-row button.active {
-  color: var(--ink-0);
+  color: var(--text-primary);
 }
 
 .ai-panel-context small,
 .ai-primary-response p,
 .ai-why-panel li {
-  color: var(--ink-1);
+  color: var(--text-secondary);
 }
 
 @media (max-width: 1200px) {
