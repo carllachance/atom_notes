@@ -159,7 +159,9 @@ test('relationshipActions creates a new linked note inline and inherits the acti
     intent: undefined,
     intentConfidence: undefined,
     inferredRelationships: [],
-    attachments: []
+    attachments: [],
+    verificationState: 'verified',
+    verificationReason: undefined
   });
   assert.equal(result.scene.relationships.some((relationship) => relationship.fromId === 'a' && relationship.toId === 'inline-note' && relationship.type === 'supports'), true);
 });

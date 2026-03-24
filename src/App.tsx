@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AIPanel } from './components/AIPanel';
 import { CaptureComposer } from './components/CaptureComposer';
 import { ExpandedNote } from './components/ExpandedNote';
@@ -11,7 +11,8 @@ import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
 import { summarizeCanvasVisibility } from './scene/canvasVisibility';
 import { useSceneController } from './scene/useSceneController';
-import { useHistoryStack, useBookmarks } from './store/sessionSlice';
+import { buildMemorySummary } from './store/memorySummary';
+import { createBookmark, recordHistoryEntry, useBookmarks, useHistoryStack } from './store/sessionSlice';
 
 export function App() {
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
@@ -133,6 +134,10 @@ export function App() {
       activeInsightTimeline.some((entry) => Date.now() - entry.createdAt < 1000 * 60 * 60)
     )
   );
+  const memorySummary = useMemo(
+    () => buildMemorySummary(historyStack, bookmarks, scene.notes, activeNote?.id ?? null),
+    [historyStack, bookmarks, scene.notes, activeNote?.id]
+  );
 
   useEffect(() => {
     if (hasAutoRecoveredRef.current) return;
@@ -140,6 +145,10 @@ export function App() {
     hasAutoRecoveredRef.current = true;
     fitAllNotes();
   }, [canvasVisibility.isBlankBecauseNotesAreOffCanvas, fitAllNotes]);
+
+  useEffect(() => {
+    recordHistoryEntry(activeNote?.id ?? null, activeNote?.title ?? null, scene.lens, scene.focusMode);
+  }, [activeNote?.id, activeNote?.title, scene.lens, scene.focusMode]);
 
   // DG-2 AN-007/AN-008/AN-009: Re-entry handlers
   const handleRestoreHistory = useCallback((entry: { noteId: string | null; lensKind: string; focusMode: { highlight: boolean; isolate: boolean } }) => {
@@ -158,10 +167,9 @@ export function App() {
   }, [onOpenNote, setLens, setFocusMode]);
 
   const handleDropPin = useCallback((label: string) => {
-    // AN-009: Create bookmark - will be wired to scene controller
-    console.log('Drop pin:', label);
+    createBookmark(label, activeNote?.id ?? null, scene.lens, scene.focusMode);
     setPinDialogOpen(false);
-  }, []);
+  }, [activeNote?.id, scene.focusMode, scene.lens]);
 
   const handleRestoreBookmark = useCallback((bookmark: { activeNoteId: string | null; lens: { kind: string }; focusMode: { highlight: boolean; isolate: boolean } }) => {
     if (bookmark.activeNoteId) {
@@ -206,8 +214,8 @@ export function App() {
         // DG-2 AN-007/AN-008/AN-009: Re-entry props
         historyStack={historyStack}
         bookmarks={bookmarks}
-        memorySummary={null}
-        memorySummarySource={null}
+        memorySummary={memorySummary.summary}
+        memorySummarySource={memorySummary.source}
         reentryExpanded={reentryExpanded}
         onToggleReentry={() => setReentryExpanded(!reentryExpanded)}
         onRestoreHistory={handleRestoreHistory}

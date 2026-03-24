@@ -135,11 +135,12 @@ function ReentrySurface({
 
       {isExpanded && (
         <div id="reentry-panel" className="reentry-panel">
-          {/* Jog My Memory Summary - AN-010 stub */}
           {memorySummary && (
             <section className="reentry-section">
               <div className="reentry-section-header">
-                <span className="ai-badge ai-badge-generated">AI-generated</span>
+                <span className={`ai-badge ${memorySummarySource === 'ai-generated' ? 'ai-badge-generated' : 'ai-badge-inferred'}`}>
+                  {memorySummarySource === 'ai-generated' ? 'AI-generated' : 'AI-inferred'}
+                </span>
                 <span>summary</span>
               </div>
               <p className="reentry-summary-text">{memorySummary}</p>
@@ -150,7 +151,7 @@ function ReentrySurface({
           {!memorySummary && (
             <section className="reentry-section reentry-section-placeholder">
               <p className="reentry-placeholder-text">
-                Your summary will appear here as you work. Check back soon.
+                Open or pin a few notes and a short memory summary will appear here.
               </p>
             </section>
           )}

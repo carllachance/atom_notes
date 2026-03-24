@@ -22,6 +22,7 @@ import { getResolvedTaskFragments, getTaskStateLabel } from '../tasks/taskPromot
 import { getLikelyActionFragments } from '../tasks/actionFragmentSuggestions';
 import { ProjectDraft } from '../projects/projectModel';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
+import { relinkExternalReference, summarizeNoteSourceHealth } from '../notes/provenance';
 import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } from '../types';
 import { AttachmentPanel } from './attachments/AttachmentPanel';
 import { FocusLensRelatedNote } from '../scene/focusLens';
@@ -508,6 +509,9 @@ export function ExpandedNote({
     : 'No shared threads';
   const attachmentCount = note.attachments?.length ?? 0;
   const attachmentReadyCount = (note.attachments ?? []).filter((attachment) => attachment.processing.status === 'processed').length;
+  const sourceHealth = summarizeNoteSourceHealth(note);
+  const orphanedReferences = (note.provenance?.externalReferences ?? []).filter((reference) => reference.sourceHealth === 'orphaned');
+  const sourceHealthSummaryLabel = sourceHealth.sourceHealthStatus.replace('_', ' ');
   const workspaceSectionOpen = expandedUtilityPanel === 'workspace';
   const projectSectionOpen = expandedUtilityPanel === 'project';
   const sourceSectionOpen = expandedUtilityPanel === 'sources';
@@ -784,10 +788,55 @@ export function ExpandedNote({
               <div className="note-quiet-utilities">
                 <LowerDisclosure
                   title="Sources"
-                  summary={attachmentCount ? `${attachmentReadyCount}/${attachmentCount} ready` : sourceNote ? 'Linked source available' : 'Quiet until needed'}
+                  summary={
+                    sourceHealth.hasOrphanedEvidence
+                      ? 'Integrity check needed'
+                      : attachmentCount
+                        ? `${attachmentReadyCount}/${attachmentCount} ready`
+                        : sourceNote
+                          ? 'Linked source available'
+                          : 'Quiet until needed'
+                  }
                   open={sourceSectionOpen}
                   onToggle={() => toggleUtilityPanel('sources')}
                 >
+                  <div className={`source-health-chip source-health-chip--${sourceHealth.sourceHealthStatus}`}>
+                    <strong>Source integrity: {sourceHealthSummaryLabel}</strong>
+                    {sourceHealth.breakTypes.length ? <small>Breaks: {sourceHealth.breakTypes.join(', ').replace(/_/g, ' ')}</small> : null}
+                  </div>
+                  {sourceHealth.hasUnverifiedConclusions ? (
+                    <div className="source-health-actions">
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        onClick={() => onChange(note.id, { verificationState: 'needs-review', verificationReason: 'Source integrity degraded' })}
+                      >
+                        Mark conclusions unverified
+                      </button>
+                    </div>
+                  ) : null}
+                  {orphanedReferences.length ? (
+                    <div className="source-health-list" aria-label="Orphaned source references">
+                      {orphanedReferences.map((reference) => (
+                        <div key={reference.id} className="source-health-row">
+                          <div>
+                            <strong>{reference.label}</strong>
+                            <small>{reference.breakType?.replace('_', ' ') ?? 'integrity break'} · {reference.breakDetail ?? 'Needs relink'}</small>
+                          </div>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() => {
+                              if (!note.provenance) return;
+                              onChange(note.id, { provenance: relinkExternalReference(note.provenance, reference.id) });
+                            }}
+                          >
+                            Relink source
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {note.intent === 'task' && sourceNote && note.taskSource ? (
                     <button
                       type="button"

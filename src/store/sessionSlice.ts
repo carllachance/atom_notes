@@ -49,7 +49,13 @@ export function recordHistoryEntry(
   };
 
   // Don't add duplicate consecutive entries
-  if (_historyStack.length > 0 && _historyStack[0].noteId === noteId) {
+  if (
+    _historyStack.length > 0 &&
+    _historyStack[0].noteId === noteId &&
+    _historyStack[0].lensKind === lens.kind &&
+    _historyStack[0].focusMode.highlight === focusMode.highlight &&
+    _historyStack[0].focusMode.isolate === focusMode.isolate
+  ) {
     return;
   }
 

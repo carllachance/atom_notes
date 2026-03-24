@@ -1,3 +1,4 @@
+import { evaluateExternalReferenceHealth } from './provenance';
 import { normalizeOptionalTitle } from '../noteText';
 import { normalizeProjectIds } from '../projects/projectModel';
 import { normalizeAttachment } from '../attachments/attachmentModel';
@@ -24,6 +25,19 @@ export function normalizeExternalReference(raw: unknown, index: number): Externa
     metadata: candidate.metadata && typeof candidate.metadata === 'object' ? candidate.metadata : undefined,
     confidence: typeof candidate.confidence === 'number' ? Math.max(0, Math.min(1, candidate.confidence)) : 0.8,
     isInferred: Boolean(candidate.isInferred),
+    accessStatus:
+      candidate.accessStatus === 'reachable' || candidate.accessStatus === 'restricted' || candidate.accessStatus === 'missing'
+        ? candidate.accessStatus
+        : 'unknown',
+    identityStatus: candidate.identityStatus === 'verified' || candidate.identityStatus === 'mismatch' ? candidate.identityStatus : 'unknown',
+    meaningStatus: candidate.meaningStatus === 'aligned' || candidate.meaningStatus === 'drifted' ? candidate.meaningStatus : 'unknown',
+    sourceHealth: candidate.sourceHealth,
+    breakType: candidate.breakType,
+    breakDetail: typeof candidate.breakDetail === 'string' ? candidate.breakDetail : undefined,
+    lastCheckedAt: typeof candidate.lastCheckedAt === 'number' ? Number(candidate.lastCheckedAt) : undefined,
+    orphanedAt: typeof candidate.orphanedAt === 'number' ? Number(candidate.orphanedAt) : undefined,
+    regroundedFromReferenceId:
+      typeof candidate.regroundedFromReferenceId === 'string' ? candidate.regroundedFromReferenceId : undefined,
     createdAt: Number(candidate.createdAt ?? now())
   };
 }
@@ -44,7 +58,7 @@ export function normalizeProvenance(raw: unknown): NoteProvenance | undefined {
     ? candidate.externalReferences.map((ref, i) => normalizeExternalReference(ref, i)).filter(Boolean) as ExternalReference[]
     : [];
 
-  return {
+  const normalized: NoteProvenance = {
     origin,
     createdAt: Number(candidate.createdAt ?? now()),
     updatedAt: Number(candidate.updatedAt ?? now()),
@@ -52,6 +66,10 @@ export function normalizeProvenance(raw: unknown): NoteProvenance | undefined {
     derivedFromNoteId: typeof candidate.derivedFromNoteId === 'string' ? candidate.derivedFromNoteId : undefined,
     aiSessionId: typeof candidate.aiSessionId === 'string' ? candidate.aiSessionId : undefined,
     contentHash: typeof candidate.contentHash === 'string' ? candidate.contentHash : undefined
+  };
+  return {
+    ...normalized,
+    externalReferences: normalized.externalReferences.map((reference) => evaluateExternalReferenceHealth(reference))
   };
 }
 
@@ -205,7 +223,9 @@ export function createNote(
     taskSource: null,
     promotedTaskFragments: [],
     inferredRelationships: [],
-    attachments: []
+    attachments: [],
+    verificationState: 'verified',
+    verificationReason: undefined
   };
 }
 
@@ -245,6 +265,8 @@ export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: strin
     promotedTaskFragments: normalizePromotedTaskFragments(note.promotedTaskFragments),
     inferredRelationships: normalizeSuggestedRelationships(note.inferredRelationships),
     attachments: normalizeAttachments(note.attachments),
-    provenance: normalizeProvenance(note.provenance)
+    provenance: normalizeProvenance(note.provenance),
+    verificationState: note.verificationState === 'needs-review' ? 'needs-review' : 'verified',
+    verificationReason: typeof note.verificationReason === 'string' ? note.verificationReason : undefined
   };
 }
