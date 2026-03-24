@@ -251,22 +251,22 @@ export function AIPanel({
         <button
           className={`ai-panel-toggle ${isOpen ? 'active' : ''}`.trim()}
           onClick={onToggle}
-          aria-label={isOpen ? 'Close Thinking rail' : 'Open Thinking rail'}
-          title={isOpen ? 'Close Thinking rail' : 'Open Thinking rail'}
+          aria-label={isOpen ? 'Close Horizon rail' : 'Open Horizon rail'}
+          title={isOpen ? 'Close Horizon rail' : 'Open Horizon rail'}
         >
           <ThinkingGlyph className="thinking-glyph" />
-          <span>Thinking</span>
+          <span>Horizon</span>
         </button>
 
         {isOpen ? (
-          <button type="button" className="ai-panel-resize" onPointerDown={beginResize} aria-label="Resize Thinking rail" />
+          <button type="button" className="ai-panel-resize" onPointerDown={beginResize} aria-label="Resize Horizon rail" />
         ) : null}
 
         {isOpen ? (
           <div className="ai-panel-body">
             <header className="ai-panel-header">
               <div className="ai-panel-context">
-                <strong>Thinking</strong>
+                <strong>Horizon</strong>
                 <small>{selectedNote?.title ?? contextLabel}</small>
               </div>
 
@@ -277,7 +277,7 @@ export function AIPanel({
                 onInteractionModeChange={onInteractionModeChange}
               />
 
-              <div className="ai-action-row" role="toolbar" aria-label="Thinking actions">
+              <div className="ai-action-row" role="toolbar" aria-label="Horizon actions">
                 {ACTIONS.map((action) => (
                   <button
                     key={action.mode}
@@ -313,7 +313,7 @@ export function AIPanel({
             <section className="ai-primary-response" aria-live="polite">
               {/* Show AI content label when there's a response */}
               {primaryMessage && <AIContentLabel source={lastAssistant?.contentSource ?? 'ai-generated'} />}
-              <p>{primaryMessage || 'Ask for a quick read, the why behind the note, or the next move.'}</p>
+              <p>{primaryMessage || 'Use Horizon for a quick read, plain-language context, or the next move.'}</p>
               {whyBullets.length ? (
                 <button type="button" className="ghost-button ai-why-toggle" onClick={() => setShowWhy((current) => !current)}>
                   {showWhy ? 'Hide why' : 'Why'}

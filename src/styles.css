@@ -8125,3 +8125,293 @@ body,
     min-height: 420px;
   }
 }
+
+/* =====================================================
+   Warm Academic App Pass — Shell, Home, Editor, Rails
+   ===================================================== */
+:root {
+  --app-font: "Inter", "Avenir Next", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --paper-0: #f9f3e9;
+  --paper-1: #f4ecde;
+  --paper-2: #ecdfca;
+  --ink-0: #2d251f;
+  --ink-1: #45392d;
+  --ink-2: #76695d;
+  --line-warm: rgba(109, 88, 66, 0.18);
+  --line-warm-strong: rgba(109, 88, 66, 0.28);
+  --accent-warm: #8e6d4d;
+  --accent-soft: #b78f68;
+  --surface-elevated: #fffaf1;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: var(--app-font);
+  color: var(--ink-0);
+}
+
+body {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(255, 250, 240, 0.9), transparent 42%),
+    radial-gradient(circle at 86% 4%, rgba(244, 227, 198, 0.45), transparent 40%),
+    var(--paper-0);
+}
+
+.thinking-surface {
+  padding: 14px;
+  gap: 10px;
+  background: transparent;
+}
+
+.recall-band {
+  border: 1px solid var(--line-warm);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+  backdrop-filter: none;
+  box-shadow: 0 8px 24px rgba(88, 61, 36, 0.08);
+}
+
+.workspace-shell {
+  border: 1px solid var(--line-warm);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(248, 240, 228, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 24px 50px rgba(88, 61, 36, 0.1);
+}
+
+.view-stack {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.home-surface {
+  gap: 16px;
+  padding: 22px;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.home-surface__deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.home-surface__panel,
+.home-surface__resume-popover,
+.home-surface__resume-chip,
+.home-surface__empty-prompt {
+  border: 1px solid var(--line-warm);
+  background: color-mix(in srgb, var(--surface-elevated) 92%, var(--paper-1));
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(94, 67, 43, 0.07);
+}
+
+.home-surface__panel-head strong,
+.home-surface__resume-chip strong {
+  color: var(--ink-0);
+  letter-spacing: -0.01em;
+}
+
+.home-surface__resume-label,
+.home-surface__panel-head p,
+.home-surface__note-row small {
+  color: var(--ink-2);
+}
+
+.home-surface__note-row {
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.home-surface__note-row:hover,
+.home-surface__note-row:focus-visible {
+  border-color: var(--line-warm-strong);
+  background: rgba(255, 248, 237, 0.9);
+}
+
+.canvas-dim {
+  background:
+    radial-gradient(circle at 62% 28%, rgba(125, 98, 67, 0.08), rgba(84, 62, 45, 0.04) 52%, transparent 76%),
+    rgba(76, 56, 42, 0.22);
+}
+
+.expanded-note-shell {
+  padding: 40px calc(var(--thinking-rail-reserved, 24px) + 24px) 20px 24px;
+}
+
+.expanded-note {
+  width: min(1240px, calc(100vw - var(--thinking-rail-reserved, 24px) - 44px));
+  max-width: calc(100vw - var(--thinking-rail-reserved, 24px) - 30px);
+  border-radius: 20px;
+  border: 1px solid var(--line-warm);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(250, 242, 230, 0.96));
+  box-shadow: 0 30px 70px rgba(80, 58, 36, 0.18);
+}
+
+.expanded-note-header--calm {
+  background: rgba(255, 250, 241, 0.92);
+  border-bottom: 1px solid var(--line-warm);
+}
+
+.note-title-field {
+  color: var(--ink-0);
+  font-size: clamp(1.1rem, 1.2vw, 1.34rem);
+  letter-spacing: -0.01em;
+}
+
+.expanded-note-layout--single-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.expanded-note-main--reading,
+.expanded-note-main--edit,
+.expanded-note-main--source-mode,
+.expanded-note-main--constellation-mode {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 18px 22px 26px;
+}
+
+.expanded-note-main--reading {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-areas:
+    "cues body"
+    "summary summary";
+  gap: 16px;
+  align-items: start;
+}
+
+.note-cornell-cues {
+  grid-area: cues;
+  position: sticky;
+  top: 8px;
+  display: grid;
+  gap: 8px;
+  max-height: min(68vh, 680px);
+  overflow: auto;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line-warm);
+  background: rgba(255, 249, 238, 0.78);
+}
+
+.note-cornell-body {
+  grid-area: body;
+  min-height: 58vh;
+  border: 1px solid var(--line-warm);
+  border-radius: 16px;
+  background: var(--surface-elevated);
+  padding: 20px 22px;
+}
+
+.note-cornell-summary {
+  grid-area: summary;
+  border: 1px solid var(--line-warm);
+  border-radius: 14px;
+  background: rgba(252, 244, 232, 0.75);
+}
+
+.note-trace-link {
+  border: 1px solid var(--line-warm);
+  background: rgba(255, 249, 239, 0.84);
+  border-radius: 10px;
+}
+
+.note-trace-link span {
+  color: var(--ink-2);
+}
+
+.relationship-strip,
+.relationship-strip-grid {
+  border-top: 1px solid var(--line-warm);
+}
+
+.ai-panel {
+  --horizon-paper: #f8efe1;
+}
+
+.ai-panel-shell {
+  border-left: 1px solid var(--line-warm);
+  background: linear-gradient(180deg, rgba(250, 241, 228, 0.96), rgba(244, 232, 214, 0.94));
+}
+
+.ai-panel-toggle {
+  border: 1px solid var(--line-warm);
+  background: rgba(255, 249, 239, 0.85);
+  color: var(--ink-1);
+}
+
+.ai-panel-header,
+.ai-primary-response,
+.ai-why-panel,
+.ai-action-preview {
+  border-color: var(--line-warm);
+  background: rgba(255, 250, 242, 0.8);
+}
+
+.ai-panel-context strong,
+.ai-action-row button.active {
+  color: var(--ink-0);
+}
+
+.ai-panel-context small,
+.ai-primary-response p,
+.ai-why-panel li {
+  color: var(--ink-1);
+}
+
+@media (max-width: 1200px) {
+  .expanded-note {
+    width: min(1080px, calc(100vw - var(--thinking-rail-reserved, 24px) - 30px));
+  }
+
+  .expanded-note-main--reading {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .home-surface {
+    padding: 16px;
+  }
+
+  .home-surface__deck {
+    grid-template-columns: 1fr;
+  }
+
+  .expanded-note-shell {
+    padding: 14px;
+  }
+
+  .expanded-note {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+  }
+
+  .expanded-note-main--reading {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "body"
+      "summary"
+      "cues";
+  }
+
+  .note-cornell-cues {
+    position: static;
+    max-height: none;
+  }
+
+  .ai-panel[data-open='true'] {
+    position: fixed;
+    right: 8px;
+    bottom: 12px;
+    top: 86px;
+    width: min(440px, calc(100vw - 16px));
+    z-index: 20;
+  }
+}

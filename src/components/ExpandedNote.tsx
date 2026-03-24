@@ -198,6 +198,18 @@ function getFlowLabel(noteId: string, relationship: VisibleRelationship) {
   return 'Nearby';
 }
 
+
+function getPlainEnglishRelationshipCue(relationship: { type: RelationshipType; explicitness: 'explicit' | 'inferred' }) {
+  if (relationship.type === 'depends_on') return 'This note depends on';
+  if (relationship.type === 'references') return 'Referenced by';
+  if (relationship.type === 'derived_from') return 'Derived from';
+  if (relationship.type === 'contradicts') return 'Potential conflict with';
+  if (relationship.type === 'part_of') return 'Part of';
+  if (relationship.type === 'supports') return 'Supports';
+  if (relationship.type === 'leads_to') return 'Leads to';
+  return relationship.explicitness === 'inferred' ? 'Possibly related to' : 'Related to';
+}
+
 function getRelationshipTone(noteId: string, relationship: VisibleRelationship) {
   if (relationship.type === 'depends_on') return 'dependency';
   if (getFlowGroup(noteId, relationship) === 'downstream' || ['supports', 'leads_to'].includes(relationship.type)) return 'forward';
@@ -708,7 +720,7 @@ export function ExpandedNote({
         <div className="expanded-note-layout expanded-note-layout--single-column">
           {panelMode === 'read' ? (
             <div className="expanded-note-main expanded-note-main--reading">
-              <div className="note-identity-trace" aria-label="Note trace">
+              <aside className="note-identity-trace note-cornell-cues" aria-label="Related cues">
                 <span className={`note-trace-meta ${noteWorkspace ? '' : 'is-muted'}`}>{noteWorkspace ? `Workspace · ${workspaceSummary}` : 'Workspace unassigned'}</span>
                 {noteProjects.length ? <span className="note-trace-meta">Threads · {threadSummary}</span> : null}
                 {visibleTraceNotes.map((relationship) => (
@@ -720,14 +732,14 @@ export function ExpandedNote({
                     onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
                     onClick={() => onOpenRelated(relationship.targetId, relationship.relationshipId)}
                   >
-                    <span>{formatRelationshipType(relationship.relationship.type)}</span>
+                    <span>{getPlainEnglishRelationshipCue(relationship.relationship)}</span>
                     <strong>{relationship.targetTitle}</strong>
                   </button>
                 ))}
                 {traceOverflow > 0 ? <span className="note-trace-overflow">+{traceOverflow} linked</span> : null}
-              </div>
+              </aside>
 
-              <div className="note-body-surface" data-mode="read">
+              <div className="note-body-surface note-cornell-body" data-mode="read">
                 <MarkdownProjectionView
                   source={note.body}
                   note={note}
@@ -769,7 +781,7 @@ export function ExpandedNote({
                 </div>
               ) : null}
 
-              <section className="detail-section detail-section--constellation-summary" aria-label="Constellation summary">
+              <section className="detail-section detail-section--constellation-summary note-cornell-summary" aria-label="Cornell summary">
                 <div className="section-head">
                   <div>
                     <strong>Constellation</strong>
