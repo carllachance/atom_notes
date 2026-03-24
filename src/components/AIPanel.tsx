@@ -140,6 +140,18 @@ function placeholderForMode(mode: AIInteractionMode, selectedNote: NoteCardModel
   return selectedNote ? 'Ask about this note' : 'Ask about the visible scope';
 }
 
+function compactStatusLine(
+  selectedNote: NoteCardModel | null,
+  contextLabel: string,
+  timelineSummary: string,
+  primaryMessage: string
+) {
+  if (timelineSummary) return timelineSummary;
+  if (primaryMessage) return primaryMessage;
+  if (selectedNote) return `Tracking ${selectedNote.title || 'this note'} in local context.`;
+  return `Watching ${contextLabel.toLowerCase()} for the next useful move.`;
+}
+
 function buildSuggestions(
   response: InsightsResponse | null,
   notes: NoteCardModel[],
@@ -201,6 +213,10 @@ export function AIPanel({
     () => buildSuggestions(activeResponse, notes, 'Nearby context'),
     [activeResponse, notes]
   );
+  const compactStatus = useMemo(
+    () => compactStatusLine(selectedNote, contextLabel, timelineSummary, primaryMessage),
+    [contextLabel, primaryMessage, selectedNote, timelineSummary]
+  );
   const whyBullets = useMemo(() => {
     const bullets = [
       timelineSummary,
@@ -257,6 +273,20 @@ export function AIPanel({
           <ThinkingGlyph className="thinking-glyph" />
           <span>Horizon</span>
         </button>
+
+        {!isOpen ? (
+          <section className="ai-panel-compact-summary" aria-label="Horizon quick summary">
+            <p>{compactStatus}</p>
+            <div className="ai-panel-compact-actions">
+              <button type="button" className="ghost-button" onClick={() => { onModeChange('ask'); onToggle(); }}>
+                Ask
+              </button>
+              <button type="button" className="ghost-button" onClick={() => { onModeChange('act'); onToggle(); }}>
+                Next
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         {isOpen ? (
           <button type="button" className="ai-panel-resize" onPointerDown={beginResize} aria-label="Resize Horizon rail" />
