@@ -568,7 +568,6 @@ export function RecallBand({
             title={recallCue.suggestedNextStep}
             aria-label={`Continue ${recallCue.noteTitle}. ${recallCue.suggestedNextStep}`}
           >
-            <span className="recall-resume-chip__label">Where was I</span>
             <span className="recall-resume-chip__title">{recallCue.noteTitle}</span>
           </button>
           <button

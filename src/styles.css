@@ -8474,23 +8474,52 @@ body {
   letter-spacing: 0.01em;
 }
 
-.reentry-toggle {
-  border: none;
-  background: transparent;
-  padding-inline: 4px 8px;
-  color: var(--text-primary);
-  font-size: 0.92rem;
+.ghost-button.capture-button {
+  border-color: color-mix(in srgb, var(--accent-brass) 54%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent-brass) 48%, var(--surface-2));
+  color: color-mix(in srgb, var(--text-primary) 90%, #fff5de 10%);
   font-weight: 600;
 }
 
-.reentry-toggle .reentry-icon {
+.ghost-button.capture-button:hover,
+.ghost-button.capture-button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-brass) 68%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent-brass) 58%, var(--surface-2));
+  color: var(--text-primary);
+}
+
+.ghost-button.filters-toggle {
+  border-color: color-mix(in srgb, var(--line-subtle) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 30%, transparent);
   color: var(--text-muted);
+}
+
+.ghost-button.filters-toggle:hover,
+.ghost-button.filters-toggle:focus-visible {
+  border-color: color-mix(in srgb, var(--line-subtle) 90%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 44%, transparent);
+  color: var(--text-secondary);
+}
+
+.reentry-toggle {
+  border: 1px solid color-mix(in srgb, var(--accent-brass) 52%, transparent);
+  background: color-mix(in srgb, var(--accent-brass) 34%, var(--surface-1));
+  padding-inline: 10px 12px;
+  color: color-mix(in srgb, var(--text-primary) 86%, #f5dfb4 14%);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.reentry-toggle .reentry-icon {
+  color: color-mix(in srgb, var(--accent-brass) 80%, var(--text-primary));
 }
 
 .reentry-toggle:hover,
 .reentry-toggle:focus-visible {
-  background: color-mix(in srgb, var(--surface-2) 46%, transparent);
-  border-color: transparent;
+  border-color: color-mix(in srgb, var(--accent-brass) 68%, transparent);
+  background: color-mix(in srgb, var(--accent-brass) 44%, var(--surface-1));
+  color: var(--text-primary);
 }
 
 .reentry-panel {
