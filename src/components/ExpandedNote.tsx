@@ -3,7 +3,7 @@ import {
   DetailSurfaceRelationshipOption,
   getDetailSurfaceRelationshipOption
 } from '../detailSurface/detailSurfaceModel';
-import { ChangeEvent, PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, PointerEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
 import { ThinkingGlyph } from './ThinkingGlyph';
 import { InlineNoteLinkEditor } from './InlineNoteLinkEditor';
@@ -253,7 +253,7 @@ function sceneRelationshipForTask(taskNoteId: string, sourceNoteId: string, rela
   )) ?? null;
 }
 
-function ModeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
+function ModeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" role="tab" aria-selected={active} className={active ? 'active' : ''} onClick={onClick}>
       {children}
@@ -698,7 +698,10 @@ export function ExpandedNote({
               <ModeButton active={panelMode === 'read'} onClick={() => setPanelMode('read')}>Read</ModeButton>
               <ModeButton active={panelMode === 'edit'} onClick={() => setPanelMode('edit')}>Edit</ModeButton>
               <ModeButton active={panelMode === 'constellation'} onClick={() => setPanelMode('constellation')}>Constellation</ModeButton>
-              <ModeButton active={panelMode === 'source'} onClick={() => setPanelMode('source')}>Source</ModeButton>
+              <ModeButton active={panelMode === 'source'} onClick={() => setPanelMode('source')}>
+                <span className="note-tab-label-desktop">Source</span>
+                <span className="note-tab-label-mobile">Files</span>
+              </ModeButton>
             </div>
           </div>
           <div className="note-header-tools note-header-tools--compact">
@@ -709,7 +712,7 @@ export function ExpandedNote({
               <summary className="ghost-button">More</summary>
               <div className="note-danger-menu__panel note-danger-menu__panel--quiet">
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('constellation')}>Constellation</button>
-                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('source')}>Source</button>
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('source')}>Files</button>
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensPin}>{focusLensPinned ? 'Unpin layout' : 'Pin layout'}</button>
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensReset}>Reset view</button>
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onClose}>Close</button>
@@ -1220,44 +1223,40 @@ export function ExpandedNote({
                 </section>
               ) : null}
 
-              <section className="detail-section detail-section--source-surface" aria-label="Source material">
-                <div className="section-head">
-                  <div>
-                    <strong>Source material</strong>
-                    <p className="section-hint">Keep proof, excerpts, and raw material close without crowding the reading surface.</p>
-                  </div>
-                  <span className="section-meta">{attachmentCount ? `${attachmentReadyCount}/${attachmentCount} ready` : 'No attachments'}</span>
-                </div>
+              <section className="detail-section detail-section--source-surface" aria-label="Files and materials">
                 <AttachmentPanel
                   attachments={note.attachments ?? []}
                   onAddAttachments={onAddAttachments}
                   onRemoveAttachment={onRemoveAttachment}
                   onRetryAttachment={onRetryAttachment}
+                  showSectionHeading={false}
                 />
               </section>
 
-              <LowerDisclosure
-                title="Transform"
-                summary={thinkingActive ? 'Thinking rail is open' : 'Source-aware transforms'}
-                open={transformSectionOpen}
-                onToggle={() => toggleUtilityPanel('transform')}
-              >
-                {!thinkingActive ? (
-                  <RefinementComposer
-                    selectionActive={Boolean(selectedTextRange?.text.trim())}
-                    preview={refinementPreview}
-                    previewDraft={refinementPreviewDraft}
-                    customInstruction={customRefinementInstruction}
-                    onSelectPreset={runRefinement}
-                    onCustomInstructionChange={setCustomRefinementInstruction}
-                    onRunCustom={() => runRefinement('custom')}
-                    onPreviewDraftChange={setRefinementPreviewDraft}
-                    onApplyReplace={applyRefinementReplace}
-                    onApplyInsertBelow={applyRefinementInsertBelow}
-                    onCancelPreview={clearRefinementPreview}
-                  />
-                ) : null}
-              </LowerDisclosure>
+              {attachmentCount > 0 ? (
+                <LowerDisclosure
+                  title="Transform"
+                  summary={thinkingActive ? 'Thinking rail is open' : 'Source-aware transforms'}
+                  open={transformSectionOpen}
+                  onToggle={() => toggleUtilityPanel('transform')}
+                >
+                  {!thinkingActive ? (
+                    <RefinementComposer
+                      selectionActive={Boolean(selectedTextRange?.text.trim())}
+                      preview={refinementPreview}
+                      previewDraft={refinementPreviewDraft}
+                      customInstruction={customRefinementInstruction}
+                      onSelectPreset={runRefinement}
+                      onCustomInstructionChange={setCustomRefinementInstruction}
+                      onRunCustom={() => runRefinement('custom')}
+                      onPreviewDraftChange={setRefinementPreviewDraft}
+                      onApplyReplace={applyRefinementReplace}
+                      onApplyInsertBelow={applyRefinementInsertBelow}
+                      onCancelPreview={clearRefinementPreview}
+                    />
+                  ) : null}
+                </LowerDisclosure>
+              ) : null}
             </div>
           ) : null}
 
