@@ -196,7 +196,7 @@ const expandedNoteProps: Omit<ComponentProps<typeof ExpandedNote>, 'note' | 'not
   onPositionChange: () => {}
 };
 
-function renderScene(activeNoteId: string | null, onOpenNote: (noteId: string) => void) {
+function renderScene(activeNoteId: string | null, onOpenNote: (noteId: string) => void, mobileNoteMode = false) {
   capturedCanvasProps = null;
   return renderToStaticMarkup(
     <NoteOpenOverlayScene
@@ -226,6 +226,7 @@ function renderScene(activeNoteId: string | null, onOpenNote: (noteId: string) =
       onClearRelatedHover={() => {}}
       spatialCanvasProps={spatialCanvasProps}
       expandedNoteProps={expandedNoteProps}
+      mobileNoteMode={mobileNoteMode}
       components={{
         SpatialCanvasComponent: TestSpatialCanvas,
         RelationshipWebComponent: TestRelationshipWeb as typeof RelationshipWeb,
@@ -270,4 +271,13 @@ test('note-open overlay scene keeps canvas, dimmer, relationship web, and expand
     /canvas-dim/.test(openMarkup) && /expanded-note-shell/.test(openMarkup) && /note-title-field/.test(openMarkup),
     'expected the open-note composition to retain note UI beyond the backdrop layer'
   );
+});
+
+test('mobile note mode suppresses backdrop and relationship web so note content takes over the viewport', () => {
+  const openMarkup = renderScene('note-1', () => {}, true);
+
+  assert.doesNotMatch(openMarkup, /class="canvas-dim"/);
+  assert.doesNotMatch(openMarkup, /class="relationship-web-layer"/);
+  assert.match(openMarkup, /class="expanded-note-shell"/);
+  assert.match(openMarkup, /Overlay focus note/);
 });
