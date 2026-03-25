@@ -292,6 +292,7 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
 
         <div id="shelf-filters-panel" className="shelf-toolbar__controls" data-mobile-open={mobileFiltersOpen}>
           <label>
+            <span className="shelf-toolbar__label">Group</span>
             <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as GroupMode)}>
               <option value="recent">Recently active</option>
               <option value="focus">In focus</option>
@@ -304,18 +305,21 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
             </select>
           </label>
           <label>
+            <span className="shelf-toolbar__label">Project</span>
             <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
               <option value="all">All projects</option>
               {projects.map((project) => <option key={project.id} value={project.id}>{project.key} · {project.name}</option>)}
             </select>
           </label>
           <label>
+            <span className="shelf-toolbar__label">Workspace</span>
             <select value={workspaceFilter} onChange={(event) => setWorkspaceFilter(event.target.value)}>
               <option value="all">All workspaces</option>
               {workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
             </select>
           </label>
           <label>
+            <span className="shelf-toolbar__label">State</span>
             <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value as StateFilter)}>
               <option value="all">All states</option>
               <option value="active">Active</option>
@@ -351,7 +355,7 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
             <section key={group.id} className="shelf-group" aria-label={group.label}>
               <div className="shelf-group__header">
                 <h2>{group.label}</h2>
-                <span>{group.items.length}</span>
+                <span className="shelf-group__count">{group.items.length}</span>
               </div>
               <div className="shelf-group__items">
                 {arrangeShelfItemsForDenseGrid(group.items).map((item) => (
@@ -376,7 +380,6 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
                   >
                     <div className="shelf-item__head">
                       <strong>{getCompactDisplayTitle(item.note, 68)}</strong>
-                      <span>{formatRecency(item.note.updatedAt)}</span>
                     </div>
                     <p>{getSummaryPreview(item.note, item.previewLength)}</p>
                     {(item.shelfSize === 'featured' || item.shelfSize === 'hero') ? (
@@ -390,18 +393,23 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
                         ) : null}
                       </div>
                     ) : null}
-                    <div className="shelf-item__meta">
-                      {[
-                        item.stateLabel,
-                        item.projectLabel,
-                        item.workspaceLabel,
-                        item.relationCount > 0 ? `${item.relationCount} related` : null,
-                        item.note.attachments?.length ? `${item.note.attachments.length} attachment${item.note.attachments.length === 1 ? '' : 's'}` : null,
-                        item.note.inferredRelationships?.length ? `${item.note.inferredRelationships.length} inferred` : null
-                      ]
-                        .filter((value): value is string => Boolean(value))
-                        .slice(0, item.metadataLimit)
-                        .map((label) => <span key={label}>{label}</span>)}
+                    <div className="shelf-item__footer">
+                      <time className="shelf-item__time" dateTime={new Date(item.note.updatedAt).toISOString()}>
+                        {formatRecency(item.note.updatedAt)}
+                      </time>
+                      <div className="shelf-item__meta">
+                        {[
+                          item.stateLabel,
+                          item.projectLabel,
+                          item.workspaceLabel,
+                          item.relationCount > 0 ? `${item.relationCount} related` : null,
+                          item.note.attachments?.length ? `${item.note.attachments.length} attachment${item.note.attachments.length === 1 ? '' : 's'}` : null,
+                          item.note.inferredRelationships?.length ? `${item.note.inferredRelationships.length} inferred` : null
+                        ]
+                          .filter((value): value is string => Boolean(value))
+                          .slice(0, item.metadataLimit)
+                          .map((label) => <span key={label}>{label}</span>)}
+                      </div>
                     </div>
                     <div
                       className="shelf-item__overflow"
