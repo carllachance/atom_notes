@@ -85,6 +85,7 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
   const [projectFilter, setProjectFilter] = useState('all');
   const [workspaceFilter, setWorkspaceFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState<StateFilter>('all');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const items = useMemo(
     () => toShelfItems(notes, relationships, projects, workspaces),
@@ -130,11 +131,61 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
   }, [filtered, groupBy]);
 
   const isEmpty = groups.every((group) => group.items.length === 0);
+  const activeFilterCount = [
+    groupBy !== 'recent',
+    focusOnly,
+    projectFilter !== 'all',
+    workspaceFilter !== 'all',
+    stateFilter !== 'all'
+  ].filter(Boolean).length;
+
+  const activeFilterSummary = useMemo(() => {
+    const summaryTokens: string[] = [];
+    if (focusOnly) summaryTokens.push('Focus only');
+    if (groupBy !== 'recent') {
+      const groupLabel = {
+        focus: 'In focus',
+        waiting: 'Waiting',
+        project: 'By project',
+        type: 'By type',
+        created: 'Recently created',
+        edited: 'Recently edited',
+        pinned: 'Pinned'
+      }[groupBy];
+      summaryTokens.push(groupLabel ?? 'Custom');
+    }
+    if (projectFilter !== 'all') {
+      const project = projects.find((candidate) => candidate.id === projectFilter);
+      summaryTokens.push(project ? project.key : 'Project');
+    }
+    if (workspaceFilter !== 'all') {
+      const workspace = workspaces.find((candidate) => candidate.id === workspaceFilter);
+      summaryTokens.push(workspace ? workspace.name : 'Workspace');
+    }
+    if (stateFilter !== 'all') {
+      summaryTokens.push(stateFilter === 'done' ? 'Done' : stateFilter === 'waiting' ? 'Waiting' : 'Active');
+    }
+    return summaryTokens.slice(0, 2).join(' · ');
+  }, [focusOnly, groupBy, projectFilter, projects, stateFilter, workspaceFilter, workspaces]);
 
   return (
     <section className="shelf-view" aria-label="Shelf">
       <header className="shelf-toolbar">
-        <div className="shelf-toolbar__controls">
+        <div className="shelf-toolbar__top-row">
+          <button
+            type="button"
+            className={`ghost-button shelf-filter-toggle ${activeFilterCount > 0 ? 'has-active-filters' : ''}`}
+            onClick={() => setMobileFiltersOpen((value) => !value)}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="shelf-filters-panel"
+          >
+            Filters
+            {activeFilterCount > 0 ? <span className="shelf-filter-toggle__badge">{activeFilterCount}</span> : null}
+          </button>
+          {activeFilterSummary ? <p className="shelf-toolbar__summary">{activeFilterSummary}</p> : null}
+        </div>
+
+        <div id="shelf-filters-panel" className="shelf-toolbar__controls" data-mobile-open={mobileFiltersOpen}>
           <label>
             Group
             <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as GroupMode)}>
@@ -174,8 +225,19 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
           <button type="button" className={`ghost-button ${focusOnly ? 'active' : ''}`} onClick={() => setFocusOnly((value) => !value)}>
             Focus only
           </button>
+          <button type="button" className="ghost-button shelf-toolbar__done" onClick={() => setMobileFiltersOpen(false)}>
+            Done
+          </button>
         </div>
       </header>
+
+      <button
+        type="button"
+        className="shelf-filters-backdrop"
+        data-mobile-open={mobileFiltersOpen}
+        onClick={() => setMobileFiltersOpen(false)}
+        aria-label="Close filters"
+      />
 
       {isEmpty ? (
         <section className="shelf-empty-state">
