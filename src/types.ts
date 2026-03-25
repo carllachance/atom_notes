@@ -32,6 +32,7 @@ export type Lens = UniverseLens | ProjectLens | WorkspaceLens | RevealLens | Arc
 
 export type NoteIntent = 'task' | 'link' | 'code' | 'note';
 export type TaskState = 'open' | 'done';
+export type NoteShelfSize = 'compact' | 'standard' | 'featured' | 'hero';
 
 
 export type AttachmentFileKind = 'pdf' | 'text' | 'markdown' | 'json' | 'csv' | 'image';
@@ -171,6 +172,7 @@ export type NoteCardModel = {
   verificationState?: 'verified' | 'needs-review';
   /** Human-readable reason for verification state */
   verificationReason?: string;
+  shelfSize?: NoteShelfSize;
 };
 
 export type Relationship = {

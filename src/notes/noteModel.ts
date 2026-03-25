@@ -2,7 +2,7 @@ import { evaluateExternalReferenceHealth } from './provenance';
 import { normalizeOptionalTitle } from '../noteText';
 import { normalizeProjectIds } from '../projects/projectModel';
 import { normalizeAttachment } from '../attachments/attachmentModel';
-import { NoteCardModel, NoteIntent, NoteProvenance, NoteSourceOrigin, SuggestedRelationship, ExternalReference } from '../types';
+import { NoteCardModel, NoteIntent, NoteProvenance, NoteShelfSize, NoteSourceOrigin, SuggestedRelationship, ExternalReference } from '../types';
 
 export const now = () => Date.now();
 
@@ -153,6 +153,12 @@ function normalizeTaskState(value: unknown): NoteCardModel['taskState'] {
   return value === 'done' ? 'done' : value === 'open' ? 'open' : undefined;
 }
 
+function normalizeShelfSize(value: unknown): NoteShelfSize | undefined {
+  return value === 'compact' || value === 'standard' || value === 'featured' || value === 'hero'
+    ? value
+    : undefined;
+}
+
 function normalizeTaskSource(value: unknown): NoteCardModel['taskSource'] {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as NonNullable<NoteCardModel['taskSource']>;
@@ -267,6 +273,7 @@ export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: strin
     attachments: normalizeAttachments(note.attachments),
     provenance: normalizeProvenance(note.provenance),
     verificationState: note.verificationState === 'needs-review' ? 'needs-review' : 'verified',
-    verificationReason: typeof note.verificationReason === 'string' ? note.verificationReason : undefined
+    verificationReason: typeof note.verificationReason === 'string' ? note.verificationReason : undefined,
+    shelfSize: normalizeShelfSize(note.shelfSize)
   };
 }

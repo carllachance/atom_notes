@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
-import { NoteCardModel, Project, Relationship, Workspace } from '../types';
+import { NoteCardModel, NoteShelfSize, Project, Relationship, Workspace } from '../types';
 
 type GroupMode = 'recent' | 'focus' | 'waiting' | 'project' | 'type' | 'created' | 'edited' | 'pinned';
 type StateFilter = 'all' | 'active' | 'waiting' | 'done';
@@ -11,6 +11,7 @@ type ShelfViewProps = {
   projects: Project[];
   workspaces: Workspace[];
   onOpenNote: (noteId: string) => void;
+  onUpdateNote: (noteId: string, updates: Partial<NoteCardModel>) => void;
 };
 
 type ShelfItem = {
@@ -20,6 +21,9 @@ type ShelfItem = {
   workspaceLabel: string | null;
   stateLabel: string;
   tone: 'paper' | 'panel';
+  shelfSize: NoteShelfSize;
+  previewLength: number;
+  metadataLimit: number;
 };
 
 function formatRecency(updatedAt: number): string {
@@ -68,18 +72,35 @@ function toShelfItems(
     .map((note) => {
       const primaryProject = note.projectIds[0] ? projectsById.get(note.projectIds[0]) ?? null : null;
       const workspace = note.workspaceId ? workspacesById.get(note.workspaceId) ?? null : null;
+      const relationCount = relationCountById.get(note.id) ?? 0;
+      const isOpenTask = note.intent === 'task' && note.taskState !== 'done';
+      const autoSize: NoteShelfSize = note.inFocus || note.isFocus
+        ? 'hero'
+        : isOpenTask
+          ? 'featured'
+          : relationCount >= 4
+            ? 'featured'
+            : relationCount <= 1
+              ? 'compact'
+              : 'standard';
+      const shelfSize = note.shelfSize ?? autoSize;
+      const previewLength = shelfSize === 'hero' ? 320 : shelfSize === 'featured' ? 240 : shelfSize === 'standard' ? 170 : 96;
+      const metadataLimit = shelfSize === 'hero' ? 4 : shelfSize === 'featured' ? 3 : shelfSize === 'standard' ? 2 : 1;
       return {
         note,
-        relationCount: relationCountById.get(note.id) ?? 0,
+        relationCount,
         projectLabel: primaryProject ? `${primaryProject.key} · ${primaryProject.name}` : null,
         workspaceLabel: workspace ? workspace.name : null,
         stateLabel: deriveStateLabel(note),
-        tone: note.inFocus || note.isFocus ? 'paper' : 'panel'
+        tone: note.inFocus || note.isFocus ? 'paper' : 'panel',
+        shelfSize,
+        previewLength,
+        metadataLimit
       };
     });
 }
 
-export function ShelfView({ notes, relationships, projects, workspaces, onOpenNote }: ShelfViewProps) {
+export function ShelfView({ notes, relationships, projects, workspaces, onOpenNote, onUpdateNote }: ShelfViewProps) {
   const [groupBy, setGroupBy] = useState<GroupMode>('recent');
   const [focusOnly, setFocusOnly] = useState(false);
   const [projectFilter, setProjectFilter] = useState('all');
@@ -187,7 +208,6 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
 
         <div id="shelf-filters-panel" className="shelf-toolbar__controls" data-mobile-open={mobileFiltersOpen}>
           <label>
-            Group
             <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as GroupMode)}>
               <option value="recent">Recently active</option>
               <option value="focus">In focus</option>
@@ -200,21 +220,18 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
             </select>
           </label>
           <label>
-            Project
             <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
               <option value="all">All projects</option>
               {projects.map((project) => <option key={project.id} value={project.id}>{project.key} · {project.name}</option>)}
             </select>
           </label>
           <label>
-            Workspace
             <select value={workspaceFilter} onChange={(event) => setWorkspaceFilter(event.target.value)}>
               <option value="all">All workspaces</option>
               {workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
             </select>
           </label>
           <label>
-            State
             <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value as StateFilter)}>
               <option value="all">All states</option>
               <option value="active">Active</option>
@@ -222,7 +239,7 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
               <option value="done">Done</option>
             </select>
           </label>
-          <button type="button" className={`ghost-button ${focusOnly ? 'active' : ''}`} onClick={() => setFocusOnly((value) => !value)}>
+          <button type="button" className={`ghost-button shelf-focus-filter ${focusOnly ? 'active' : ''}`} onClick={() => setFocusOnly((value) => !value)}>
             Focus only
           </button>
           <button type="button" className="ghost-button shelf-toolbar__done" onClick={() => setMobileFiltersOpen(false)}>
@@ -254,18 +271,27 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
               </div>
               <div className="shelf-group__items">
                 {group.items.map((item) => (
-                  <button key={item.note.id} type="button" className={`shelf-item shelf-item--${item.tone}`} onClick={() => onOpenNote(item.note.id)}>
+                  <button key={item.note.id} type="button" className={`shelf-item shelf-item--${item.tone} shelf-item--${item.shelfSize}`} onClick={() => onOpenNote(item.note.id)}>
                     <div className="shelf-item__head">
                       <strong>{getCompactDisplayTitle(item.note, 68)}</strong>
                       <span>{formatRecency(item.note.updatedAt)}</span>
                     </div>
-                    <p>{getSummaryPreview(item.note, 150)}</p>
+                    <p>{getSummaryPreview(item.note, item.previewLength)}</p>
                     <div className="shelf-item__meta">
-                      <span>{item.stateLabel}</span>
-                      {item.projectLabel ? <span>{item.projectLabel}</span> : null}
-                      {item.workspaceLabel ? <span>{item.workspaceLabel}</span> : null}
-                      {item.relationCount > 0 ? <span>{item.relationCount} related</span> : null}
+                      {[item.stateLabel, item.projectLabel, item.workspaceLabel, item.relationCount > 0 ? `${item.relationCount} related` : null]
+                        .filter((value): value is string => Boolean(value))
+                        .slice(0, item.metadataLimit)
+                        .map((label) => <span key={label}>{label}</span>)}
                     </div>
+                    <details className="shelf-item__size-menu" onClick={(event) => event.stopPropagation()}>
+                      <summary className="ghost-button">Size</summary>
+                      <div className="shelf-item__size-actions">
+                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'compact' })}>Make smaller</button>
+                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'standard' })}>Make standard</button>
+                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'featured' })}>Make larger</button>
+                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'hero' })}>Feature this</button>
+                      </div>
+                    </details>
                   </button>
                 ))}
               </div>
