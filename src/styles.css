@@ -7205,6 +7205,33 @@ samp,
   align-items: center;
 }
 
+.capture-composer--mobile-collapsed {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 10px;
+}
+
+.capture-composer__mobile-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  border: 1px solid rgba(126, 147, 192, 0.34);
+  background: rgba(13, 20, 34, 0.72);
+  color: #d8e5ff;
+}
+
+.capture-composer__mobile-trigger span {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.capture-composer__mobile-trigger small {
+  font-size: 0.74rem;
+  letter-spacing: 0.01em;
+}
+
 .capture-composer__compact-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;

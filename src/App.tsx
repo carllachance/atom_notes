@@ -17,6 +17,7 @@ import { createBookmark, recordHistoryEntry, useBookmarks, useHistoryStack } fro
 
 export function App() {
   const [browseSurface, setBrowseSurface] = useState<'shelf' | 'canvas'>('shelf');
+  const [isMobileViewport, setIsMobileViewport] = useState(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 900px)').matches : false));
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [reentryExpanded, setReentryExpanded] = useState(false);
@@ -128,8 +129,9 @@ export function App() {
   const canvasVisibility = summarizeCanvasVisibility(scene, lensPresentation, visibleNotes, canvasMetrics);
   const thinkingRailVisible = scene.expandedSecondarySurface === 'thinking';
   const captureExpanded = scene.expandedSecondarySurface === 'capture';
+  const captureCompactedForOpenNote = isMobileViewport && Boolean(activeNote);
   const thinkingRailReservedInset = thinkingRailVisible ? thinkingRailWidth + 24 : 24;
-  const captureDockInset = captureExpanded ? 236 : 88;
+  const captureDockInset = captureCompactedForOpenNote ? 12 : captureExpanded ? 236 : 88;
   const hasFreshInsights = Boolean(
     activeNote && (
       isStreamingResponse ||
@@ -147,6 +149,15 @@ export function App() {
     hasAutoRecoveredRef.current = true;
     fitAllNotes();
   }, [canvasVisibility.isBlankBecauseNotesAreOffCanvas, fitAllNotes]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 900px)');
+    const onChange = (event: MediaQueryListEvent) => setIsMobileViewport(event.matches);
+    setIsMobileViewport(mediaQuery.matches);
+    mediaQuery.addEventListener('change', onChange);
+    return () => mediaQuery.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     recordHistoryEntry(activeNote?.id ?? null, activeNote?.title ?? null, scene.lens, scene.focusMode);
@@ -417,6 +428,7 @@ export function App() {
 
       <CaptureComposer
         isOpen={captureExpanded}
+        compactWhenNoteOpen={captureCompactedForOpenNote}
         value={scene.captureComposer.draft}
         onChange={onCaptureDraftChange}
         onCommit={commitCapture}

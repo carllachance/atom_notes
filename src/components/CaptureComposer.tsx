@@ -2,6 +2,7 @@ import { KeyboardEvent } from 'react';
 
 type CaptureComposerProps = {
   isOpen: boolean;
+  compactWhenNoteOpen?: boolean;
   value: string;
   onChange: (value: string) => void;
   onCommit: () => void;
@@ -11,10 +12,34 @@ type CaptureComposerProps = {
   canUndo: boolean;
 };
 
-export function CaptureComposer({ isOpen, value, onChange, onCommit, onCancel, onUndo, onExpand, canUndo }: CaptureComposerProps) {
+export function CaptureComposer({
+  isOpen,
+  compactWhenNoteOpen = false,
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+  onUndo,
+  onExpand,
+  canUndo
+}: CaptureComposerProps) {
+  const showMobileCollapsedAffordance = compactWhenNoteOpen && !isOpen;
+
   return (
-    <section className="capture-composer-shell" aria-label="Capture composer" data-state={isOpen ? 'open' : 'compact'}>
-      {isOpen ? (
+    <section
+      className="capture-composer-shell"
+      aria-label="Capture composer"
+      data-state={isOpen ? 'open' : 'compact'}
+      data-note-open={compactWhenNoteOpen ? 'true' : 'false'}
+    >
+      {showMobileCollapsedAffordance ? (
+        <div className="capture-composer capture-composer--mobile-collapsed">
+          <button type="button" className="ghost-button capture-composer__mobile-trigger" onClick={onExpand} aria-label="Open capture">
+            <span aria-hidden>+</span>
+            <small>Capture</small>
+          </button>
+        </div>
+      ) : isOpen ? (
         <div className="capture-composer capture-composer--expanded">
           <header>
             <div>
