@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ClipboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { getDetailSurfaceRelationshipOption } from '../detailSurface/detailSurfaceModel';
 import { getCompactDisplayTitle, getDisplayTitle } from '../noteText';
 import { getResolvedTaskFragments } from '../tasks/taskPromotions';
@@ -10,7 +10,15 @@ import {
   inferRelationshipTypeFromContext,
   ProactiveLinkSuggestion
 } from '../relationships/inlineLinking';
-import { getBlockPrefix, parseSemanticBlocks, SemanticEditableBlock, serializeSemanticBlocks } from '../notes/semanticBlocks';
+import {
+  BlockConversionType,
+  convertBlockType,
+  getBlockPrefix,
+  parseSemanticBlocks,
+  SemanticEditableBlock,
+  serializeSemanticBlocks
+} from '../notes/semanticBlocks';
+import { mergeWithPreviousBlock, pasteIntoBlocks, splitBlockOnEnter } from '../notes/semanticEditorOps';
 
 type InlineLinkTarget = {
   targetId: string;
@@ -198,47 +206,40 @@ export function InlineNoteLinkEditor({
     onSelectionChange?.(nextSelection);
   };
 
-  const splitBlockOnEnter = (index: number, caret: number) => {
-    const block = blocks[index];
-    if (!block) return;
-
-    if (block.type === 'checklist_item' && block.text.length === 0) {
-      const next = [...blocks];
-      next[index] = { ...block, type: 'paragraph', text: '' };
-      commitBlocks(next);
-      setPendingBlockFocus({ index, caret: 0 });
-      return;
-    }
-
-    const before = block.text.slice(0, caret);
-    const after = block.text.slice(caret);
-    const nextCurrent = { ...block, text: before } as SemanticEditableBlock;
-    const inserted: SemanticEditableBlock = block.type === 'heading'
-      ? { id: `${block.id}-p-${Date.now()}`, type: 'paragraph', text: after }
-      : { ...block, id: `${block.id}-n-${Date.now()}`, text: after };
-    const next = [...blocks.slice(0, index), nextCurrent, inserted, ...blocks.slice(index + 1)];
-    commitBlocks(next);
-    setPendingBlockFocus({ index: index + 1, caret: 0 });
+  const handleSplitBlockOnEnter = (index: number, caret: number) => {
+    const result = splitBlockOnEnter(blocks, index, caret);
+    commitBlocks(result.blocks);
+    setPendingBlockFocus(result.focus);
   };
 
   const handleBackspaceAtStart = (index: number) => {
+    const result = mergeWithPreviousBlock(blocks, index);
+    commitBlocks(result.blocks);
+    setPendingBlockFocus(result.focus);
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>, index: number) => {
+    const pastedText = event.clipboardData?.getData('text/plain') ?? '';
+    if (!pastedText.includes('\n')) return;
+    event.preventDefault();
+    const result = pasteIntoBlocks(
+      blocks,
+      index,
+      event.currentTarget.selectionStart,
+      event.currentTarget.selectionEnd,
+      pastedText
+    );
+    commitBlocks(result.blocks);
+    setPendingBlockFocus(result.focus);
+  };
+
+  const applyBlockConversion = (index: number, nextType: BlockConversionType) => {
     const block = blocks[index];
     if (!block) return;
-    if (block.type !== 'paragraph' && block.text.length === 0) {
-      const next = [...blocks];
-      next[index] = { ...block, type: 'paragraph', text: '' };
-      commitBlocks(next);
-      setPendingBlockFocus({ index, caret: 0 });
-      return;
-    }
-
-    if (index === 0) return;
-    const previous = blocks[index - 1];
-    const mergedPrevious = { ...previous, text: `${previous.text}${block.text}` } as SemanticEditableBlock;
     const next = [...blocks];
-    next.splice(index - 1, 2, mergedPrevious);
+    next[index] = convertBlockType(block, nextType);
     commitBlocks(next);
-    setPendingBlockFocus({ index: index - 1, caret: previous.text.length });
+    setPendingBlockFocus({ index, caret: next[index].text.length });
   };
 
   return (
@@ -299,7 +300,7 @@ export function InlineNoteLinkEditor({
 
                 if (event.key === 'Enter') {
                   event.preventDefault();
-                  splitBlockOnEnter(index, event.currentTarget.selectionStart);
+                  handleSplitBlockOnEnter(index, event.currentTarget.selectionStart);
                 } else if (event.key === 'Backspace' && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0) {
                   event.preventDefault();
                   handleBackspaceAtStart(index);
@@ -307,7 +308,19 @@ export function InlineNoteLinkEditor({
                   setActiveCursor(null);
                 }
               }}
+              onPaste={(event) => handlePaste(event, index)}
             />
+            <div className="semantic-block-actions" aria-label="Change block type">
+              <button type="button" className="semantic-block-action" onClick={() => applyBlockConversion(index, 'paragraph')}>
+                ¶
+              </button>
+              <button type="button" className="semantic-block-action" onClick={() => applyBlockConversion(index, 'heading')}>
+                H
+              </button>
+              <button type="button" className="semantic-block-action" onClick={() => applyBlockConversion(index, 'checklist_item')}>
+                ☑
+              </button>
+            </div>
           </div>
         ))}
       </div>

@@ -9651,13 +9651,13 @@ body {
 
 .semantic-block-row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 0.55rem;
   align-items: start;
 }
 
 .semantic-block-row--paragraph {
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr auto;
 }
 
 .semantic-block-prefix {
@@ -9687,4 +9687,21 @@ body {
 
 .semantic-block-input:focus {
   outline: none;
+}
+
+.semantic-block-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding-top: 0.22rem;
+}
+
+.semantic-block-action {
+  border: 1px solid color-mix(in srgb, var(--edge-subtle, #5d6480) 35%, transparent);
+  background: color-mix(in srgb, var(--surface-raised, #1b1f2f) 40%, transparent);
+  color: var(--text-muted, #98a0c6);
+  border-radius: 0.4rem;
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 0.22rem 0.35rem;
+  cursor: pointer;
 }
