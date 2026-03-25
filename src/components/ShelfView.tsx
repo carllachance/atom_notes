@@ -29,6 +29,14 @@ type ShelfItem = {
   didDowngrade: boolean;
 };
 
+const SHELF_GRID_COLUMNS = 12;
+const SHELF_SPANS: Record<NoteShelfSize, { cols: number; rows: number }> = {
+  compact: { cols: 3, rows: 2 },
+  standard: { cols: 4, rows: 2 },
+  featured: { cols: 6, rows: 3 },
+  hero: { cols: 8, rows: 4 }
+};
+
 function formatRecency(updatedAt: number): string {
   const elapsedMs = Date.now() - updatedAt;
   const mins = Math.floor(elapsedMs / 60_000);
@@ -104,6 +112,77 @@ function toShelfItems(
         didDowngrade: resolved.didDowngrade
       };
     });
+}
+
+function ensureRow(occupancy: boolean[][], row: number, columns: number) {
+  while (occupancy.length <= row) occupancy.push(new Array(columns).fill(false));
+}
+
+function canPlace(occupancy: boolean[][], row: number, col: number, width: number, height: number, columns: number): boolean {
+  if (col + width > columns) return false;
+  for (let r = row; r < row + height; r += 1) {
+    ensureRow(occupancy, r, columns);
+    for (let c = col; c < col + width; c += 1) {
+      if (occupancy[r][c]) return false;
+    }
+  }
+  return true;
+}
+
+function place(occupancy: boolean[][], row: number, col: number, width: number, height: number, columns: number) {
+  for (let r = row; r < row + height; r += 1) {
+    ensureRow(occupancy, r, columns);
+    for (let c = col; c < col + width; c += 1) {
+      occupancy[r][c] = true;
+    }
+  }
+}
+
+function firstFit(occupancy: boolean[][], width: number, height: number, columns: number) {
+  let row = 0;
+  while (row < 240) {
+    for (let col = 0; col <= columns - width; col += 1) {
+      if (canPlace(occupancy, row, col, width, height, columns)) {
+        return { row, col };
+      }
+    }
+    row += 1;
+  }
+  return { row: 0, col: 0 };
+}
+
+function arrangeShelfItemsForDenseGrid(items: ShelfItem[]): ShelfItem[] {
+  const placed: ShelfItem[] = [];
+  const remaining = [...items];
+  const occupancy: boolean[][] = [];
+
+  while (remaining.length) {
+    const windowSize = Math.min(6, remaining.length);
+    let bestIndex = 0;
+    let bestScore = Number.POSITIVE_INFINITY;
+    let bestPlacement = { row: 0, col: 0 };
+
+    for (let idx = 0; idx < windowSize; idx += 1) {
+      const candidate = remaining[idx];
+      const span = SHELF_SPANS[candidate.shelfSize];
+      const fit = firstFit(occupancy, span.cols, span.rows, SHELF_GRID_COLUMNS);
+      const stabilityPenalty = idx * 18;
+      const score = fit.row * 120 + fit.col * 4 + stabilityPenalty + span.rows;
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestIndex = idx;
+        bestPlacement = fit;
+      }
+    }
+
+    const next = remaining.splice(bestIndex, 1)[0];
+    const span = SHELF_SPANS[next.shelfSize];
+    place(occupancy, bestPlacement.row, bestPlacement.col, span.cols, span.rows, SHELF_GRID_COLUMNS);
+    placed.push(next);
+  }
+
+  return placed;
 }
 
 export function ShelfView({ notes, relationships, projects, workspaces, onOpenNote, onUpdateNote }: ShelfViewProps) {
@@ -277,7 +356,7 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
                 <span>{group.items.length}</span>
               </div>
               <div className="shelf-group__items">
-                {group.items.map((item) => (
+                {arrangeShelfItemsForDenseGrid(group.items).map((item) => (
                   <article
                     key={item.note.id}
                     className={`shelf-item shelf-item--${item.tone} shelf-item--${item.shelfSize}`}
@@ -319,8 +398,7 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
                         item.workspaceLabel,
                         item.relationCount > 0 ? `${item.relationCount} related` : null,
                         item.note.attachments?.length ? `${item.note.attachments.length} attachment${item.note.attachments.length === 1 ? '' : 's'}` : null,
-                        item.note.inferredRelationships?.length ? `${item.note.inferredRelationships.length} inferred` : null,
-                        item.didDowngrade ? 'Auto-fit size' : null
+                        item.note.inferredRelationships?.length ? `${item.note.inferredRelationships.length} inferred` : null
                       ]
                         .filter((value): value is string => Boolean(value))
                         .slice(0, item.metadataLimit)

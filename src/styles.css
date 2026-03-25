@@ -9828,3 +9828,101 @@ body {
 .markdown-semantic-block--follow_up {
   border-left-color: color-mix(in srgb, #6aa98f 44%, transparent);
 }
+
+/* Discern palette + dense shelf refinement pass */
+.shelf-view {
+  padding: 0.8rem 0.5rem 1rem;
+}
+
+.shelf-group__items {
+  gap: 0.52rem;
+  grid-auto-rows: 72px;
+}
+
+.shelf-item {
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 78%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 96%, black 4%);
+}
+
+.shelf-item--standard {
+  grid-column: span 4;
+  grid-row: span 2;
+}
+
+.shelf-item--paper {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-2) 94%, #d8dde9 6%),
+    color-mix(in srgb, var(--surface-1) 95%, #d8dde9 5%)
+  );
+  color: var(--text-primary);
+}
+
+.shelf-item__meta span {
+  border-color: color-mix(in srgb, var(--line-subtle) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 74%, transparent);
+}
+
+.ghost-button.primary-action,
+.ghost-button.capture-button {
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--accent-primary) 56%, var(--line-subtle));
+  color: var(--text-primary);
+}
+
+.ghost-button.primary-action:hover,
+.ghost-button.capture-button:hover {
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface-3));
+  border-color: color-mix(in srgb, var(--accent-primary) 78%, var(--line-strong));
+}
+
+.expanded-note-shell {
+  padding: 34px calc(var(--thinking-rail-reserved, 24px) + 18px) 18px 18px;
+}
+
+.expanded-note {
+  width: min(1260px, calc(100vw - var(--thinking-rail-reserved, 24px) - 30px));
+  max-width: calc(100vw - var(--thinking-rail-reserved, 24px) - 20px);
+}
+
+.expanded-note[data-panel-mode='edit'] .expanded-note-main--edit {
+  padding: 6px 8px 12px;
+}
+
+.expanded-note[data-panel-mode='edit'] .note-body-field {
+  padding: 12px 8px;
+}
+
+.expanded-note[data-panel-mode='edit'] .note-edit-stack,
+.expanded-note[data-panel-mode='edit'] .inline-link-editor,
+.expanded-note[data-panel-mode='edit'] .note-body-surface,
+.expanded-note[data-panel-mode='edit'] .note-body-field,
+.expanded-note[data-panel-mode='edit'] .semantic-block-editor {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.semantic-block-editor {
+  width: 100%;
+  justify-items: stretch;
+}
+
+.semantic-block-row {
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) max-content;
+}
+
+.semantic-block-row--paragraph {
+  grid-template-columns: minmax(0, 1fr) max-content;
+}
+
+.semantic-block-input {
+  min-width: 0;
+  width: 100%;
+}
+
+.semantic-block-actions {
+  justify-self: end;
+  align-self: start;
+}
