@@ -6437,6 +6437,9 @@ samp,
 
 .attachment-empty-state .ghost-button {
   margin-top: 10px;
+  width: 100%;
+  justify-content: center;
+  min-height: 40px;
 }
 
 .attachment-empty-state .attachment-panel-supported {
@@ -8960,32 +8963,36 @@ body {
   }
 
   .expanded-note-header--calm {
-    gap: 8px;
-    padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px;
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+    column-gap: 6px;
+    padding: calc(env(safe-area-inset-top, 0px) + 6px) 8px 6px;
+    align-items: start;
   }
 
   .expanded-note-header-main {
-    gap: 8px;
+    gap: 5px;
+    min-width: 0;
   }
 
   .note-title-field {
-    font-size: 1.05rem;
-    line-height: 1.2;
+    font-size: 0.98rem;
+    line-height: 1.16;
   }
 
   .body-mode-switch {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 1px;
+    overflow: visible;
+    padding-bottom: 0;
   }
 
   .body-mode-switch button {
-    padding: 0.28rem 0.62rem;
-    font-size: 0.74rem;
+    padding: 0.24rem 0.5rem;
+    font-size: 0.69rem;
     white-space: nowrap;
+    min-height: 26px;
   }
 
   .body-mode-switch button:nth-child(n + 3) {
@@ -9001,7 +9008,8 @@ body {
   }
 
   .note-header-tools {
-    gap: 6px;
+    align-self: end;
+    gap: 4px;
     flex-wrap: nowrap;
   }
 
@@ -9011,9 +9019,9 @@ body {
 
   .note-header-tools--compact .ghost-button,
   .note-danger-menu summary.ghost-button {
-    padding: 0.3rem 0.58rem;
-    font-size: 0.72rem;
-    min-height: 28px;
+    padding: 0.24rem 0.5rem;
+    font-size: 0.68rem;
+    min-height: 26px;
   }
 
   .note-danger-menu__panel {
@@ -9025,29 +9033,71 @@ body {
   }
 
   .expanded-note-layout--single-column {
-    padding: 4px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - (env(safe-area-inset-top, 0px) + 56px));
+    min-height: 0;
+    padding: 2px 6px calc(env(safe-area-inset-bottom, 0px) + 6px);
+    overflow: hidden;
   }
 
   .expanded-note-main--reading,
   .expanded-note-main--edit,
   .expanded-note-main--source-mode,
   .expanded-note-main--constellation-mode {
-    gap: 8px;
-    padding: 4px 4px 10px;
+    gap: 6px;
+    padding: 2px 2px 6px;
+    min-height: 0;
   }
 
   .note-body-surface {
-    border-radius: 12px;
+    border-radius: 8px;
     border-width: 1px;
   }
 
+  .expanded-note-main--edit {
+    height: 100%;
+  }
+
+  .expanded-note-main--edit .note-body-surface {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    border-radius: 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .expanded-note-main--edit .note-edit-stack,
+  .expanded-note-main--edit .inline-link-editor,
+  .expanded-note-main--edit .note-body-field {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .expanded-note-main--edit .note-body-field {
+    padding: 10px 8px 12px;
+    border-radius: 8px;
+  }
+
+  .expanded-note-main--edit .note-quiet-utilities,
+  .expanded-note-main--edit .capture-followups {
+    margin-top: 0;
+  }
+
+  .expanded-note:focus-within .expanded-note-main--edit .note-quiet-utilities,
+  .expanded-note:focus-within .expanded-note-main--edit .capture-followups {
+    display: none;
+  }
+
   .note-edit-stack {
-    gap: 8px;
+    gap: 6px;
   }
 
   .expanded-note:focus-within .expanded-note-header--calm {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
-    padding-bottom: 6px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
+    padding-bottom: 4px;
   }
 }
 

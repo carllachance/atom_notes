@@ -53,7 +53,7 @@ export function AttachmentPanel({
                 : 'Add a file so this note can stay connected to its source material.'}
             </p>
           </div>
-          <span className="section-meta">{processedCount}/{attachments.length} ready</span>
+          {hasAttachments ? <span className="section-meta">{processedCount}/{attachments.length} ready</span> : null}
         </div>
       ) : null}
 
@@ -67,10 +67,9 @@ export function AttachmentPanel({
 
       {!hasAttachments ? (
         <div className="attachment-empty-state">
-          <strong>Add material to this note</strong>
-          <p>This is where you keep files for this note. Attach a file to start.</p>
+          <strong>Add materials</strong>
+          <p>Upload a file so this note has supporting context you can refer to while writing.</p>
           <button type="button" className="ghost-button primary-action" onClick={() => inputRef.current?.click()}>Add file</button>
-          <small className="attachment-panel-supported">Supports {SUPPORTED_ATTACHMENT_TYPE_LABELS.join(' · ')}</small>
           <input ref={inputRef} type="file" multiple accept={SUPPORTED_ATTACHMENT_ACCEPT} hidden onChange={onAddAttachments} />
         </div>
       ) : (
