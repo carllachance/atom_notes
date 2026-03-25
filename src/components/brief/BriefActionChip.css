@@ -1,20 +1,4 @@
 .brief-action-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 4px var(--space-sm);
-  border-radius: var(--radius-chip);
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
-  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface-2));
-  color: color-mix(in srgb, var(--accent-primary) 72%, var(--text-primary));
-  font-family: var(--font-stack);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
   user-select: none;
 }
 

@@ -1,10 +1,11 @@
 import { RelationshipType } from '../types';
+import { Chip } from './Chip';
 
 interface QuadrantFilter {
   label: string;
   types: RelationshipType[];
   indicator: string;
-  colorVar: string;
+  variant: 'neutral' | 'status' | 'warning' | 'danger';
 }
 
 const QUADRANTS: QuadrantFilter[] = [
@@ -12,25 +13,25 @@ const QUADRANTS: QuadrantFilter[] = [
     label: 'Tasks',
     types: ['depends_on', 'leads_to'],
     indicator: '▲',
-    colorVar: 'var(--rel-task)',
+    variant: 'status',
   },
   {
     label: 'Sources',
     types: ['references', 'derived_from'],
     indicator: '▶',
-    colorVar: 'var(--rel-reference)',
+    variant: 'warning',
   },
   {
     label: 'Ideas',
     types: ['related', 'supports'],
     indicator: '▼',
-    colorVar: 'var(--rel-conceptual)',
+    variant: 'neutral',
   },
   {
     label: 'Conflicts',
     types: ['contradicts'],
     indicator: '◀',
-    colorVar: 'var(--rel-conflict)',
+    variant: 'danger',
   },
 ];
 
@@ -56,28 +57,27 @@ export function RelationshipStrip({ activeFilter, onFilterChange }: Relationship
         {QUADRANTS.map((q) => {
           const active = isQuadrantActive(q);
           return (
-            <button
+            <Chip
               key={q.label}
-              className={`relationship-strip__btn${active ? ' relationship-strip__btn--active' : ''}`}
-              style={{ color: active ? q.colorVar : undefined }}
+              className="relationship-strip__btn"
               onClick={() => handleQuadrantClick(q)}
               title={`Filter by ${q.label.toLowerCase()} (${q.types.join(', ')})`}
-            >
-              <span className="relationship-strip__indicator" style={{ color: q.colorVar }}>
-                {q.indicator}
-              </span>
-              <span className="relationship-strip__label">{q.label}</span>
-            </button>
+              variant={q.variant}
+              active={active}
+              label={q.label}
+              leading={q.indicator}
+            />
           );
         })}
       </div>
-      <button
-        className={`relationship-strip__btn relationship-strip__btn--history${activeFilter === null ? '' : ''}`}
+      <Chip
+        className="relationship-strip__btn relationship-strip__btn--history"
         onClick={() => onFilterChange(null)}
         title="Show all relationships"
-      >
-        All
-      </button>
+        variant="neutral"
+        active={activeFilter === null}
+        label="All"
+      />
     </div>
   );
 }

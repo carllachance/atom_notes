@@ -19,6 +19,7 @@ import {
   serializeSemanticBlocks
 } from '../notes/semanticBlocks';
 import { mergeWithPreviousBlock, pasteIntoBlocks, splitBlockOnEnter } from '../notes/semanticEditorOps';
+import { toggleChecklistItemInBlocks } from '../checklists/checklistService';
 
 type InlineLinkTarget = {
   targetId: string;
@@ -45,6 +46,7 @@ type InlineNoteLinkEditorProps = {
   onSelectionChange?: (selection: { start: number; end: number; text: string } | null) => void;
   sourceJumpRequest?: { start: number; end: number; nonce: number } | null;
   onSourceJumpConsumed?: () => void;
+  showProactiveSuggestions?: boolean;
 };
 
 type SuggestionItem =
@@ -96,7 +98,8 @@ export function InlineNoteLinkEditor({
   onChangeProactiveSuggestionType,
   onSelectionChange,
   sourceJumpRequest = null,
-  onSourceJumpConsumed
+  onSourceJumpConsumed,
+  showProactiveSuggestions = false
 }: InlineNoteLinkEditorProps) {
   const blockRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
   const [blocks, setBlocks] = useState<SemanticEditableBlock[]>(() => parseSemanticBlocks(note.body));
@@ -297,9 +300,9 @@ export function InlineNoteLinkEditor({
                   type="checkbox"
                   checked={block.checked}
                   onChange={(event) => {
-                    const next = [...blocks];
-                    next[index] = { ...block, checked: event.target.checked };
-                    commitBlocks(next);
+                    const next = toggleChecklistItemInBlocks(blocks, { blockId: block.id }, event.target.checked);
+                    setBlocks(next.blocks);
+                    onBodyChange(next.source);
                   }}
                 />
               </label>
@@ -409,7 +412,7 @@ export function InlineNoteLinkEditor({
         </div>
       ) : null}
 
-      {proactiveSuggestions.length ? (
+      {showProactiveSuggestions && proactiveSuggestions.length ? (
         <div className="inline-link-proactive" aria-label="Suggested note links">
           <div className="inline-link-proactive-head">
             <strong>Suggested links</strong>
@@ -441,9 +444,6 @@ export function InlineNoteLinkEditor({
                   <option value="part_of">Part of</option>
                   <option value="derived_from">Derived from</option>
                 </select>
-                <button type="button" className="ghost-button" onClick={() => onAcceptProactiveSuggestion(suggestion.id)}>
-                  Link
-                </button>
                 <button
                   type="button"
                   className="inline-link-dismiss"

@@ -1,3 +1,4 @@
+import { Chip } from '../Chip';
 import './BriefActionChip.css';
 
 interface BriefActionChipProps {
@@ -7,8 +8,6 @@ interface BriefActionChipProps {
 
 export function BriefActionChip({ label, onClick }: BriefActionChipProps) {
   return (
-    <button className="brief-action-chip" onClick={onClick}>
-      {label}
-    </button>
+    <Chip label={label} onClick={onClick} variant="accent" className="brief-action-chip" />
   );
 }
