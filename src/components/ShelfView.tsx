@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { KeyboardEvent, MouseEvent, useMemo, useState } from 'react';
 import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
 import { NoteCardModel, NoteShelfSize, Project, Relationship, Workspace } from '../types';
 
@@ -107,6 +107,7 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
   const [workspaceFilter, setWorkspaceFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState<StateFilter>('all');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [activeCardMenuId, setActiveCardMenuId] = useState<string | null>(null);
 
   const items = useMemo(
     () => toShelfItems(notes, relationships, projects, workspaces),
@@ -271,7 +272,24 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
               </div>
               <div className="shelf-group__items">
                 {group.items.map((item) => (
-                  <button key={item.note.id} type="button" className={`shelf-item shelf-item--${item.tone} shelf-item--${item.shelfSize}`} onClick={() => onOpenNote(item.note.id)}>
+                  <article
+                    key={item.note.id}
+                    className={`shelf-item shelf-item--${item.tone} shelf-item--${item.shelfSize}`}
+                    data-size={item.shelfSize}
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => onOpenNote(item.note.id)}
+                    onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onOpenNote(item.note.id);
+                      }
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setActiveCardMenuId(item.note.id);
+                    }}
+                  >
                     <div className="shelf-item__head">
                       <strong>{getCompactDisplayTitle(item.note, 68)}</strong>
                       <span>{formatRecency(item.note.updatedAt)}</span>
@@ -283,16 +301,28 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
                         .slice(0, item.metadataLimit)
                         .map((label) => <span key={label}>{label}</span>)}
                     </div>
-                    <details className="shelf-item__size-menu" onClick={(event) => event.stopPropagation()}>
-                      <summary className="ghost-button">Size</summary>
-                      <div className="shelf-item__size-actions">
-                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'compact' })}>Make smaller</button>
-                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'standard' })}>Make standard</button>
-                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'featured' })}>Make larger</button>
-                        <button type="button" className="ghost-button" onClick={() => onUpdateNote(item.note.id, { shelfSize: 'hero' })}>Feature this</button>
+                    <div
+                      className="shelf-item__overflow"
+                      onClick={(event: MouseEvent<HTMLDivElement>) => event.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className="ghost-button shelf-item__overflow-trigger"
+                        aria-label="Card actions"
+                        aria-haspopup="menu"
+                        aria-expanded={activeCardMenuId === item.note.id}
+                        onClick={() => setActiveCardMenuId((value) => value === item.note.id ? null : item.note.id)}
+                      >
+                        ⋯
+                      </button>
+                      <div className="shelf-item__size-actions" data-open={activeCardMenuId === item.note.id}>
+                        <button type="button" className="ghost-button" onClick={() => { onUpdateNote(item.note.id, { shelfSize: 'compact' }); setActiveCardMenuId(null); }}>Make smaller</button>
+                        <button type="button" className="ghost-button" onClick={() => { onUpdateNote(item.note.id, { shelfSize: 'standard' }); setActiveCardMenuId(null); }}>Standard size</button>
+                        <button type="button" className="ghost-button" onClick={() => { onUpdateNote(item.note.id, { shelfSize: 'featured' }); setActiveCardMenuId(null); }}>Make larger</button>
+                        <button type="button" className="ghost-button" onClick={() => { onUpdateNote(item.note.id, { shelfSize: 'hero' }); setActiveCardMenuId(null); }}>Feature this</button>
                       </div>
-                    </details>
-                  </button>
+                    </div>
+                  </article>
                 ))}
               </div>
             </section>
