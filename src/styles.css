@@ -8630,18 +8630,118 @@ body {
 
 @media (max-width: 900px) {
   .thinking-surface {
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .capture-composer-shell {
-    grid-row: 2;
-    position: sticky;
-    top: 0;
-    z-index: 7;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 24;
+    padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 10px);
+    pointer-events: none;
   }
 
   .workspace-shell {
-    grid-row: 3;
+    grid-row: 2;
+  }
+
+  .workspace-shell--mobile-capture .view-stack {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+  }
+
+  .capture-composer-shell[data-state='compact'] {
+    background: transparent;
+    backdrop-filter: none;
+  }
+
+  .capture-composer-shell[data-state='open'] {
+    top: 0;
+    padding: 0;
+    display: flex;
+    align-items: flex-end;
+    background: rgba(7, 10, 16, 0.36);
+    backdrop-filter: blur(2px);
+    pointer-events: auto;
+  }
+
+  .capture-composer-shell[data-state='open'] .capture-composer {
+    width: 100%;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    padding: 14px;
+    max-height: min(74vh, 540px);
+    overflow-y: auto;
+  }
+
+  .capture-composer-shell[data-note-open='true'][data-state='compact'] {
+    padding-inline: 10px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  .capture-composer-shell .capture-composer {
+    pointer-events: auto;
+  }
+
+  .capture-composer--mobile-dock {
+    display: block;
+    padding: 0;
+  }
+
+  .capture-composer__dock-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 16px;
+    padding: 11px 14px;
+    border: 1px solid color-mix(in srgb, var(--line-subtle) 56%, transparent);
+    background: color-mix(in srgb, var(--surface-1) 90%, #241d25 10%);
+    box-shadow: 0 8px 18px rgba(9, 6, 10, 0.2);
+    justify-content: flex-start;
+  }
+
+  .capture-composer__dock-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--surface-2) 84%, #2f2530 16%);
+    border: 1px solid color-mix(in srgb, var(--line-subtle) 44%, transparent);
+  }
+
+  .capture-composer__dock-copy {
+    display: grid;
+    gap: 2px;
+    text-align: left;
+  }
+
+  .capture-composer__dock-copy strong {
+    font-size: 0.86rem;
+    color: var(--text-primary);
+    letter-spacing: 0.01em;
+  }
+
+  .capture-composer__dock-copy small {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+  }
+
+  .capture-composer--mobile-dock-minimized .capture-composer__dock-trigger {
+    width: auto;
+    min-width: 122px;
+    margin-left: auto;
+    border-radius: 999px;
+    padding: 8px 12px;
+  }
+
+  .capture-composer--mobile-dock-minimized .capture-composer__dock-copy small {
+    display: none;
   }
 
   .home-surface {
