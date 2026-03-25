@@ -225,6 +225,8 @@ export function App() {
         onRestoreBookmark={handleRestoreBookmark}
         browseSurface={browseSurface}
         onBrowseSurfaceChange={setBrowseSurface}
+        horizonOpen={thinkingRailVisible}
+        onToggleHorizon={() => setExpandedSurface(thinkingRailVisible ? 'none' : 'thinking')}
       />
 
       <section className="workspace-shell">
