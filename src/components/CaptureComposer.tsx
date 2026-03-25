@@ -2,6 +2,7 @@ import { KeyboardEvent } from 'react';
 
 type CaptureComposerProps = {
   isOpen: boolean;
+  isMobileViewport?: boolean;
   compactWhenNoteOpen?: boolean;
   value: string;
   onChange: (value: string) => void;
@@ -14,6 +15,7 @@ type CaptureComposerProps = {
 
 export function CaptureComposer({
   isOpen,
+  isMobileViewport = false,
   compactWhenNoteOpen = false,
   value,
   onChange,
@@ -23,7 +25,8 @@ export function CaptureComposer({
   onExpand,
   canUndo
 }: CaptureComposerProps) {
-  const showMobileCollapsedAffordance = compactWhenNoteOpen && !isOpen;
+  const showDockedMobileAffordance = isMobileViewport && !isOpen;
+  const showMobileCollapsedAffordance = showDockedMobileAffordance && compactWhenNoteOpen;
 
   return (
     <section
@@ -32,14 +35,7 @@ export function CaptureComposer({
       data-state={isOpen ? 'open' : 'compact'}
       data-note-open={compactWhenNoteOpen ? 'true' : 'false'}
     >
-      {showMobileCollapsedAffordance ? (
-        <div className="capture-composer capture-composer--mobile-collapsed">
-          <button type="button" className="ghost-button capture-composer__mobile-trigger" onClick={onExpand} aria-label="Open capture">
-            <span aria-hidden>+</span>
-            <small>Capture</small>
-          </button>
-        </div>
-      ) : isOpen ? (
+      {isOpen ? (
         <div className="capture-composer capture-composer--expanded">
           <header>
             <div>
@@ -80,6 +76,21 @@ export function CaptureComposer({
               </button>
             </div>
           </footer>
+        </div>
+      ) : showDockedMobileAffordance ? (
+        <div className={`capture-composer capture-composer--mobile-dock ${showMobileCollapsedAffordance ? 'capture-composer--mobile-dock-minimized' : ''}`}>
+          <button
+            type="button"
+            className="ghost-button capture-composer__dock-trigger"
+            onClick={onExpand}
+            aria-label="Open capture composer"
+          >
+            <span className="capture-composer__dock-icon" aria-hidden>✎</span>
+            <span className="capture-composer__dock-copy">
+              <strong>{showMobileCollapsedAffordance ? 'Capture' : 'Capture a note'}</strong>
+              {showMobileCollapsedAffordance ? null : <small>Ready when you are</small>}
+            </span>
+          </button>
         </div>
       ) : (
         <div className="capture-composer capture-composer--compact-bar">

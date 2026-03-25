@@ -240,7 +240,7 @@ export function App() {
         onToggleHorizon={() => setExpandedSurface(thinkingRailVisible ? 'none' : 'thinking')}
       />
 
-      <section className="workspace-shell">
+      <section className={`workspace-shell ${isMobileViewport ? 'workspace-shell--mobile-capture' : ''}`}>
         <section className="view-stack" data-lens={scene.lens.kind}>
           {!activeNote && browseSurface === 'shelf' ? (
             <ShelfView
@@ -428,6 +428,7 @@ export function App() {
 
       <CaptureComposer
         isOpen={captureExpanded}
+        isMobileViewport={isMobileViewport}
         compactWhenNoteOpen={captureCompactedForOpenNote}
         value={scene.captureComposer.draft}
         onChange={onCaptureDraftChange}
