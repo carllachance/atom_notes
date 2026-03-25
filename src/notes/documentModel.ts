@@ -8,6 +8,11 @@ export type Provenance = {
   confidence?: number;
 };
 
+export type SemanticOrigin = {
+  origin?: 'user' | 'ai' | 'imported' | 'source';
+  originRef?: string;
+};
+
 export type CoreBlock =
   | { id: string; type: 'paragraph'; text: string; provenance?: Provenance }
   | { id: string; type: 'heading'; level: 1 | 2 | 3; text: string; provenance?: Provenance }
@@ -20,9 +25,9 @@ export type CoreBlock =
   | { id: string; type: 'callout'; text: string; tone?: 'info' | 'warning' | 'idea'; provenance?: Provenance };
 
 export type AtomBlock =
-  | { id: string; type: 'decision'; text: string; provenance?: Provenance }
-  | { id: string; type: 'open_question'; text: string; provenance?: Provenance }
-  | { id: string; type: 'follow_up'; text: string; status?: 'suggested' | 'accepted' | 'dismissed'; provenance?: Provenance }
+  | { id: string; type: 'decision'; text: string; provenance?: Provenance; originMeta?: SemanticOrigin }
+  | { id: string; type: 'open_question'; text: string; provenance?: Provenance; originMeta?: SemanticOrigin }
+  | { id: string; type: 'follow_up'; text: string; status?: 'suggested' | 'accepted' | 'dismissed'; provenance?: Provenance; originMeta?: SemanticOrigin }
   | { id: string; type: 'source_reference'; refId: string; label: string; href?: string; provenance?: Provenance }
   | { id: string; type: 'evidence'; text: string; sourceRefIds?: string[]; provenance?: Provenance }
   | { id: string; type: 'ai_suggestion'; text: string; status: 'proposed' | 'accepted' | 'rejected'; provenance?: Provenance }

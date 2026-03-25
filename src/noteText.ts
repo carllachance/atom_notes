@@ -1,4 +1,5 @@
 import { NoteCardModel } from './types';
+import { collectSemanticSignals } from './notes/semanticSignals';
 
 const FALLBACK_TITLE = 'Quick note';
 
@@ -62,4 +63,16 @@ export function getSummaryPreview(note: Pick<NoteCardModel, 'title' | 'body'>, m
   const bodyText = getBodyPreviewSeed(note);
   if (!bodyText) return 'No summary yet.';
   return truncate(bodyText, maxLength);
+}
+
+export function getUnresolvedPreview(note: Pick<NoteCardModel, 'body'>, maxLength = 120): string {
+  const unresolved = collectSemanticSignals(note.body).find((signal) => signal.type === 'open_question');
+  if (!unresolved) return '';
+  return truncate(unresolved.text, maxLength);
+}
+
+export function getRecapPreview(note: Pick<NoteCardModel, 'body'>, maxLength = 120): string {
+  const decision = collectSemanticSignals(note.body).find((signal) => signal.type === 'decision');
+  if (!decision) return '';
+  return truncate(decision.text, maxLength);
 }

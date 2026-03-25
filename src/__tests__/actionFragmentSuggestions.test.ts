@@ -29,3 +29,16 @@ test('actionFragmentSuggestions ignores note fragments that were already promote
 
   assert.deepEqual(suggestions.map((item) => item.text), ['Share the revised copy']);
 });
+
+test('actionFragmentSuggestions prioritizes follow-up semantic blocks for task promotion', () => {
+  const body = ['Decision: Keep rollout small', 'Follow-up: Schedule QA sign-off', 'Background context'].join('\n');
+  const suggestions = getLikelyActionFragments({
+    id: 'note-3',
+    intent: 'note',
+    body,
+    promotedTaskFragments: []
+  });
+
+  assert.equal(suggestions[0]?.text, 'Schedule QA sign-off');
+  assert.match(suggestions[0]?.reason ?? '', /semantic block|Follow-up/i);
+});

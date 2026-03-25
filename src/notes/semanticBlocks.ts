@@ -1,13 +1,22 @@
+export type SemanticBlockOrigin = {
+  origin?: 'user' | 'ai' | 'imported' | 'source';
+  originRef?: string;
+};
+
 export type SemanticEditableBlock =
   | { id: string; type: 'paragraph'; text: string }
   | { id: string; type: 'heading'; level: 1 | 2 | 3; text: string }
   | { id: string; type: 'checklist_item'; checked: boolean; text: string }
-  | { id: string; type: 'decision'; text: string }
-  | { id: string; type: 'open_question'; text: string }
-  | { id: string; type: 'follow_up'; text: string }
+  | ({ id: string; type: 'decision'; text: string } & SemanticBlockOrigin)
+  | ({ id: string; type: 'open_question'; text: string } & SemanticBlockOrigin)
+  | ({ id: string; type: 'follow_up'; text: string } & SemanticBlockOrigin)
   | { id: string; type: 'unsupported'; text: string; originalType?: string; raw?: string };
 
 export type BlockConversionType = 'paragraph' | 'heading' | 'checklist_item' | 'decision' | 'open_question' | 'follow_up';
+function parseOrigin(value: unknown): SemanticBlockOrigin['origin'] {
+  if (value === 'user' || value === 'ai' || value === 'imported' || value === 'source') return value;
+  return undefined;
+}
 
 let blockCounter = 0;
 
@@ -66,7 +75,9 @@ export function normalizeSemanticBlock(value: unknown, fallbackId = nextId()): S
   }
 
   if (candidate.type === 'decision' || candidate.type === 'open_question' || candidate.type === 'follow_up') {
-    return { id, type: candidate.type, text };
+    const origin = parseOrigin(candidate.origin);
+    const originRef = typeof candidate.originRef === 'string' ? candidate.originRef : undefined;
+    return { id, type: candidate.type, text, origin, originRef };
   }
 
   const originalType = typeof candidate.type === 'string' ? candidate.type : undefined;
@@ -123,7 +134,15 @@ export function convertBlockType(block: SemanticEditableBlock, nextType: BlockCo
   }
 
   if (nextType === 'decision' || nextType === 'open_question' || nextType === 'follow_up') {
-    return { id: block.id, type: nextType, text: block.text };
+    const origin = 'origin' in block ? block.origin : undefined;
+    const originRef = 'originRef' in block ? block.originRef : undefined;
+    return {
+      id: block.id,
+      type: nextType,
+      text: block.text,
+      ...(origin ? { origin } : {}),
+      ...(originRef ? { originRef } : {})
+    };
   }
 
   return {
