@@ -73,6 +73,34 @@ export function legacyTextToDocument(text: string): NoteDocument {
       return;
     }
 
+    if (block.type === 'decision') {
+      blocks.push({
+        id: blockId('decision', index),
+        type: 'decision',
+        text: readInlineText(block.tokens)
+      });
+      return;
+    }
+
+    if (block.type === 'open_question') {
+      blocks.push({
+        id: blockId('question', index),
+        type: 'open_question',
+        text: readInlineText(block.tokens)
+      });
+      return;
+    }
+
+    if (block.type === 'follow_up') {
+      blocks.push({
+        id: blockId('follow', index),
+        type: 'follow_up',
+        text: readInlineText(block.tokens),
+        status: 'suggested'
+      });
+      return;
+    }
+
     if (block.type === 'blockquote') {
       blocks.push({
         id: blockId('quote', index),

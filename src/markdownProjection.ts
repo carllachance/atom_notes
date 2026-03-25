@@ -12,6 +12,9 @@ export type MarkdownListItem = {
 export type MarkdownBlock =
   | { type: 'heading'; level: number; tokens: InlineToken[] }
   | { type: 'paragraph'; tokens: InlineToken[] }
+  | { type: 'decision'; tokens: InlineToken[] }
+  | { type: 'open_question'; tokens: InlineToken[] }
+  | { type: 'follow_up'; tokens: InlineToken[] }
   | { type: 'blockquote'; lines: InlineToken[][] }
   | { type: 'unordered_list'; items: MarkdownListItem[] }
   | { type: 'ordered_list'; items: MarkdownListItem[] }
@@ -65,7 +68,8 @@ function parseInlineTokens(input: string, baseOffset: number): InlineToken[] {
 }
 
 function startsSpecialBlock(line: string): boolean {
-  return /^(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+|```)/.test(line) || PLAIN_TASK_LINE_PATTERN.test(line);
+  return /^(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+|```|\s*Decision:\s+|\s*(?:Open\s+question|Question):\s+|\s*Follow-up(?:\s*\([^)]*\))?:\s+)/i.test(line)
+    || PLAIN_TASK_LINE_PATTERN.test(line);
 }
 
 function parseListItem(content: string, lineIndex: number, baseOffset: number): MarkdownListItem {
@@ -82,6 +86,12 @@ function parseListItem(content: string, lineIndex: number, baseOffset: number): 
     tokens: parseInlineTokens(label, baseOffset + Math.max(0, labelStart)),
     lineIndex
   };
+}
+
+function inlineStartOffset(line: string, captured: string) {
+  if (!captured.length) return line.length;
+  const offset = line.indexOf(captured);
+  return offset >= 0 ? offset : line.length;
 }
 
 export function toggleMarkdownCheckbox(source: string, lineIndex: number, checked: boolean): string {
@@ -130,6 +140,33 @@ export function parseMarkdownProjection(source: string): MarkdownBlock[] {
     if (heading) {
       const contentStart = lineOffsets[i] + line.indexOf(heading[2]);
       blocks.push({ type: 'heading', level: heading[1].length, tokens: parseInlineTokens(heading[2].trim(), contentStart) });
+      continue;
+    }
+
+    const decision = line.match(/^\s*Decision:\s*(.*)$/i);
+    if (decision) {
+      blocks.push({
+        type: 'decision',
+        tokens: parseInlineTokens(decision[1], lineOffsets[i] + inlineStartOffset(line, decision[1]))
+      });
+      continue;
+    }
+
+    const openQuestion = line.match(/^\s*(?:Open\s+question|Question):\s*(.*)$/i);
+    if (openQuestion) {
+      blocks.push({
+        type: 'open_question',
+        tokens: parseInlineTokens(openQuestion[1], lineOffsets[i] + inlineStartOffset(line, openQuestion[1]))
+      });
+      continue;
+    }
+
+    const followUp = line.match(/^\s*Follow-up(?:\s*\([^)]*\))?:\s*(.*)$/i);
+    if (followUp) {
+      blocks.push({
+        type: 'follow_up',
+        tokens: parseInlineTokens(followUp[1], lineOffsets[i] + inlineStartOffset(line, followUp[1]))
+      });
       continue;
     }
 

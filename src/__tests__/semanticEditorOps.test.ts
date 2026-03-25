@@ -45,3 +45,11 @@ test('paste multi-line text splits a block and keeps cursor on tail row', () => 
   assert.equal(result.blocks[3].text, 'threea');
   assert.deepEqual(result.focus, { index: 3, caret: 'three'.length });
 });
+
+test('split preserves follow-up semantic type for downstream lifecycle hooks', () => {
+  const result = splitBlockOnEnter([{ id: 'f1', type: 'follow_up', text: 'Schedule review now' }], 0, 8);
+  assert.equal(result.blocks[0].type, 'follow_up');
+  assert.equal(result.blocks[1].type, 'follow_up');
+  assert.equal(result.blocks[0].text, 'Schedule');
+  assert.equal(result.blocks[1].text, ' review now');
+});

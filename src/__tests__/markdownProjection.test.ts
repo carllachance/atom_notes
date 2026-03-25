@@ -26,3 +26,12 @@ test('toggleMarkdownCheckbox preserves line syntax while updating state', () => 
 
   assert.equal(toggledOrdered, ['[x] inbox zero', '- [ ] shipped', '1. [x] review'].join('\n'));
 });
+
+test('parseMarkdownProjection recognizes semantic decision/question/follow-up rows', () => {
+  const source = ['Decision: Keep quiet UI', 'Question: How do we expose history?', 'Follow-up (suggested): Add a lightweight filter strip'].join('\n');
+  const blocks = parseMarkdownProjection(source);
+
+  assert.equal(blocks[0]?.type, 'decision');
+  assert.equal(blocks[1]?.type, 'open_question');
+  assert.equal(blocks[2]?.type, 'follow_up');
+});

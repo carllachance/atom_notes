@@ -2,9 +2,12 @@ export type SemanticEditableBlock =
   | { id: string; type: 'paragraph'; text: string }
   | { id: string; type: 'heading'; level: 1 | 2 | 3; text: string }
   | { id: string; type: 'checklist_item'; checked: boolean; text: string }
+  | { id: string; type: 'decision'; text: string }
+  | { id: string; type: 'open_question'; text: string }
+  | { id: string; type: 'follow_up'; text: string }
   | { id: string; type: 'unsupported'; text: string; originalType?: string; raw?: string };
 
-export type BlockConversionType = 'paragraph' | 'heading' | 'checklist_item';
+export type BlockConversionType = 'paragraph' | 'heading' | 'checklist_item' | 'decision' | 'open_question' | 'follow_up';
 
 let blockCounter = 0;
 
@@ -23,6 +26,19 @@ function parseChecklist(line: string) {
   const match = line.match(/^\s*[-*+]\s+\[( |x|X)\]\s*(.*)$/);
   if (!match) return null;
   return { checked: match[1].toLowerCase() === 'x', text: match[2] };
+}
+
+function parseSemanticLine(line: string) {
+  const decision = line.match(/^\s*Decision:\s*(.*)$/i);
+  if (decision) return { type: 'decision' as const, text: decision[1] };
+
+  const question = line.match(/^\s*(?:Open\s+question|Question):\s*(.*)$/i);
+  if (question) return { type: 'open_question' as const, text: question[1] };
+
+  const followUp = line.match(/^\s*Follow-up(?:\s*\([^)]*\))?:\s*(.*)$/i);
+  if (followUp) return { type: 'follow_up' as const, text: followUp[1] };
+
+  return null;
 }
 
 export function createParagraphBlock(text = ''): SemanticEditableBlock {
@@ -49,6 +65,10 @@ export function normalizeSemanticBlock(value: unknown, fallbackId = nextId()): S
     return { id, type: 'paragraph', text };
   }
 
+  if (candidate.type === 'decision' || candidate.type === 'open_question' || candidate.type === 'follow_up') {
+    return { id, type: candidate.type, text };
+  }
+
   const originalType = typeof candidate.type === 'string' ? candidate.type : undefined;
   const raw = typeof candidate.raw === 'string'
     ? candidate.raw
@@ -72,6 +92,11 @@ export function parseSemanticBlocks(source: string): SemanticEditableBlock[] {
       return { id: nextId(), type: 'checklist_item', checked: checklist.checked, text: checklist.text };
     }
 
+    const semantic = parseSemanticLine(line);
+    if (semantic) {
+      return { id: nextId(), type: semantic.type, text: semantic.text };
+    }
+
     return { id: nextId(), type: 'paragraph', text: line };
   });
 
@@ -81,6 +106,9 @@ export function parseSemanticBlocks(source: string): SemanticEditableBlock[] {
 export function getBlockPrefix(block: SemanticEditableBlock): string {
   if (block.type === 'heading') return `${'#'.repeat(block.level)} `;
   if (block.type === 'checklist_item') return `- [${block.checked ? 'x' : ' '}] `;
+  if (block.type === 'decision') return 'Decision: ';
+  if (block.type === 'open_question') return 'Question: ';
+  if (block.type === 'follow_up') return 'Follow-up: ';
   return '';
 }
 
@@ -92,6 +120,10 @@ export function convertBlockType(block: SemanticEditableBlock, nextType: BlockCo
   if (nextType === 'heading') {
     const previousLevel = block.type === 'heading' ? block.level : 1;
     return { id: block.id, type: 'heading', level: previousLevel, text: block.text };
+  }
+
+  if (nextType === 'decision' || nextType === 'open_question' || nextType === 'follow_up') {
+    return { id: block.id, type: nextType, text: block.text };
   }
 
   return {
