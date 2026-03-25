@@ -9641,3 +9641,50 @@ body {
     grid-row: span 1;
   }
 }
+
+.semantic-block-editor {
+  min-height: 320px;
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+}
+
+.semantic-block-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.semantic-block-row--paragraph {
+  grid-template-columns: 1fr;
+}
+
+.semantic-block-prefix {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #8c92b8);
+  padding-top: 0.42rem;
+  min-width: 1rem;
+  text-align: right;
+}
+
+.semantic-block-check {
+  padding-top: 0.36rem;
+}
+
+.semantic-block-input {
+  width: 100%;
+  min-height: 2rem;
+  resize: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.45;
+  padding: 0.24rem 0;
+}
+
+.semantic-block-input:focus {
+  outline: none;
+}

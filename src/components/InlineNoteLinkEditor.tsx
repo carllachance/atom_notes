@@ -10,6 +10,7 @@ import {
   inferRelationshipTypeFromContext,
   ProactiveLinkSuggestion
 } from '../relationships/inlineLinking';
+import { getBlockPrefix, parseSemanticBlocks, SemanticEditableBlock, serializeSemanticBlocks } from '../notes/semanticBlocks';
 
 type InlineLinkTarget = {
   targetId: string;
@@ -58,11 +59,29 @@ export function InlineNoteLinkEditor({
   onChangeProactiveSuggestionType,
   onSelectionChange
 }: InlineNoteLinkEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const blockRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
+  const [blocks, setBlocks] = useState<SemanticEditableBlock[]>(() => parseSemanticBlocks(note.body));
   const [activeCursor, setActiveCursor] = useState<number | null>(null);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [pendingCaret, setPendingCaret] = useState<number | null>(null);
+  const [pendingBlockFocus, setPendingBlockFocus] = useState<{ index: number; caret: number } | null>(null);
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number; text: string } | null>(null);
+
+  const bodyFromBlocks = useMemo(() => serializeSemanticBlocks(blocks), [blocks]);
+  const blockStarts = useMemo(() => {
+    const starts: number[] = [];
+    let cursor = 0;
+    blocks.forEach((block, index) => {
+      starts[index] = cursor;
+      cursor += getBlockPrefix(block).length + block.text.length + 1;
+    });
+    return starts;
+  }, [blocks]);
+
+  useEffect(() => {
+    if (bodyFromBlocks === note.body) return;
+    setBlocks(parseSemanticBlocks(note.body));
+  }, [note.body, bodyFromBlocks]);
 
   const activeMatch = useMemo(() => {
     if (activeCursor == null) return null;
@@ -105,11 +124,30 @@ export function InlineNoteLinkEditor({
   );
 
   useEffect(() => {
-    if (pendingCaret == null || !textareaRef.current) return;
-    textareaRef.current.focus();
-    textareaRef.current.setSelectionRange(pendingCaret, pendingCaret);
+    if (pendingCaret == null || !blocks.length) return;
+    let targetIndex = blocks.length - 1;
+    for (let index = 0; index < blocks.length; index += 1) {
+      const blockStart = (blockStarts[index] ?? 0) + getBlockPrefix(blocks[index]).length;
+      const blockEnd = blockStart + blocks[index].text.length;
+      if (pendingCaret <= blockEnd) {
+        targetIndex = index;
+        break;
+      }
+    }
+
+    const targetStart = (blockStarts[targetIndex] ?? 0) + getBlockPrefix(blocks[targetIndex]).length;
+    setPendingBlockFocus({ index: targetIndex, caret: Math.max(0, pendingCaret - targetStart) });
     setPendingCaret(null);
-  }, [pendingCaret]);
+  }, [pendingCaret, blocks, blockStarts]);
+
+  useEffect(() => {
+    if (!pendingBlockFocus) return;
+    const target = blockRefs.current[pendingBlockFocus.index];
+    if (!target) return;
+    target.focus();
+    target.setSelectionRange(pendingBlockFocus.caret, pendingBlockFocus.caret);
+    setPendingBlockFocus(null);
+  }, [pendingBlockFocus, blocks]);
 
   useEffect(() => {
     setActiveSuggestionIndex(0);
@@ -122,6 +160,11 @@ export function InlineNoteLinkEditor({
     onBodyChange(nextBody);
     setPendingCaret(activeMatch.start + replacement.length);
     return nextBody;
+  };
+
+  const commitBlocks = (nextBlocks: SemanticEditableBlock[]) => {
+    setBlocks(nextBlocks);
+    onBodyChange(serializeSemanticBlocks(nextBlocks));
   };
 
   const commitSuggestion = (item: SuggestionItem) => {
@@ -138,50 +181,136 @@ export function InlineNoteLinkEditor({
     if (targetId) setActiveCursor(null);
   };
 
-  const handleTextareaSelection = () => {
-    if (!textareaRef.current) return;
-    setActiveCursor(textareaRef.current.selectionStart);
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
+  const handleBlockSelection = (index: number) => {
+    const field = blockRefs.current[index];
+    if (!field) return;
+    const localStart = field.selectionStart;
+    const localEnd = field.selectionEnd;
+    const currentBlock = blocks[index];
+    if (!currentBlock) return;
+    const globalBase = (blockStarts[index] ?? 0) + getBlockPrefix(currentBlock).length;
+    const start = globalBase + localStart;
+    const end = globalBase + localEnd;
+    setActiveCursor(start);
     const text = note.body.slice(start, end);
     const nextSelection = start === end ? null : { start, end, text };
     setSelectionRange(nextSelection);
     onSelectionChange?.(nextSelection);
   };
 
+  const splitBlockOnEnter = (index: number, caret: number) => {
+    const block = blocks[index];
+    if (!block) return;
+
+    if (block.type === 'checklist_item' && block.text.length === 0) {
+      const next = [...blocks];
+      next[index] = { ...block, type: 'paragraph', text: '' };
+      commitBlocks(next);
+      setPendingBlockFocus({ index, caret: 0 });
+      return;
+    }
+
+    const before = block.text.slice(0, caret);
+    const after = block.text.slice(caret);
+    const nextCurrent = { ...block, text: before } as SemanticEditableBlock;
+    const inserted: SemanticEditableBlock = block.type === 'heading'
+      ? { id: `${block.id}-p-${Date.now()}`, type: 'paragraph', text: after }
+      : { ...block, id: `${block.id}-n-${Date.now()}`, text: after };
+    const next = [...blocks.slice(0, index), nextCurrent, inserted, ...blocks.slice(index + 1)];
+    commitBlocks(next);
+    setPendingBlockFocus({ index: index + 1, caret: 0 });
+  };
+
+  const handleBackspaceAtStart = (index: number) => {
+    const block = blocks[index];
+    if (!block) return;
+    if (block.type !== 'paragraph' && block.text.length === 0) {
+      const next = [...blocks];
+      next[index] = { ...block, type: 'paragraph', text: '' };
+      commitBlocks(next);
+      setPendingBlockFocus({ index, caret: 0 });
+      return;
+    }
+
+    if (index === 0) return;
+    const previous = blocks[index - 1];
+    const mergedPrevious = { ...previous, text: `${previous.text}${block.text}` } as SemanticEditableBlock;
+    const next = [...blocks];
+    next.splice(index - 1, 2, mergedPrevious);
+    commitBlocks(next);
+    setPendingBlockFocus({ index: index - 1, caret: previous.text.length });
+  };
+
   return (
     <div className="inline-link-editor">
-      <textarea
-        ref={textareaRef}
-        className="note-body-field"
-        aria-label="Note body markdown"
-        placeholder="Write freely…"
-        value={note.body}
-        onChange={(event) => {
-          onBodyChange(event.target.value);
-          setActiveCursor(event.target.selectionStart);
-        }}
-        onClick={handleTextareaSelection}
-        onKeyUp={handleTextareaSelection}
-        onSelect={handleTextareaSelection}
-        onBlur={() => window.setTimeout(() => setActiveCursor((cursor) => cursor), 0)}
-        onKeyDown={(event) => {
-          if (!suggestionItems.length) return;
-          if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            setActiveSuggestionIndex((index) => (index + 1) % suggestionItems.length);
-          } else if (event.key === 'ArrowUp') {
-            event.preventDefault();
-            setActiveSuggestionIndex((index) => (index - 1 + suggestionItems.length) % suggestionItems.length);
-          } else if (event.key === 'Enter' || event.key === 'Tab') {
-            event.preventDefault();
-            const activeItem = suggestionItems[activeSuggestionIndex] ?? suggestionItems[0];
-            if (activeItem) commitSuggestion(activeItem);
-          } else if (event.key === 'Escape') {
-            setActiveCursor(null);
-          }
-        }}
-      />
+      <div className="note-body-field semantic-block-editor" role="group" aria-label="Note body markdown">
+        {blocks.map((block, index) => (
+          <div key={block.id} className={`semantic-block-row semantic-block-row--${block.type}`}>
+            {block.type === 'heading' ? <span className="semantic-block-prefix">{'#'.repeat(block.level)}</span> : null}
+            {block.type === 'checklist_item' ? (
+              <label className="semantic-block-check">
+                <input
+                  type="checkbox"
+                  checked={block.checked}
+                  onChange={(event) => {
+                    const next = [...blocks];
+                    next[index] = { ...block, checked: event.target.checked };
+                    commitBlocks(next);
+                  }}
+                />
+              </label>
+            ) : null}
+            <textarea
+              ref={(element) => {
+                blockRefs.current[index] = element;
+              }}
+              className="semantic-block-input"
+              placeholder={index === 0 ? 'Write freely…' : ''}
+              value={block.text}
+              onChange={(event) => {
+                const next = [...blocks];
+                next[index] = { ...block, text: event.target.value };
+                commitBlocks(next);
+                const base = (blockStarts[index] ?? 0) + getBlockPrefix(block).length;
+                setActiveCursor(base + event.target.selectionStart);
+              }}
+              onClick={() => handleBlockSelection(index)}
+              onKeyUp={() => handleBlockSelection(index)}
+              onSelect={() => handleBlockSelection(index)}
+              onKeyDown={(event) => {
+                if (suggestionItems.length) {
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    setActiveSuggestionIndex((cursorIndex) => (cursorIndex + 1) % suggestionItems.length);
+                    return;
+                  }
+                  if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    setActiveSuggestionIndex((cursorIndex) => (cursorIndex - 1 + suggestionItems.length) % suggestionItems.length);
+                    return;
+                  }
+                  if (event.key === 'Enter' || event.key === 'Tab') {
+                    event.preventDefault();
+                    const activeItem = suggestionItems[activeSuggestionIndex] ?? suggestionItems[0];
+                    if (activeItem) commitSuggestion(activeItem);
+                    return;
+                  }
+                }
+
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  splitBlockOnEnter(index, event.currentTarget.selectionStart);
+                } else if (event.key === 'Backspace' && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0) {
+                  event.preventDefault();
+                  handleBackspaceAtStart(index);
+                } else if (event.key === 'Escape') {
+                  setActiveCursor(null);
+                }
+              }}
+            />
+          </div>
+        ))}
+      </div>
 
       {activeMatch && inferredRelationship ? (
         <div className="inline-link-dropdown" role="listbox" aria-label="Inline note link suggestions">
