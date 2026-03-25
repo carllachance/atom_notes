@@ -6,6 +6,7 @@ import { HomeSurface } from './components/HomeSurface';
 import { NoteOpenOverlayScene } from './components/NoteOpenOverlayScene';
 import { RecallBand } from './components/RecallBand';
 import { RelationshipWeb } from './components/RelationshipWeb';
+import { ShelfView } from './components/ShelfView';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
@@ -15,6 +16,7 @@ import { buildMemorySummary } from './store/memorySummary';
 import { createBookmark, recordHistoryEntry, useBookmarks, useHistoryStack } from './store/sessionSlice';
 
 export function App() {
+  const [browseSurface, setBrowseSurface] = useState<'shelf' | 'canvas'>('shelf');
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [reentryExpanded, setReentryExpanded] = useState(false);
@@ -221,11 +223,22 @@ export function App() {
         onRestoreHistory={handleRestoreHistory}
         onDropPin={handleDropPin}
         onRestoreBookmark={handleRestoreBookmark}
+        browseSurface={browseSurface}
+        onBrowseSurfaceChange={setBrowseSurface}
       />
 
       <section className="workspace-shell">
         <section className="view-stack" data-lens={scene.lens.kind}>
-          {!activeNote ? (
+          {!activeNote && browseSurface === 'shelf' ? (
+            <ShelfView
+              notes={scene.notes}
+              relationships={scene.relationships}
+              projects={projects}
+              workspaces={workspaces}
+              onOpenNote={onOpenNote}
+            />
+          ) : null}
+          {!activeNote && browseSurface === 'canvas' ? (
             <HomeSurface
               notes={scene.notes}
               deletedNotes={deletedNotes}
@@ -234,7 +247,7 @@ export function App() {
               onRestoreDeletedNote={restoreDeletedNote}
             />
           ) : null}
-          <div className="view-layer view-layer-canvas">
+          <div className={`view-layer view-layer-canvas ${!activeNote && browseSurface === 'shelf' ? 'view-layer-canvas--hidden' : ''}`}>
             <NoteOpenOverlayScene
               notes={scene.notes}
               visibleNotes={visibleNotes}
