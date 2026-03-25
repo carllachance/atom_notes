@@ -103,7 +103,7 @@ textarea {
 
 .recall-resume-chip__label {
   font-size: 0.72rem;
-  color: color-mix(in srgb, var(--accent-brass) 85%, var(--text-primary-dark) 15%);
+  color: color-mix(in srgb, var(--text-primary-dark) 90%, #1e2738 10%);
   white-space: nowrap;
 }
 
@@ -398,7 +398,7 @@ textarea {
   border-radius: 999px;
   background: rgba(242, 201, 111, 0.15);
   border: 1px solid rgba(242, 201, 111, 0.25);
-  color: color-mix(in srgb, var(--accent-brass) 85%, var(--text-primary-dark) 15%);
+  color: color-mix(in srgb, var(--text-primary-dark) 92%, #1b2433 8%);
   font-size: 0.7rem;
   margin-left: 4px;
 }
@@ -5278,9 +5278,13 @@ samp,
   align-items: center;
   gap: 5px;
   padding: 3px 8px;
+  border: 1px solid transparent;
   border-radius: 999px;
   font-size: 0.66rem;
   letter-spacing: 0.04em;
+  color: var(--chip-label-color, var(--text-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chip-glow-color, transparent) 28%, transparent),
+    0 0 12px color-mix(in srgb, var(--chip-glow-color, transparent) 18%, transparent);
 }
 
 .ai-state-dot {
@@ -5291,8 +5295,10 @@ samp,
 }
 
 .ai-state-idle {
+  --chip-label-color: color-mix(in srgb, var(--text-primary-dark) 90%, #0f2118 10%);
+  --chip-glow-color: rgba(95, 211, 154, 0.62);
   background: rgba(95, 211, 154, 0.12);
-  color: rgba(95, 211, 154, 0.8);
+  border-color: rgba(95, 211, 154, 0.42);
 }
 
 .ai-state-idle .ai-state-dot {
@@ -5301,8 +5307,10 @@ samp,
 }
 
 .ai-state-sending {
+  --chip-label-color: color-mix(in srgb, var(--text-primary-dark) 90%, #112744 10%);
+  --chip-glow-color: rgba(127, 181, 255, 0.62);
   background: rgba(127, 181, 255, 0.12);
-  color: rgba(127, 181, 255, 0.9);
+  border-color: rgba(127, 181, 255, 0.46);
 }
 
 .ai-state-sending .ai-state-dot {
@@ -5310,8 +5318,10 @@ samp,
 }
 
 .ai-state-receiving {
+  --chip-label-color: color-mix(in srgb, var(--text-primary-dark) 92%, #312106 8%);
+  --chip-glow-color: rgba(242, 201, 111, 0.62);
   background: rgba(242, 201, 111, 0.12);
-  color: color-mix(in srgb, var(--accent-brass) 85%, var(--text-primary-dark) 15%);
+  border-color: rgba(242, 201, 111, 0.48);
 }
 
 .ai-state-receiving .ai-state-dot {
@@ -5319,8 +5329,10 @@ samp,
 }
 
 .ai-state-streaming {
-  background: rgba(171, 124, 255, 0.15);
-  color: rgba(187, 140, 255, 0.95);
+  --chip-label-color: color-mix(in srgb, #f5f2ff 94%, white 6%);
+  --chip-glow-color: rgba(171, 124, 255, 0.72);
+  background: rgba(98, 65, 160, 0.64);
+  border-color: rgba(187, 140, 255, 0.62);
 }
 
 .ai-state-streaming .ai-state-dot {
@@ -5328,8 +5340,10 @@ samp,
 }
 
 .ai-state-review {
+  --chip-label-color: color-mix(in srgb, var(--text-primary-dark) 88%, #0f271e 12%);
+  --chip-glow-color: rgba(95, 211, 154, 0.58);
   background: rgba(95, 211, 154, 0.12);
-  color: rgba(95, 211, 154, 0.9);
+  border-color: rgba(95, 211, 154, 0.46);
 }
 
 .ai-state-review .ai-state-dot {
@@ -9920,7 +9934,7 @@ body {
 .focus-count-chip {
   border-color: color-mix(in srgb, var(--accent-warm) 38%, transparent);
   background: color-mix(in srgb, var(--accent-warm) 20%, transparent);
-  color: color-mix(in srgb, var(--accent-warm) 74%, var(--text-primary) 26%);
+  color: color-mix(in srgb, var(--text-primary-dark) 92%, #1b2433 8%);
 }
 
 /* Correction pass: note-mode focus, content-first edit, overflow safety, and Discern mint rebalance */
