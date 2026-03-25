@@ -8783,21 +8783,84 @@ body {
   padding: 0.9rem;
 }
 
-.shelf-toolbar h1 {
-  margin: 0;
-  font-size: 1.18rem;
-}
-
-.shelf-toolbar p {
-  margin: 0.26rem 0 0;
-  color: var(--text-secondary);
-  font-size: 0.88rem;
-}
-
 .shelf-toolbar__controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.62rem;
+}
+
+.recall-band__utility-cluster {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.horizon-utility-button {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  border-color: color-mix(in srgb, var(--line-subtle) 60%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 30%, transparent);
+}
+
+.horizon-utility-button:hover,
+.horizon-utility-button:focus-visible {
+  color: var(--text-secondary);
+  border-color: color-mix(in srgb, var(--line-subtle) 86%, transparent);
+}
+
+.horizon-utility-button.active {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-primary) 58%, var(--line-subtle));
+  background: color-mix(in srgb, var(--accent-soft) 50%, var(--surface-2));
+}
+
+.filters-toggle-icon {
+  font-size: 0.78rem;
+}
+
+.ghost-button.filters-toggle {
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .horizon-utility-button {
+    display: inline-flex;
+  }
+
+  .ai-panel[data-open='false'] {
+    display: none;
+  }
+
+  .ghost-button.filters-toggle {
+    min-width: 0;
+    padding: 0 9px;
+    gap: 0;
+    aspect-ratio: 1 / 1;
+    font-size: 0.74rem;
+  }
+
+  .filters-toggle-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0 0 0 0);
+  }
+
+  .ghost-button.filters-toggle .filters-active-dot {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+  }
 }
 
 .shelf-toolbar__controls label {

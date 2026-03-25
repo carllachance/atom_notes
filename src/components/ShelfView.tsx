@@ -134,10 +134,6 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
   return (
     <section className="shelf-view" aria-label="Shelf">
       <header className="shelf-toolbar">
-        <div>
-          <h1>Shelf</h1>
-          <p>Calm browsing for living notes. Scan quickly, then reopen with confidence.</p>
-        </div>
         <div className="shelf-toolbar__controls">
           <label>
             Group

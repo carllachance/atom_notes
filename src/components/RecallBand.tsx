@@ -46,6 +46,8 @@ type RecallBandProps = {
   onRestoreBookmark: (bookmark: StateSnapshot) => void;
   browseSurface: 'shelf' | 'canvas';
   onBrowseSurfaceChange: (surface: 'shelf' | 'canvas') => void;
+  horizonOpen: boolean;
+  onToggleHorizon: () => void;
 };
 
 function describeFocusState(focusMode: FocusMode, focusCount: number) {
@@ -399,8 +401,10 @@ function RecallBandFiltersZone({
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
         aria-controls="filters-panel"
+        aria-label={hasActiveFilters ? 'Filters active' : 'Filters'}
       >
-        Filters
+        <span className="filters-toggle-icon" aria-hidden="true">⟡</span>
+        <span className="filters-toggle-label">Filters</span>
         {hasActiveFilters && <span className="filters-active-dot" />}
       </button>
 
@@ -537,24 +541,38 @@ export function RecallBand({
   onDropPin,
   onRestoreBookmark,
   browseSurface,
-  onBrowseSurfaceChange
+  onBrowseSurfaceChange,
+  horizonOpen,
+  onToggleHorizon
 }: RecallBandProps) {
   const focusState = describeFocusState(focusMode, focusCount);
 
   return (
     <header className="recall-band">
       {/* Re-entry Surface - DG-2 AN-007 */}
-      <ReentrySurface
-        history={historyStack}
-        bookmarks={bookmarks}
-        memorySummary={memorySummary}
-        memorySummarySource={memorySummarySource}
-        isExpanded={reentryExpanded}
-        onToggleReentry={onToggleReentry}
-        onRestoreHistory={onRestoreHistory}
-        onDropPin={onDropPin}
-        onRestoreBookmark={onRestoreBookmark}
-      />
+      <div className="recall-band__utility-cluster">
+        <ReentrySurface
+          history={historyStack}
+          bookmarks={bookmarks}
+          memorySummary={memorySummary}
+          memorySummarySource={memorySummarySource}
+          isExpanded={reentryExpanded}
+          onToggleReentry={onToggleReentry}
+          onRestoreHistory={onRestoreHistory}
+          onDropPin={onDropPin}
+          onRestoreBookmark={onRestoreBookmark}
+        />
+        <button
+          type="button"
+          className={`ghost-button horizon-utility-button ${horizonOpen ? 'active' : ''}`}
+          onClick={onToggleHorizon}
+          aria-label={horizonOpen ? 'Close Horizon' : 'Open Horizon'}
+          title={horizonOpen ? 'Close Horizon' : 'Open Horizon'}
+        >
+          <span aria-hidden="true">✦</span>
+          <span>Horizon</span>
+        </button>
+      </div>
 
       {/* Primary Zone - Always visible */}
       <RecallBandPrimaryZone
