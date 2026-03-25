@@ -8554,6 +8554,13 @@ body {
   border-radius: 10px;
 }
 
+.focus-state-indicator--compact {
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .focus-state-indicator strong {
   color: var(--text-primary);
   font-size: 0.78rem;
