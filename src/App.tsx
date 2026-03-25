@@ -65,7 +65,6 @@ export function App() {
     visibleRevealMatchIds,
     revealActiveNoteId,
     setPendingAction,
-    setRelationshipFilter,
     inspectRelationship,
     closeRelationshipInspector,
     closeActiveNote,
@@ -238,6 +237,7 @@ export function App() {
         onBrowseSurfaceChange={setBrowseSurface}
         horizonOpen={thinkingRailVisible}
         onToggleHorizon={() => setExpandedSurface(thinkingRailVisible ? 'none' : 'thinking')}
+        noteOpen={Boolean(activeNote)}
       />
 
       <section className={`workspace-shell ${isMobileViewport ? 'workspace-shell--mobile-capture' : ''}`}>
@@ -249,6 +249,7 @@ export function App() {
               projects={projects}
               workspaces={workspaces}
               onOpenNote={onOpenNote}
+              onUpdateNote={(id, updates) => updateNote(id, updates, 'refined')}
             />
           ) : null}
           {!activeNote && browseSurface === 'canvas' ? (

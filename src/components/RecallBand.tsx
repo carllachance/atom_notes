@@ -48,6 +48,7 @@ type RecallBandProps = {
   onBrowseSurfaceChange: (surface: 'shelf' | 'canvas') => void;
   horizonOpen: boolean;
   onToggleHorizon: () => void;
+  noteOpen: boolean;
 };
 
 function summarizeActiveFilters(
@@ -283,7 +284,8 @@ function RecallBandPrimaryZone({
   onClearFilters,
   onOpenComposer,
   browseSurface,
-  onBrowseSurfaceChange
+  onBrowseSurfaceChange,
+  showCaptureAction
 }: {
   count: number;
   totalCount: number;
@@ -292,6 +294,7 @@ function RecallBandPrimaryZone({
   onOpenComposer: () => void;
   browseSurface: 'shelf' | 'canvas';
   onBrowseSurfaceChange: (surface: 'shelf' | 'canvas') => void;
+  showCaptureAction: boolean;
 }) {
   return (
     <div className="recall-band__primary-zone">
@@ -318,15 +321,17 @@ function RecallBandPrimaryZone({
             Show all notes
           </button>
         )}
-        <button
-          className="ghost-button capture-button"
-          onClick={onOpenComposer}
-          aria-label="Capture note"
-          title="Capture note"
-        >
-          <CaptureIcon />
-          <span>Capture</span>
-        </button>
+        {showCaptureAction ? (
+          <button
+            className="ghost-button capture-button"
+            onClick={onOpenComposer}
+            aria-label="Capture note"
+            title="Capture note"
+          >
+            <CaptureIcon />
+            <span>Capture</span>
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -567,7 +572,8 @@ export function RecallBand({
   browseSurface,
   onBrowseSurfaceChange,
   horizonOpen,
-  onToggleHorizon
+  onToggleHorizon,
+  noteOpen
 }: RecallBandProps) {
   const activeFilterSummary = summarizeActiveFilters(focusMode, lens, projects, workspaces, revealQuery);
   const showFilterSummary = browseSurface === 'shelf' && Boolean(activeFilterSummary);
@@ -613,6 +619,7 @@ export function RecallBand({
         onOpenComposer={onOpenComposer}
         browseSurface={browseSurface}
         onBrowseSurfaceChange={onBrowseSurfaceChange}
+        showCaptureAction={!noteOpen && browseSurface === 'shelf'}
       />
 
       {/* Scope Zone - Shows lens navigation when not Universe/Archive */}

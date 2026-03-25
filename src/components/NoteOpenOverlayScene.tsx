@@ -1,9 +1,8 @@
 import type { ComponentProps, ComponentType, ReactNode } from 'react';
 import { FocusLensRelatedNote } from '../scene/focusLens';
-import { NoteCardModel, Project, RelationshipType, Workspace } from '../types';
+import { NoteCardModel, Project, Workspace } from '../types';
 import { ExpandedNote } from './ExpandedNote';
 import { RelationshipWeb } from './RelationshipWeb';
-import { CanvasViewportMetrics } from './relationshipWebGeometry';
 import { SpatialCanvas } from './SpatialCanvas';
 
 type SpatialCanvasComponent = ComponentType<ComponentProps<typeof SpatialCanvas>>;
@@ -14,8 +13,8 @@ type NoteOpenLayerStackProps = {
   activeNote: NoteCardModel | null;
   visibleNotes: NoteCardModel[];
   relatedNotes: FocusLensRelatedNote[];
-  relationshipFilter: 'all' | RelationshipType;
-  canvasMetrics: CanvasViewportMetrics | null;
+  relationshipFilter: 'all' | string;
+  canvasMetrics: unknown;
   hoveredNoteId: string | null;
   onCloseNote: () => void;
   onInspectRelationship: (relationshipId: string) => void;
@@ -33,16 +32,16 @@ type NoteOpenOverlaySceneProps = {
   activeNoteId: string | null;
   activeNoteProjects: Project[];
   activeWorkspace: Workspace | null;
-  relatedNotes: FocusLensRelatedNote[];
-  relationshipFilter: 'all' | RelationshipType;
-  canvasMetrics: CanvasViewportMetrics | null;
-  hoveredNoteId: string | null;
+  relatedNotes?: FocusLensRelatedNote[];
+  relationshipFilter?: 'all' | string;
+  canvasMetrics?: unknown;
+  hoveredNoteId?: string | null;
   onOpenNote: (noteId: string) => void;
   onCloseNote: () => void;
-  onInspectRelationship: (relationshipId: string) => void;
-  onOpenRelated: (targetNoteId: string, relationshipId: string) => void;
-  onHoverRelatedNote: (noteId: string) => void;
-  onClearRelatedHover: (noteId: string) => void;
+  onInspectRelationship?: (relationshipId: string) => void;
+  onOpenRelated?: (targetNoteId: string, relationshipId: string) => void;
+  onHoverRelatedNote?: (noteId: string) => void;
+  onClearRelatedHover?: (noteId: string) => void;
   spatialCanvasProps: Omit<ComponentProps<typeof SpatialCanvas>, 'notes' | 'activeNoteId' | 'onOpen'>;
   expandedNoteProps: Omit<ComponentProps<typeof ExpandedNote>, 'note' | 'notes' | 'noteProjects' | 'noteWorkspace'>;
   relationshipWebOverride?: ReactNode;
@@ -75,8 +74,8 @@ export function NoteOpenLayerStack({
         activeNote={activeNote}
         notes={visibleNotes}
         relatedNotes={relatedNotes}
-        filter={relationshipFilter}
-        canvasMetrics={canvasMetrics}
+        filter={relationshipFilter as any}
+        canvasMetrics={canvasMetrics as any}
         hoveredNoteId={hoveredNoteId}
         onInspectRelationship={onInspectRelationship}
         onOpenRelated={onOpenRelated}
@@ -101,16 +100,16 @@ export function NoteOpenOverlayScene({
   activeNoteId,
   activeNoteProjects,
   activeWorkspace,
-  relatedNotes,
-  relationshipFilter,
-  canvasMetrics,
-  hoveredNoteId,
+  relatedNotes = [],
+  relationshipFilter = 'all',
+  canvasMetrics = null,
+  hoveredNoteId = null,
   onOpenNote,
   onCloseNote,
-  onInspectRelationship,
-  onOpenRelated,
-  onHoverRelatedNote,
-  onClearRelatedHover,
+  onInspectRelationship = () => {},
+  onOpenRelated = () => {},
+  onHoverRelatedNote = () => {},
+  onClearRelatedHover = () => {},
   spatialCanvasProps,
   expandedNoteProps,
   relationshipWebOverride,
@@ -119,16 +118,17 @@ export function NoteOpenOverlayScene({
   const activeNote = activeNoteId ? notes.find((note) => note.id === activeNoteId) ?? null : null;
   const CanvasComponent = components?.SpatialCanvasComponent ?? SpatialCanvas;
   const ExpandedNoteComponent = components?.ExpandedNoteComponent ?? ExpandedNote;
-  const RelationshipWebComponent = components?.RelationshipWebComponent ?? RelationshipWeb;
 
   return (
     <>
-      <CanvasComponent
-        {...spatialCanvasProps}
-        notes={visibleNotes}
-        activeNoteId={activeNote?.id ?? null}
-        onOpen={onOpenNote}
-      />
+      {!activeNote ? (
+        <CanvasComponent
+          {...spatialCanvasProps}
+          notes={visibleNotes}
+          activeNoteId={activeNoteId}
+          onOpen={onOpenNote}
+        />
+      ) : null}
       <NoteOpenLayerStack
         activeNote={activeNote}
         visibleNotes={visibleNotes}
@@ -141,7 +141,7 @@ export function NoteOpenOverlayScene({
         onOpenRelated={onOpenRelated}
         onHoverRelatedNote={onHoverRelatedNote}
         onClearRelatedHover={onClearRelatedHover}
-        relationshipWebComponent={RelationshipWebComponent}
+        relationshipWebComponent={components?.RelationshipWebComponent}
         relationshipWebOverride={relationshipWebOverride}
         expandedNote={activeNote ? (
           <ExpandedNoteComponent
