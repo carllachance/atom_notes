@@ -7795,6 +7795,10 @@ body,
   gap: 8px;
 }
 
+.note-mobile-overflow-only {
+  display: none;
+}
+
 .expanded-note-layout--single-column {
   display: block;
   overflow: auto;
@@ -8802,6 +8806,18 @@ body {
     max-width: calc(100vw - 16px);
   }
 
+  .expanded-note-layout--single-column {
+    padding: 10px 12px 14px;
+  }
+
+  .expanded-note-main--reading,
+  .expanded-note-main--edit,
+  .expanded-note-main--source-mode,
+  .expanded-note-main--constellation-mode {
+    padding: 6px 8px 12px;
+    gap: 10px;
+  }
+
   .expanded-note-main--reading {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -8915,6 +8931,106 @@ body {
     overflow-y: auto;
     max-height: calc(min(78vh, 640px) - 60px);
     padding: 12px 14px 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .expanded-note-shell {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .expanded-note {
+    width: 100vw;
+    max-width: 100vw;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-inline: 0;
+    box-shadow: none;
+  }
+
+  .expanded-note-header--calm {
+    gap: 8px;
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px;
+    align-items: center;
+  }
+
+  .expanded-note-header-main {
+    gap: 8px;
+  }
+
+  .note-title-field {
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+
+  .body-mode-switch {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 1px;
+  }
+
+  .body-mode-switch button {
+    padding: 0.28rem 0.62rem;
+    font-size: 0.74rem;
+    white-space: nowrap;
+  }
+
+  .body-mode-switch button:nth-child(n + 3) {
+    display: none;
+  }
+
+  .note-header-tools {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .note-header-tools .note-mobile-secondary-action {
+    display: none;
+  }
+
+  .note-header-tools--compact .ghost-button,
+  .note-danger-menu summary.ghost-button {
+    padding: 0.3rem 0.58rem;
+    font-size: 0.72rem;
+    min-height: 28px;
+  }
+
+  .note-danger-menu__panel {
+    right: 0;
+  }
+
+  .note-mobile-overflow-only {
+    display: inline-flex;
+  }
+
+  .expanded-note-layout--single-column {
+    padding: 4px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  }
+
+  .expanded-note-main--reading,
+  .expanded-note-main--edit,
+  .expanded-note-main--source-mode,
+  .expanded-note-main--constellation-mode {
+    gap: 8px;
+    padding: 4px 4px 10px;
+  }
+
+  .note-body-surface {
+    border-radius: 12px;
+    border-width: 1px;
+  }
+
+  .note-edit-stack {
+    gap: 8px;
+  }
+
+  .expanded-note:focus-within .expanded-note-header--calm {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+    padding-bottom: 6px;
   }
 }
 

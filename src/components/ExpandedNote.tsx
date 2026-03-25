@@ -702,12 +702,17 @@ export function ExpandedNote({
             </div>
           </div>
           <div className="note-header-tools note-header-tools--compact">
-            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensPin}>{focusLensPinned ? 'Pinned' : 'Pin layout'}</button>
-            <button type="button" className="ghost-button focus-lens-action" onClick={onFocusLensReset}>Reset view</button>
-            <button type="button" className="ghost-button focus-lens-action" onClick={onClose}>Close</button>
+            <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onFocusLensPin}>{focusLensPinned ? 'Pinned' : 'Pin layout'}</button>
+            <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onFocusLensReset}>Reset view</button>
+            <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onClose}>Close</button>
             <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
               <summary className="ghost-button">More</summary>
               <div className="note-danger-menu__panel note-danger-menu__panel--quiet">
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('constellation')}>Constellation</button>
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('source')}>Source</button>
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensPin}>{focusLensPinned ? 'Unpin layout' : 'Pin layout'}</button>
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensReset}>Reset view</button>
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onClose}>Close</button>
                 {focusLensCanGoBack ? <button type="button" className="ghost-button" onClick={onFocusLensBack}>Back</button> : null}
                 <IconToolButton
                   label="Think about this note"
