@@ -9468,6 +9468,7 @@ body {
   gap: 0.7rem;
   grid-auto-rows: 82px;
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-flow: dense;
 }
 
 .shelf-item {
@@ -9483,6 +9484,8 @@ body {
   align-content: start;
   grid-column: span 3;
   grid-row: span 2;
+  position: relative;
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
 .shelf-item--compact {
@@ -9540,12 +9543,24 @@ body {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
 .shelf-item--featured p,
 .shelf-item--hero p {
   -webkit-line-clamp: 5;
+}
+
+.shelf-item[data-size='compact'] p {
+  -webkit-line-clamp: 1;
+}
+
+.shelf-item[data-size='compact'] .shelf-item__meta span:nth-child(n + 2) {
+  display: none;
+}
+
+.shelf-item[data-size='hero'] .shelf-item__head strong {
+  font-size: 1.06rem;
 }
 
 .shelf-item__meta {
@@ -9562,17 +9577,28 @@ body {
   background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
-.shelf-item__size-menu {
-  justify-self: end;
-  position: relative;
+.shelf-item__overflow {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
 }
 
-.shelf-item__size-menu > summary {
-  list-style: none;
+.shelf-item__overflow-trigger {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  padding: 0;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 140ms ease, transform 140ms ease;
 }
 
-.shelf-item__size-menu[open] .shelf-item__size-actions {
-  display: grid;
+.shelf-item:hover .shelf-item__overflow-trigger,
+.shelf-item:focus-within .shelf-item__overflow-trigger,
+.shelf-item:focus-visible .shelf-item__overflow-trigger {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .shelf-item__size-actions {
@@ -9587,6 +9613,17 @@ body {
   border: 1px solid color-mix(in srgb, var(--line-subtle) 66%, transparent);
   background: color-mix(in srgb, var(--surface-1) 96%, black 4%);
   padding: 0.42rem;
+}
+
+.shelf-item__size-actions[data-open='true'] {
+  display: grid;
+}
+
+@media (hover: none) {
+  .shelf-item__overflow-trigger {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .shelf-focus-filter {
