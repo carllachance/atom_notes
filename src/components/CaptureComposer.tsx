@@ -85,12 +85,11 @@ export function CaptureComposer({
         <div className="capture-composer capture-composer--compact-bar">
           <div className="capture-composer__compact-copy">
             <strong>Capture</strong>
-            <small>Docked and ready.</small>
           </div>
           <div className="capture-composer__compact-row">
             <input
               aria-label="Quick capture"
-              placeholder="Capture a note…"
+              placeholder="Write a note..."
               value={value}
               onFocus={onExpand}
               onChange={(event) => onChange(event.target.value)}
@@ -114,7 +113,7 @@ export function CaptureComposer({
               </button>
             ) : null}
             <button type="button" onClick={onCommit} disabled={!value.trim()}>
-              Capture
+              Add note
             </button>
           </div>
         </div>
