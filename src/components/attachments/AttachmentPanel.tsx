@@ -26,33 +26,52 @@ type AttachmentPanelProps = {
   onAddAttachments: (event: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
   onRemoveAttachment: (attachmentId: string) => void;
   onRetryAttachment: (attachmentId: string) => void;
+  showSectionHeading?: boolean;
 };
 
-export function AttachmentPanel({ attachments, onAddAttachments, onRemoveAttachment, onRetryAttachment }: AttachmentPanelProps) {
+export function AttachmentPanel({
+  attachments,
+  onAddAttachments,
+  onRemoveAttachment,
+  onRetryAttachment,
+  showSectionHeading = true
+}: AttachmentPanelProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [openAttachmentId, setOpenAttachmentId] = useState<string | null>(null);
   const processedCount = useMemo(() => attachments.filter((attachment) => attachment.processing.status === 'processed').length, [attachments]);
+  const hasAttachments = attachments.length > 0;
 
   return (
     <section className="detail-section attachment-panel" aria-label="Attachments">
-      <div className="section-head">
-        <div>
-          <strong>Source material</strong>
-          <p className="section-hint">Attach PDFs, text, markdown, JSON, CSV, or image files. Raw files stay separate from extracted text.</p>
+      {showSectionHeading ? (
+        <div className="section-head">
+          <div>
+            <strong>Files for this note</strong>
+            <p className="section-hint">
+              {hasAttachments
+                ? 'Keep source files close so this note stays grounded in the original material.'
+                : 'Add a file so this note can stay connected to its source material.'}
+            </p>
+          </div>
+          <span className="section-meta">{processedCount}/{attachments.length} ready</span>
         </div>
-        <span className="section-meta">{processedCount}/{attachments.length} ready</span>
-      </div>
+      ) : null}
 
-      <div className="attachment-panel-toolbar">
-        <button type="button" className="ghost-button" onClick={() => inputRef.current?.click()}>Add attachments</button>
-        <span className="attachment-panel-supported">v1 supports {SUPPORTED_ATTACHMENT_TYPE_LABELS.join(' · ')}</span>
-        <input ref={inputRef} type="file" multiple accept={SUPPORTED_ATTACHMENT_ACCEPT} hidden onChange={onAddAttachments} />
-      </div>
+      {hasAttachments ? (
+        <div className="attachment-panel-toolbar">
+          <button type="button" className="ghost-button" onClick={() => inputRef.current?.click()}>Add file</button>
+          <span className="attachment-panel-supported">Supports {SUPPORTED_ATTACHMENT_TYPE_LABELS.join(' · ')}</span>
+          <input ref={inputRef} type="file" multiple accept={SUPPORTED_ATTACHMENT_ACCEPT} hidden onChange={onAddAttachments} />
+        </div>
+      ) : null}
 
-      {attachments.length === 0 ? (
+      {!hasAttachments ? (
         <div className="attachment-empty-state">
-          <strong>No files attached yet.</strong>
-          <p>Add source material here so notes can keep the original file, extraction state, and inspectable text together.</p>
+          <strong>Add material to this note</strong>
+          <p>This is where you keep files for this note. Attach a file to start.</p>
+          <button type="button" className="ghost-button primary-action" onClick={() => inputRef.current?.click()}>Add file</button>
+          <small className="attachment-panel-supported">Supports {SUPPORTED_ATTACHMENT_TYPE_LABELS.join(' · ')}</small>
+          <input ref={inputRef} type="file" multiple accept={SUPPORTED_ATTACHMENT_ACCEPT} hidden onChange={onAddAttachments} />
         </div>
       ) : (
         <div className="attachment-list">

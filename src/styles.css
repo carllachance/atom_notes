@@ -6435,6 +6435,15 @@ samp,
   line-height: 1.5;
 }
 
+.attachment-empty-state .ghost-button {
+  margin-top: 10px;
+}
+
+.attachment-empty-state .attachment-panel-supported {
+  display: block;
+  margin-top: 8px;
+}
+
 .attachment-list {
   display: flex;
   flex-direction: column;
@@ -8983,6 +8992,14 @@ body {
     display: none;
   }
 
+  .note-tab-label-desktop {
+    display: none;
+  }
+
+  .note-tab-label-mobile {
+    display: inline;
+  }
+
   .note-header-tools {
     gap: 6px;
     flex-wrap: nowrap;
@@ -9032,6 +9049,10 @@ body {
     padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
     padding-bottom: 6px;
   }
+}
+
+.note-tab-label-mobile {
+  display: none;
 }
 
 .view-layer-canvas--hidden {
