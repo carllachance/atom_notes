@@ -124,6 +124,20 @@ export function MarkdownProjectionView({ source, note, taskStatesById, activeTas
           return <p key={`p-${index}`}>{renderInline(block.tokens, taskFragments, taskStatesById, activeTaskId, onOpenTask)}</p>;
         }
 
+        if (block.type === 'decision' || block.type === 'open_question' || block.type === 'follow_up') {
+          const label = block.type === 'decision'
+            ? 'Decision'
+            : block.type === 'open_question'
+              ? 'Open question'
+              : 'Follow-up';
+          return (
+            <p key={`semantic-${index}`} className={`markdown-semantic-block markdown-semantic-block--${block.type}`}>
+              <strong>{label}:</strong>{' '}
+              {renderInline(block.tokens, taskFragments, taskStatesById, activeTaskId, onOpenTask)}
+            </p>
+          );
+        }
+
         if (block.type === 'blockquote') {
           return (
             <blockquote key={`q-${index}`}>

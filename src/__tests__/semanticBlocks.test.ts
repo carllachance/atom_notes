@@ -35,8 +35,23 @@ test('semantic blocks preserve unsupported rows during serialization', () => {
 test('semantic blocks support lightweight block-type conversion', () => {
   const heading = convertBlockType({ id: 'a', type: 'paragraph', text: 'Title' }, 'heading');
   const checklist = convertBlockType(heading, 'checklist_item');
+  const decision = convertBlockType(checklist, 'decision');
+  const question = convertBlockType(decision, 'open_question');
+  const followUp = convertBlockType(question, 'follow_up');
   assert.deepEqual(heading, { id: 'a', type: 'heading', level: 1, text: 'Title' });
   assert.deepEqual(checklist, { id: 'a', type: 'checklist_item', checked: false, text: 'Title' });
+  assert.deepEqual(decision, { id: 'a', type: 'decision', text: 'Title' });
+  assert.deepEqual(question, { id: 'a', type: 'open_question', text: 'Title' });
+  assert.deepEqual(followUp, { id: 'a', type: 'follow_up', text: 'Title' });
+});
+
+test('semantic blocks parse and serialize semantic decision/question/follow-up rows', () => {
+  const source = 'Decision: Ship with feature flag\nQuestion: Should we stage rollout?\nFollow-up: Ask release lead';
+  const blocks = parseSemanticBlocks(source);
+  assert.deepEqual(blocks[0], { ...blocks[0], type: 'decision', text: 'Ship with feature flag' });
+  assert.deepEqual(blocks[1], { ...blocks[1], type: 'open_question', text: 'Should we stage rollout?' });
+  assert.deepEqual(blocks[2], { ...blocks[2], type: 'follow_up', text: 'Ask release lead' });
+  assert.equal(serializeSemanticBlocks(blocks), source);
 });
 
 test('semantic blocks keep mixed-content note text non-destructive', () => {

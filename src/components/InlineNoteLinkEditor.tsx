@@ -49,6 +49,15 @@ type SuggestionItem =
   | { kind: 'existing'; id: string; label: string }
   | { kind: 'create'; label: string };
 
+const BLOCK_CONVERSIONS: Array<{ type: BlockConversionType; label: string; title: string }> = [
+  { type: 'paragraph', label: '¶', title: 'Convert to paragraph' },
+  { type: 'heading', label: 'H', title: 'Convert to heading' },
+  { type: 'checklist_item', label: '☑', title: 'Convert to checklist' },
+  { type: 'decision', label: 'D', title: 'Convert to decision' },
+  { type: 'open_question', label: '?', title: 'Convert to open question' },
+  { type: 'follow_up', label: '↗', title: 'Convert to follow-up' }
+];
+
 export function InlineNoteLinkEditor({
   note,
   notes,
@@ -311,15 +320,18 @@ export function InlineNoteLinkEditor({
               onPaste={(event) => handlePaste(event, index)}
             />
             <div className="semantic-block-actions" aria-label="Change block type">
-              <button type="button" className="semantic-block-action" onClick={() => applyBlockConversion(index, 'paragraph')}>
-                ¶
-              </button>
-              <button type="button" className="semantic-block-action" onClick={() => applyBlockConversion(index, 'heading')}>
-                H
-              </button>
-              <button type="button" className="semantic-block-action" onClick={() => applyBlockConversion(index, 'checklist_item')}>
-                ☑
-              </button>
+              {BLOCK_CONVERSIONS.map((conversion) => (
+                <button
+                  key={conversion.type}
+                  type="button"
+                  className={`semantic-block-action ${block.type === conversion.type ? 'is-active' : ''}`}
+                  title={conversion.title}
+                  aria-label={conversion.title}
+                  onClick={() => applyBlockConversion(index, conversion.type)}
+                >
+                  {conversion.label}
+                </button>
+              ))}
             </div>
           </div>
         ))}

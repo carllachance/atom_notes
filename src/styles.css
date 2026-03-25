@@ -9660,6 +9660,26 @@ body {
   grid-template-columns: 1fr auto;
 }
 
+.semantic-block-row--decision,
+.semantic-block-row--open_question,
+.semantic-block-row--follow_up {
+  grid-template-columns: auto 1fr auto;
+  border-left: 2px solid color-mix(in srgb, var(--edge-subtle, #5d6480) 35%, transparent);
+  padding-left: 0.42rem;
+}
+
+.semantic-block-row--decision {
+  border-left-color: color-mix(in srgb, #6f7bd9 45%, transparent);
+}
+
+.semantic-block-row--open_question {
+  border-left-color: color-mix(in srgb, #9f7dd1 44%, transparent);
+}
+
+.semantic-block-row--follow_up {
+  border-left-color: color-mix(in srgb, #6aa98f 44%, transparent);
+}
+
 .semantic-block-prefix {
   font-size: 0.75rem;
   font-weight: 600;
@@ -9704,4 +9724,36 @@ body {
   line-height: 1;
   padding: 0.22rem 0.35rem;
   cursor: pointer;
+}
+
+.semantic-block-action.is-active {
+  color: var(--text-primary, #dce2ff);
+  border-color: color-mix(in srgb, var(--edge-subtle, #71799b) 65%, transparent);
+}
+
+.markdown-semantic-block {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  border-left: 2px solid color-mix(in srgb, var(--edge-subtle, #5d6480) 35%, transparent);
+  padding-left: 0.52rem;
+}
+
+.markdown-semantic-block strong {
+  font-size: 0.74em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, #98a0c6);
+}
+
+.markdown-semantic-block--decision {
+  border-left-color: color-mix(in srgb, #6f7bd9 45%, transparent);
+}
+
+.markdown-semantic-block--open_question {
+  border-left-color: color-mix(in srgb, #9f7dd1 44%, transparent);
+}
+
+.markdown-semantic-block--follow_up {
+  border-left-color: color-mix(in srgb, #6aa98f 44%, transparent);
 }

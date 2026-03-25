@@ -35,3 +35,12 @@ test('documentModel supports NoteBody compatibility wrapper', () => {
   assert.equal(doc.blocks[0]?.type, 'paragraph');
   assert.equal((doc.blocks[0] as { text?: string }).text, 'Simple paragraph');
 });
+
+test('documentModel promotes semantic rows into first-class atom blocks', () => {
+  const document = legacyTextToDocument('Decision: Ship the modal first\nQuestion: Which links are active?\nFollow-up: Verify ranking thresholds');
+
+  assert.equal(document.blocks[0]?.type, 'decision');
+  assert.equal(document.blocks[1]?.type, 'open_question');
+  assert.equal(document.blocks[2]?.type, 'follow_up');
+  assert.match(documentToLegacyText(document), /Follow-up/);
+});
