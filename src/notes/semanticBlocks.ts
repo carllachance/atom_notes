@@ -1,7 +1,10 @@
 export type SemanticEditableBlock =
   | { id: string; type: 'paragraph'; text: string }
   | { id: string; type: 'heading'; level: 1 | 2 | 3; text: string }
-  | { id: string; type: 'checklist_item'; checked: boolean; text: string };
+  | { id: string; type: 'checklist_item'; checked: boolean; text: string }
+  | { id: string; type: 'unsupported'; text: string; originalType?: string; raw?: string };
+
+export type BlockConversionType = 'paragraph' | 'heading' | 'checklist_item';
 
 let blockCounter = 0;
 
@@ -22,6 +25,39 @@ function parseChecklist(line: string) {
   return { checked: match[1].toLowerCase() === 'x', text: match[2] };
 }
 
+export function createParagraphBlock(text = ''): SemanticEditableBlock {
+  return { id: nextId(), type: 'paragraph', text };
+}
+
+export function normalizeSemanticBlock(value: unknown, fallbackId = nextId()): SemanticEditableBlock {
+  if (!value || typeof value !== 'object') return createParagraphBlock('');
+  const candidate = value as Record<string, unknown>;
+  const id = typeof candidate.id === 'string' && candidate.id ? candidate.id : fallbackId;
+  const text = typeof candidate.text === 'string' ? candidate.text : '';
+
+  if (candidate.type === 'heading') {
+    const level = Number(candidate.level);
+    const safeLevel = level >= 1 && level <= 3 ? (level as 1 | 2 | 3) : 1;
+    return { id, type: 'heading', level: safeLevel, text };
+  }
+
+  if (candidate.type === 'checklist_item') {
+    return { id, type: 'checklist_item', checked: Boolean(candidate.checked), text };
+  }
+
+  if (candidate.type === 'paragraph') {
+    return { id, type: 'paragraph', text };
+  }
+
+  const originalType = typeof candidate.type === 'string' ? candidate.type : undefined;
+  const raw = typeof candidate.raw === 'string'
+    ? candidate.raw
+    : typeof candidate.text === 'string'
+      ? candidate.text
+      : '';
+  return { id, type: 'unsupported', text: raw, originalType, raw };
+}
+
 export function parseSemanticBlocks(source: string): SemanticEditableBlock[] {
   const normalized = source.replace(/\r\n/g, '\n');
   const lines = normalized.split('\n');
@@ -39,7 +75,7 @@ export function parseSemanticBlocks(source: string): SemanticEditableBlock[] {
     return { id: nextId(), type: 'paragraph', text: line };
   });
 
-  return blocks.length ? blocks : [{ id: nextId(), type: 'paragraph', text: '' }];
+  return blocks.length ? blocks : [createParagraphBlock('')];
 }
 
 export function getBlockPrefix(block: SemanticEditableBlock): string {
@@ -48,6 +84,28 @@ export function getBlockPrefix(block: SemanticEditableBlock): string {
   return '';
 }
 
+export function convertBlockType(block: SemanticEditableBlock, nextType: BlockConversionType): SemanticEditableBlock {
+  if (nextType === 'paragraph') {
+    return { id: block.id, type: 'paragraph', text: block.text };
+  }
+
+  if (nextType === 'heading') {
+    const previousLevel = block.type === 'heading' ? block.level : 1;
+    return { id: block.id, type: 'heading', level: previousLevel, text: block.text };
+  }
+
+  return {
+    id: block.id,
+    type: 'checklist_item',
+    checked: block.type === 'checklist_item' ? block.checked : false,
+    text: block.text
+  };
+}
+
 export function serializeSemanticBlocks(blocks: SemanticEditableBlock[]): string {
-  return blocks.map((block) => `${getBlockPrefix(block)}${block.text}`).join('\n');
+  return blocks
+    .map((block) => (block.type === 'unsupported' && typeof block.raw === 'string')
+      ? block.raw
+      : `${getBlockPrefix(block)}${block.text}`)
+    .join('\n');
 }
