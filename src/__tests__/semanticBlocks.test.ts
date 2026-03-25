@@ -59,3 +59,21 @@ test('semantic blocks keep mixed-content note text non-destructive', () => {
   const blocks = parseSemanticBlocks(source);
   assert.equal(serializeSemanticBlocks(blocks), source);
 });
+
+test('semantic blocks keep optional origin metadata scaffolding for semantic rows', () => {
+  const normalized = normalizeSemanticBlock({
+    id: 'd1',
+    type: 'decision',
+    text: 'Ship behind a flag',
+    origin: 'ai',
+    originRef: 'summary-run-5'
+  });
+
+  assert.deepEqual(normalized, {
+    id: 'd1',
+    type: 'decision',
+    text: 'Ship behind a flag',
+    origin: 'ai',
+    originRef: 'summary-run-5'
+  });
+});

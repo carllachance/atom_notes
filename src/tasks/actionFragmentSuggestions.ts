@@ -1,4 +1,5 @@
 import { NoteCardModel } from '../types';
+import { collectSemanticSignals } from '../notes/semanticSignals';
 
 export type ActionFragmentSuggestion = {
   id: string;
@@ -31,6 +32,26 @@ export function getLikelyActionFragments(
 
   const suggestions: ActionFragmentSuggestion[] = [];
   const seen = new Set<string>();
+
+  const semanticFollowUps = collectSemanticSignals(note.body).filter((signal) => signal.type === 'follow_up');
+  semanticFollowUps.forEach((signal) => {
+    if (suggestions.length >= limit) return;
+    if (overlapsExistingPromotion(signal.start, signal.end, note)) return;
+    const key = signal.text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    suggestions.push({
+      id: `${note.id}-follow-up-${suggestions.length + 1}`,
+      start: signal.start,
+      end: signal.end,
+      text: signal.text,
+      reason: 'Follow-up semantic block surfaced for optional task promotion.'
+    });
+  });
+
+  if (suggestions.length >= limit) return suggestions;
+
   let offset = 0;
 
   for (const rawLine of note.body.split('\n')) {
