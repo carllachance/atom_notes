@@ -76,3 +76,9 @@ export function getRecapPreview(note: Pick<NoteCardModel, 'body'>, maxLength = 1
   if (!decision) return '';
   return truncate(decision.text, maxLength);
 }
+
+export function getSuggestedFollowUpPreview(note: Pick<NoteCardModel, 'body'>, maxLength = 120): string {
+  const followUp = collectSemanticSignals(note.body).find((signal) => signal.type === 'follow_up');
+  if (!followUp) return '';
+  return truncate(followUp.text, maxLength);
+}

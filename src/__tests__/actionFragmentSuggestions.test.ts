@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getLikelyActionFragments } from '../tasks/actionFragmentSuggestions';
+import { applyFollowUpLifecycleAction, getLikelyActionFragments } from '../tasks/actionFragmentSuggestions';
 
 test('actionFragmentSuggestions surfaces likely follow-up lines without creating tasks', () => {
   const suggestions = getLikelyActionFragments({
@@ -41,4 +41,27 @@ test('actionFragmentSuggestions prioritizes follow-up semantic blocks for task p
 
   assert.equal(suggestions[0]?.text, 'Schedule QA sign-off');
   assert.match(suggestions[0]?.reason ?? '', /semantic block|Follow-up/i);
+});
+
+test('follow-up lifecycle actions update status and suppress dismissed suggestions', () => {
+  const source = ['Decision: Keep rollout small', 'Follow-up: Schedule QA sign-off', 'Background context'].join('\n');
+  const suggestion = getLikelyActionFragments({
+    id: 'note-4',
+    intent: 'note',
+    body: source,
+    promotedTaskFragments: []
+  })[0];
+  assert.ok(suggestion);
+  const accepted = applyFollowUpLifecycleAction(source, suggestion!, 'accept');
+  assert.match(accepted, /Follow-up \(accepted\): Schedule QA sign-off/);
+
+  const dismissed = applyFollowUpLifecycleAction(source, suggestion!, 'dismiss');
+  assert.match(dismissed, /Follow-up \(dismissed\): Schedule QA sign-off/);
+  const dismissedSuggestions = getLikelyActionFragments({
+    id: 'note-4',
+    intent: 'note',
+    body: dismissed,
+    promotedTaskFragments: []
+  });
+  assert.equal(dismissedSuggestions.length, 0);
 });
