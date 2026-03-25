@@ -44,6 +44,8 @@ type RecallBandProps = {
   onRestoreHistory: (entry: HistoryStackEntry) => void;
   onDropPin: (label: string) => void;
   onRestoreBookmark: (bookmark: StateSnapshot) => void;
+  browseSurface: 'shelf' | 'canvas';
+  onBrowseSurfaceChange: (surface: 'shelf' | 'canvas') => void;
 };
 
 function describeFocusState(focusMode: FocusMode, focusCount: number) {
@@ -253,13 +255,17 @@ function RecallBandPrimaryZone({
   totalCount,
   canClearFilters,
   onClearFilters,
-  onOpenComposer
+  onOpenComposer,
+  browseSurface,
+  onBrowseSurfaceChange
 }: {
   count: number;
   totalCount: number;
   canClearFilters: boolean;
   onClearFilters: () => void;
   onOpenComposer: () => void;
+  browseSurface: 'shelf' | 'canvas';
+  onBrowseSurfaceChange: (surface: 'shelf' | 'canvas') => void;
 }) {
   return (
     <div className="recall-band__primary-zone">
@@ -270,6 +276,14 @@ function RecallBandPrimaryZone({
         )}
       </div>
       <div className="recall-band__primary-actions">
+        <nav className="surface-switch" aria-label="Browse surfaces">
+          <button type="button" className={browseSurface === 'shelf' ? 'active' : ''} onClick={() => onBrowseSurfaceChange('shelf')}>
+            Shelf
+          </button>
+          <button type="button" className={browseSurface === 'canvas' ? 'active' : ''} onClick={() => onBrowseSurfaceChange('canvas')}>
+            Canvas
+          </button>
+        </nav>
         {canClearFilters && (
           <button
             className="ghost-button primary-action"
@@ -521,7 +535,9 @@ export function RecallBand({
   onToggleReentry,
   onRestoreHistory,
   onDropPin,
-  onRestoreBookmark
+  onRestoreBookmark,
+  browseSurface,
+  onBrowseSurfaceChange
 }: RecallBandProps) {
   const focusState = describeFocusState(focusMode, focusCount);
 
@@ -547,6 +563,8 @@ export function RecallBand({
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
         onOpenComposer={onOpenComposer}
+        browseSurface={browseSurface}
+        onBrowseSurfaceChange={onBrowseSurfaceChange}
       />
 
       {/* Scope Zone - Shows lens navigation when not Universe/Archive */}

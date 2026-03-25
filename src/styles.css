@@ -8734,3 +8734,196 @@ body {
     padding: 12px 14px 16px;
   }
 }
+
+.view-layer-canvas--hidden {
+  display: none;
+}
+
+.surface-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 72%, transparent);
+  border-radius: 999px;
+  padding: 0.2rem;
+  background: color-mix(in srgb, var(--surface-1) 88%, black 12%);
+}
+
+.surface-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.28rem 0.62rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.surface-switch button.active {
+  background: color-mix(in srgb, var(--surface-2) 80%, white 20%);
+  color: var(--text-primary);
+}
+
+.shelf-view {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  height: calc(100vh - 118px);
+  overflow: auto;
+}
+
+.shelf-toolbar {
+  display: grid;
+  gap: 0.8rem;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 66%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 90%, black 10%);
+  padding: 0.9rem;
+}
+
+.shelf-toolbar h1 {
+  margin: 0;
+  font-size: 1.18rem;
+}
+
+.shelf-toolbar p {
+  margin: 0.26rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.shelf-toolbar__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.62rem;
+}
+
+.shelf-toolbar__controls label {
+  display: grid;
+  gap: 0.22rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.shelf-toolbar__controls select {
+  min-width: 9rem;
+  border-radius: 0.56rem;
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-0) 92%, black 8%);
+  color: var(--text-primary);
+  padding: 0.38rem 0.5rem;
+}
+
+.shelf-group {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.shelf-group__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.shelf-group__header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.shelf-group__header span {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.shelf-group__items {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.shelf-item {
+  text-align: left;
+  border-radius: 0.88rem;
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 64%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 92%, black 8%);
+  color: var(--text-primary);
+  padding: 0.75rem 0.8rem;
+  display: grid;
+  gap: 0.52rem;
+  cursor: pointer;
+}
+
+.shelf-item--paper {
+  background: linear-gradient(180deg, #f2e8d7, #eadac2);
+  color: #2a221b;
+}
+
+.shelf-item:hover,
+.shelf-item:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-strong) 56%, var(--line-subtle));
+  transform: translateY(-1px);
+}
+
+.shelf-item__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.68rem;
+}
+
+.shelf-item__head strong {
+  font-size: 0.97rem;
+}
+
+.shelf-item__head span {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, currentColor 64%, transparent);
+  white-space: nowrap;
+}
+
+.shelf-item p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: color-mix(in srgb, currentColor 84%, transparent);
+}
+
+.shelf-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.shelf-item__meta span {
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 0.14rem 0.42rem;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.shelf-empty-state {
+  border-radius: 0.9rem;
+  border: 1px dashed color-mix(in srgb, var(--line-subtle) 64%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 88%, black 12%);
+  padding: 1rem;
+}
+
+.shelf-empty-state h2 {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+}
+
+.shelf-empty-state p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+@media (min-width: 920px) {
+  .shelf-group__items {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
