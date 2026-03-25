@@ -1,0 +1,51 @@
+/* First normalization pass: shared note surface + chip + mobile chrome reductions. */
+
+.note-surface {
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 90%, transparent);
+}
+
+.note-surface--card {
+  box-shadow: var(--shadow-sm);
+}
+
+.shelf-item.note-surface--card[data-focus='true'] {
+  border-color: color-mix(in srgb, var(--accent-mint) 52%, var(--line-subtle));
+  box-shadow: 0 14px 30px rgba(9, 14, 24, 0.28);
+}
+
+.note-surface--modal {
+  border-color: color-mix(in srgb, var(--line-strong) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 94%, #1f1b20 6%);
+  box-shadow: var(--shadow-md);
+}
+
+.relationship-strip .chip {
+  min-height: 28px;
+}
+
+@media (max-width: 767px) {
+  .body-mode-switch {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .body-mode-switch::-webkit-scrollbar {
+    display: none;
+  }
+
+  .body-mode-switch button:nth-child(n + 3) {
+    display: inline-flex;
+  }
+
+  .expanded-note-header--calm {
+    row-gap: 6px;
+    padding-bottom: 6px;
+  }
+
+  .expanded-note-layout--single-column {
+    height: calc(100dvh - (env(safe-area-inset-top, 0px) + 50px));
+    padding: 2px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  }
+}

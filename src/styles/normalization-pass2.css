@@ -1,0 +1,66 @@
+/* Second normalization pass: helper/linking surfaces + conditional visibility coherence. */
+
+.expanded-note-main--edit[data-helpers-visible='false'] .capture-followups,
+.expanded-note-main--edit[data-helpers-visible='false'] .note-quiet-utilities {
+  display: none;
+}
+
+.expanded-note-main--edit[data-helpers-visible='true'] .capture-followups,
+.expanded-note-main--edit[data-helpers-visible='true'] .note-quiet-utilities {
+  display: block;
+}
+
+.expanded-note:focus-within .expanded-note-main--edit[data-helpers-visible='true'] .capture-followups,
+.expanded-note:focus-within .expanded-note-main--edit[data-helpers-visible='true'] .note-quiet-utilities {
+  display: block;
+}
+
+.inline-link-proactive-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.inline-link-proactive-main small {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 960px) {
+  .note-assist-toggle {
+    display: none;
+  }
+
+  .inline-link-dropdown {
+    margin: 0 0 12px;
+    padding: 12px;
+  }
+
+  .inline-link-proactive {
+    margin: 0 0 12px;
+    padding-top: 8px;
+  }
+
+  .inline-link-proactive-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'main dismiss'
+      'type type';
+    row-gap: 6px;
+  }
+
+  .inline-link-proactive-main {
+    grid-area: main;
+  }
+
+  .inline-link-proactive-row select {
+    grid-area: type;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .inline-link-dismiss {
+    grid-area: dismiss;
+    justify-self: end;
+  }
+}

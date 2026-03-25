@@ -14,7 +14,7 @@ import {
   RefinementPresetId,
   RefinementSuggestion
 } from '../ai/refinement';
-import { toggleMarkdownCheckbox } from '../markdownProjection';
+import { toggleChecklistItem } from '../checklists/checklistService';
 import { getCompactDisplayTitle } from '../noteText';
 import { isRelationshipTypeDirectional } from '../relationshipLogic';
 import { getProactiveLinkSuggestions, ProactiveLinkSuggestion } from '../relationships/inlineLinking';
@@ -464,7 +464,8 @@ export function ExpandedNote({
         workspaceLabel: workspaceMeta.label,
         workspaceColor: workspaceMeta.color
       };
-    }), [dismissedSuggestionIds, notesById, proactiveSuggestions, suggestionTypeOverrides, workspaces]);
+    })
+    .slice(0, 4), [dismissedSuggestionIds, notesById, proactiveSuggestions, suggestionTypeOverrides, workspaces]);
 
   const sourceNote = note?.taskSource ? notesById.get(note.taskSource.sourceNoteId) ?? null : null;
   const sourceSnippet = useMemo(() => {
@@ -530,26 +531,18 @@ export function ExpandedNote({
   const workspaceSectionOpen = expandedUtilityPanel === 'workspace';
   const projectSectionOpen = expandedUtilityPanel === 'project';
   const sourceSectionOpen = expandedUtilityPanel === 'sources';
-  const relatedSectionOpen = expandedUtilityPanel === 'related';
-  const actionsSectionOpen = expandedUtilityPanel === 'actions';
   const transformSectionOpen = expandedUtilityPanel === 'transform';
   const showWorkspaceComposer = composerSurface === 'workspace';
   const showProjectComposer = composerSurface === 'project';
-  const visibleMobileRelatedNotes = visibleTraceNotes.slice(0, 3);
-  const mobileRelatedOverflow = Math.max(0, firstRingNotes.length - visibleMobileRelatedNotes.length + focusLensOverflowCount);
-  const sourcesSummary = sourceNote
-    ? getCompactDisplayTitle(sourceNote, 30)
-    : attachmentCount
-      ? `${attachmentCount} source${attachmentCount === 1 ? '' : 's'}`
-      : 'No linked sources';
-  const sourceStatus = sourceHealth.hasOrphanedEvidence
-    ? 'Needs attention'
-    : attachmentCount
-      ? `${attachmentReadyCount}/${attachmentCount} ready`
-      : 'Quiet';
   const activeRelationshipRows = constellationFilter === 'all'
     ? connectedGroups
     : connectedGroups.map((group) => ({ ...group, items: group.items.filter((relationship) => relationship.type === constellationFilter) }));
+  const helperSuggestionCount = visibleProactiveSuggestions.length + likelyActionFragments.length;
+  const helperUI = {
+    visible: panelMode === 'edit' && editAssistOpen,
+    showProactiveSuggestions: panelMode === 'edit' && editAssistOpen,
+    showFollowUps: panelMode === 'edit' && editAssistOpen && likelyActionFragments.length > 0
+  };
 
   const constellationRelationships = useMemo<Relationship[]>(() => {
     const direct = relationships.map((relationship) => ({
@@ -688,7 +681,7 @@ export function ExpandedNote({
 
   return (
     <section className="expanded-note-shell" style={{ ['--thinking-rail-reserved' as string]: `${rightInset}px` }}>
-      <aside ref={panelRef} className="expanded-note expanded-note--rescue" data-panel-mode={panelMode} style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
+      <aside ref={panelRef} className="expanded-note expanded-note--rescue note-surface note-surface--modal" data-panel-mode={panelMode} style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
         <header className="expanded-note-header expanded-note-header--calm" onPointerDown={(event: PointerEvent<HTMLElement>) => {
           const target = event.target as HTMLElement;
           if (target.closest('button, input, textarea, select, label, summary')) return;
@@ -714,21 +707,22 @@ export function ExpandedNote({
                 className={`ghost-button note-assist-toggle ${editAssistOpen ? 'active' : ''}`}
                 onClick={() => setEditAssistOpen((current) => !current)}
               >
-                {editAssistOpen ? 'Hide helpers' : 'Show helpers'}
+                {editAssistOpen ? 'Hide helpers' : `Show helpers${helperSuggestionCount ? ` (${helperSuggestionCount})` : ''}`}
               </button>
             ) : null}
             <button type="button" className="ghost-button note-mobile-close" onClick={onClose} aria-label="Close note">Close</button>
-            <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onFocusLensPin}>{focusLensPinned ? 'Pinned' : 'Pin layout'}</button>
-            <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onFocusLensReset}>Reset view</button>
-            <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onClose}>Close</button>
             <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
               <summary className="ghost-button">More</summary>
               <div className="note-danger-menu__panel note-danger-menu__panel--quiet">
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('constellation')}>Constellation</button>
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('source')}>Materials</button>
+                {panelMode === 'edit' ? (
+                  <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setEditAssistOpen((current) => !current)}>
+                    {editAssistOpen ? 'Hide helpers' : 'Show helpers'}
+                  </button>
+                ) : null}
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensPin}>{focusLensPinned ? 'Unpin layout' : 'Pin layout'}</button>
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensReset}>Reset view</button>
-                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onClose}>Close</button>
                 {focusLensCanGoBack ? <button type="button" className="ghost-button" onClick={onFocusLensBack}>Back</button> : null}
                 <IconToolButton
                   label="Think about this note"
@@ -789,7 +783,9 @@ export function ExpandedNote({
                     onHoverRelatedNote(taskNoteId);
                     window.setTimeout(() => onClearRelatedHover(taskNoteId), 900);
                   }}
-                  onToggleCheckbox={(lineIndex, checked) => onChange(note.id, { body: toggleMarkdownCheckbox(note.body, lineIndex, checked) })}
+                  onToggleCheckbox={(lineIndex, checked) => onChange(note.id, {
+                    body: toggleChecklistItem(note.body, { lineIndex }, checked)
+                  })}
                 />
               </div>
 
@@ -935,82 +931,11 @@ export function ExpandedNote({
                   </div>
                 </LowerDisclosure>
               </div>
-
-              <section className="mobile-note-summary" aria-label="Mobile note summary">
-                <LowerDisclosure
-                  title="Sources"
-                  summary={`${sourcesSummary} · ${sourceStatus}`}
-                  open={sourceSectionOpen}
-                  onToggle={() => toggleUtilityPanel('sources')}
-                >
-                  <div className="mobile-summary-list">
-                    <button type="button" className="mobile-summary-row" onClick={() => setPanelMode('source')}>
-                      <span>Open source details</span>
-                      <strong>{sourceStatus}</strong>
-                    </button>
-                    {sourceNote ? (
-                      <button
-                        type="button"
-                        className="mobile-summary-row"
-                        onClick={() => {
-                          const relationship = sceneRelationshipForTask(note.id, sourceNote.id, relationships);
-                          if (relationship) onOpenRelated(sourceNote.id, relationship.id);
-                        }}
-                      >
-                        <span>Linked source note</span>
-                        <strong>{getCompactDisplayTitle(sourceNote, 34)}</strong>
-                      </button>
-                    ) : null}
-                  </div>
-                </LowerDisclosure>
-
-                <LowerDisclosure
-                  title="Related notes"
-                  summary={visibleMobileRelatedNotes.length ? `${visibleMobileRelatedNotes.length} shown` : 'No strong links yet'}
-                  open={relatedSectionOpen}
-                  onToggle={() => toggleUtilityPanel('related')}
-                >
-                  <div className="mobile-summary-list">
-                    {visibleMobileRelatedNotes.map((relationship) => (
-                      <button
-                        key={relationship.relationshipId}
-                        type="button"
-                        className="mobile-summary-row"
-                        onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
-                        onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
-                        onClick={() => onOpenRelated(relationship.targetId, relationship.relationshipId)}
-                      >
-                        <span>{getPlainEnglishRelationshipCue(relationship.relationship)}</span>
-                        <strong>{relationship.targetTitle}</strong>
-                      </button>
-                    ))}
-                    {mobileRelatedOverflow > 0 ? (
-                      <button type="button" className="mobile-summary-row mobile-summary-row--more" onClick={() => setPanelMode('constellation')}>
-                        <span>More connected notes</span>
-                        <strong>+{mobileRelatedOverflow} more</strong>
-                      </button>
-                    ) : null}
-                  </div>
-                </LowerDisclosure>
-
-                <LowerDisclosure
-                  title="Actions"
-                  summary="Next steps"
-                  open={actionsSectionOpen}
-                  onToggle={() => toggleUtilityPanel('actions')}
-                >
-                  <div className="mobile-summary-actions">
-                    <button type="button" className="ghost-button" onClick={() => setPanelMode('constellation')}>Open constellation</button>
-                    <button type="button" className="ghost-button" onClick={() => toggleUtilityPanel('transform')}>Transform</button>
-                    <button type="button" className="ghost-button" onClick={onThinkAboutNote}>Ask Horizon</button>
-                  </div>
-                </LowerDisclosure>
-              </section>
             </div>
           ) : null}
 
           {panelMode === 'edit' ? (
-            <div className="expanded-note-main expanded-note-main--edit">
+            <div className="expanded-note-main expanded-note-main--edit" data-helpers-visible={helperUI.visible ? 'true' : 'false'}>
               <div className="note-body-surface" data-mode="edit">
                 <div className="note-edit-stack">
                   {!thinkingActive && transformSectionOpen ? (
@@ -1078,11 +1003,12 @@ export function ExpandedNote({
                     onSelectionChange={setSelectedTextRange}
                     sourceJumpRequest={sourceJumpRequest}
                     onSourceJumpConsumed={() => setSourceJumpRequest(null)}
+                    showProactiveSuggestions={helperUI.showProactiveSuggestions}
                   />
                 </div>
               </div>
 
-              {editAssistOpen && likelyActionFragments.length ? (
+              {helperUI.showFollowUps ? (
                 <section className="capture-followups" aria-label="Likely follow-up suggestions">
                   <div className="section-head">
                     <div>
@@ -1142,7 +1068,7 @@ export function ExpandedNote({
                 </section>
               ) : null}
 
-              {editAssistOpen ? <div className="note-quiet-utilities">
+              {helperUI.visible ? <div className="note-quiet-utilities">
                 <LowerDisclosure
                   title="Transform"
                   summary={thinkingActive ? 'Thinking rail is open' : 'Refine only when needed'}

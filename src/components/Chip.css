@@ -1,0 +1,57 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--space-sm);
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-2) 86%, transparent);
+  color: var(--text-secondary);
+  font-family: var(--font-stack);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.chip:hover {
+  background: color-mix(in srgb, var(--surface-3) 84%, transparent);
+  color: var(--text-primary);
+}
+
+.chip--active {
+  color: var(--text-primary);
+}
+
+.chip--neutral {
+  border-color: color-mix(in srgb, var(--line-subtle) 88%, transparent);
+}
+
+.chip--accent {
+  border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--line-subtle));
+  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface-2));
+  color: color-mix(in srgb, var(--accent-primary) 78%, var(--text-primary));
+}
+
+.chip--status {
+  border-color: color-mix(in srgb, var(--rel-task) 44%, var(--line-subtle));
+  background: color-mix(in srgb, var(--rel-task) 20%, var(--surface-2));
+  color: color-mix(in srgb, var(--rel-task) 66%, var(--text-primary));
+}
+
+.chip--warning {
+  border-color: color-mix(in srgb, var(--rel-reference) 42%, var(--line-subtle));
+  background: color-mix(in srgb, var(--rel-reference) 20%, var(--surface-2));
+  color: color-mix(in srgb, var(--rel-reference) 64%, var(--text-primary));
+}
+
+.chip--danger {
+  border-color: color-mix(in srgb, var(--rel-conflict) 45%, var(--line-subtle));
+  background: color-mix(in srgb, var(--rel-conflict) 18%, var(--surface-2));
+  color: color-mix(in srgb, var(--rel-conflict) 68%, var(--text-primary));
+}
+
+.chip__leading {
+  font-size: 0.72rem;
+  opacity: 0.9;
+}

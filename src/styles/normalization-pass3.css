@@ -1,0 +1,108 @@
+/* Third normalization pass: note-open visual rhythm and control density polish. */
+
+.expanded-note-shell {
+  padding: 28px calc(var(--thinking-rail-reserved, 24px) + 18px) 18px 18px;
+}
+
+.expanded-note--rescue {
+  border-radius: 22px;
+}
+
+.expanded-note-header--calm {
+  gap: 12px;
+  padding: 14px 16px 12px;
+}
+
+.expanded-note-header-main {
+  display: grid;
+  gap: 8px;
+}
+
+.note-title-field {
+  line-height: 1.2;
+}
+
+.body-mode-switch {
+  gap: 6px;
+}
+
+.body-mode-switch button {
+  min-height: 30px;
+  padding: 0.28rem 0.6rem;
+}
+
+.note-header-tools--compact {
+  gap: 6px;
+}
+
+.note-header-tools--compact .ghost-button,
+.note-danger-menu summary.ghost-button {
+  min-height: 30px;
+  padding: 0.28rem 0.62rem;
+}
+
+.expanded-note-layout--single-column {
+  padding: 12px 16px 16px;
+}
+
+.expanded-note-main--reading,
+.expanded-note-main--edit,
+.expanded-note-main--source-mode,
+.expanded-note-main--constellation-mode {
+  gap: 12px;
+  padding: 8px 10px 16px;
+}
+
+.note-quiet-utilities {
+  gap: 10px;
+}
+
+.detail-section--calm-disclosure {
+  border-radius: 12px;
+}
+
+.disclosure-summary {
+  padding: 10px 12px;
+}
+
+@media (max-width: 767px) {
+  .expanded-note-shell {
+    padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 8px) max(8px, env(safe-area-inset-left, 0px));
+  }
+
+  .expanded-note-header--calm {
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 6px;
+    row-gap: 6px;
+  }
+
+  .body-mode-switch {
+    gap: 4px;
+  }
+
+  .body-mode-switch button,
+  .note-header-tools--compact .ghost-button,
+  .note-danger-menu summary.ghost-button {
+    min-height: 28px;
+    padding: 0.22rem 0.54rem;
+  }
+
+  .expanded-note-layout--single-column {
+    height: calc(100dvh - (env(safe-area-inset-top, 0px) + 52px));
+    padding: 2px 6px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  .expanded-note-main--reading,
+  .expanded-note-main--edit,
+  .expanded-note-main--source-mode,
+  .expanded-note-main--constellation-mode {
+    gap: 8px;
+    padding: 2px 0 8px;
+  }
+
+  .note-cornell-body,
+  .note-body-surface .markdown-projection,
+  .note-body-surface .markdown-empty,
+  .expanded-note-main--edit .note-body-field {
+    padding: 12px 11px 14px;
+  }
+}

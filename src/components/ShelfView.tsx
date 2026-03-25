@@ -21,7 +21,6 @@ type ShelfItem = {
   projectLabel: string | null;
   workspaceLabel: string | null;
   stateLabel: string;
-  tone: 'paper' | 'panel';
   shelfSize: NoteShelfSize;
   previewLength: number;
   metadataLimit: number;
@@ -104,7 +103,6 @@ function toShelfItems(
         projectLabel: primaryProject ? `${primaryProject.key} · ${primaryProject.name}` : null,
         workspaceLabel: workspace ? workspace.name : null,
         stateLabel: deriveStateLabel(note),
-        tone: note.inFocus || note.isFocus ? 'paper' : 'panel',
         shelfSize,
         previewLength,
         metadataLimit,
@@ -359,8 +357,9 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
                 {arrangeShelfItemsForDenseGrid(group.items).map((item) => (
                   <article
                     key={item.note.id}
-                    className={`shelf-item shelf-item--${item.tone} shelf-item--${item.shelfSize}`}
+                    className={`shelf-item note-surface note-surface--card shelf-item--${item.shelfSize}`}
                     data-size={item.shelfSize}
+                    data-focus={item.note.inFocus || item.note.isFocus ? 'true' : 'false'}
                     tabIndex={0}
                     role="button"
                     onClick={() => onOpenNote(item.note.id)}
