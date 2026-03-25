@@ -24,6 +24,8 @@ type NoteOpenLayerStackProps = {
   expandedNote: ReactNode;
   relationshipWebComponent?: RelationshipWebComponent;
   relationshipWebOverride?: ReactNode;
+  showBackdrop?: boolean;
+  showRelationshipWeb?: boolean;
 };
 
 type NoteOpenOverlaySceneProps = {
@@ -45,6 +47,7 @@ type NoteOpenOverlaySceneProps = {
   spatialCanvasProps: Omit<ComponentProps<typeof SpatialCanvas>, 'notes' | 'activeNoteId' | 'onOpen'>;
   expandedNoteProps: Omit<ComponentProps<typeof ExpandedNote>, 'note' | 'notes' | 'noteProjects' | 'noteWorkspace'>;
   relationshipWebOverride?: ReactNode;
+  mobileNoteMode?: boolean;
   components?: {
     SpatialCanvasComponent?: SpatialCanvasComponent;
     RelationshipWebComponent?: RelationshipWebComponent;
@@ -66,9 +69,11 @@ export function NoteOpenLayerStack({
   onClearRelatedHover,
   expandedNote,
   relationshipWebComponent: RelationshipWebComponent = RelationshipWeb,
-  relationshipWebOverride
+  relationshipWebOverride,
+  showBackdrop = true,
+  showRelationshipWeb = true
 }: NoteOpenLayerStackProps) {
-  const relationshipWeb = activeNote
+  const relationshipWeb = activeNote && showRelationshipWeb
     ? (relationshipWebOverride ?? (
       <RelationshipWebComponent
         activeNote={activeNote}
@@ -87,7 +92,7 @@ export function NoteOpenLayerStack({
 
   return (
     <>
-      {activeNote ? <button type="button" className="canvas-dim" aria-label="Close note" onClick={onCloseNote} /> : null}
+      {activeNote && showBackdrop ? <button type="button" className="canvas-dim" aria-label="Close note" onClick={onCloseNote} /> : null}
       {relationshipWeb}
       {expandedNote}
     </>
@@ -113,6 +118,7 @@ export function NoteOpenOverlayScene({
   spatialCanvasProps,
   expandedNoteProps,
   relationshipWebOverride,
+  mobileNoteMode = false,
   components
 }: NoteOpenOverlaySceneProps) {
   const activeNote = activeNoteId ? notes.find((note) => note.id === activeNoteId) ?? null : null;
@@ -143,6 +149,8 @@ export function NoteOpenOverlayScene({
         onClearRelatedHover={onClearRelatedHover}
         relationshipWebComponent={components?.RelationshipWebComponent}
         relationshipWebOverride={relationshipWebOverride}
+        showBackdrop={!mobileNoteMode}
+        showRelationshipWeb={!mobileNoteMode}
         expandedNote={activeNote ? (
           <ExpandedNoteComponent
             {...expandedNoteProps}

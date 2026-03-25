@@ -129,6 +129,7 @@ export function App() {
   const thinkingRailVisible = scene.expandedSecondarySurface === 'thinking';
   const captureExpanded = scene.expandedSecondarySurface === 'capture';
   const captureCompactedForOpenNote = isMobileViewport && Boolean(activeNote);
+  const mobileNoteMode = isMobileViewport && Boolean(activeNote);
   const thinkingRailReservedInset = thinkingRailVisible ? thinkingRailWidth + 24 : 24;
   const captureDockInset = captureCompactedForOpenNote ? 12 : captureExpanded ? 236 : 88;
   const hasFreshInsights = Boolean(
@@ -240,7 +241,7 @@ export function App() {
         noteOpen={Boolean(activeNote)}
       />
 
-      <section className={`workspace-shell ${isMobileViewport ? 'workspace-shell--mobile-capture' : ''}`}>
+      <section className={`workspace-shell ${isMobileViewport ? 'workspace-shell--mobile-capture' : ''} ${mobileNoteMode ? 'workspace-shell--mobile-note-open' : ''}`}>
         <section className="view-stack" data-lens={scene.lens.kind}>
           {!activeNote && browseSurface === 'shelf' ? (
             <ShelfView
@@ -370,6 +371,7 @@ export function App() {
                 RelationshipWebComponent: RelationshipWeb,
                 ExpandedNoteComponent: ExpandedNote
               }}
+              mobileNoteMode={mobileNoteMode}
             />
             {canvasVisibility.shouldShowRecoveryHelper ? (
               <div className="canvas-recovery-helper" role="status" aria-live="polite">
@@ -427,18 +429,20 @@ export function App() {
         />
       </section>
 
-      <CaptureComposer
-        isOpen={captureExpanded}
-        isMobileViewport={isMobileViewport}
-        compactWhenNoteOpen={captureCompactedForOpenNote}
-        value={scene.captureComposer.draft}
-        onChange={onCaptureDraftChange}
-        onCommit={commitCapture}
-        onCancel={cancelCapture}
-        onUndo={undoLastCapture}
-        onExpand={() => onCaptureDraftChange(scene.captureComposer.draft)}
-        canUndo={Boolean(scene.captureComposer.lastCreatedNoteId)}
-      />
+      {!mobileNoteMode ? (
+        <CaptureComposer
+          isOpen={captureExpanded}
+          isMobileViewport={isMobileViewport}
+          compactWhenNoteOpen={captureCompactedForOpenNote}
+          value={scene.captureComposer.draft}
+          onChange={onCaptureDraftChange}
+          onCommit={commitCapture}
+          onCancel={cancelCapture}
+          onUndo={undoLastCapture}
+          onExpand={() => onCaptureDraftChange(scene.captureComposer.draft)}
+          canUndo={Boolean(scene.captureComposer.lastCreatedNoteId)}
+        />
+      ) : null}
 
       {recentlyDeletedNoteId ? (
         <div className="undo-toast" role="status" aria-live="polite">
