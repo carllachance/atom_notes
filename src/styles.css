@@ -9563,6 +9563,25 @@ body {
   font-size: 1.06rem;
 }
 
+.shelf-item__detail {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.shelf-item__detail p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, currentColor 76%, transparent);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.shelf-item--hero .shelf-item__detail p {
+  -webkit-line-clamp: 3;
+}
+
 .shelf-item__meta {
   display: flex;
   flex-wrap: wrap;

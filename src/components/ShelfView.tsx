@@ -1,6 +1,7 @@
 import { KeyboardEvent, MouseEvent, useMemo, useState } from 'react';
-import { getCompactDisplayTitle, getSummaryPreview } from '../noteText';
+import { getCompactDisplayTitle, getRecapPreview, getSuggestedFollowUpPreview, getSummaryPreview, getUnresolvedPreview } from '../noteText';
 import { NoteCardModel, NoteShelfSize, Project, Relationship, Workspace } from '../types';
+import { resolveShelfSize } from './shelfSizing';
 
 type GroupMode = 'recent' | 'focus' | 'waiting' | 'project' | 'type' | 'created' | 'edited' | 'pinned';
 type StateFilter = 'all' | 'active' | 'waiting' | 'done';
@@ -24,6 +25,8 @@ type ShelfItem = {
   shelfSize: NoteShelfSize;
   previewLength: number;
   metadataLimit: number;
+  isPinnedLarge: boolean;
+  didDowngrade: boolean;
 };
 
 function formatRecency(updatedAt: number): string {
@@ -83,9 +86,10 @@ function toShelfItems(
             : relationCount <= 1
               ? 'compact'
               : 'standard';
-      const shelfSize = note.shelfSize ?? autoSize;
-      const previewLength = shelfSize === 'hero' ? 320 : shelfSize === 'featured' ? 240 : shelfSize === 'standard' ? 170 : 96;
-      const metadataLimit = shelfSize === 'hero' ? 4 : shelfSize === 'featured' ? 3 : shelfSize === 'standard' ? 2 : 1;
+      const resolved = resolveShelfSize(note, autoSize, relationCount);
+      const shelfSize = resolved.shelfSize;
+      const previewLength = shelfSize === 'hero' ? 360 : shelfSize === 'featured' ? 290 : shelfSize === 'standard' ? 170 : 96;
+      const metadataLimit = shelfSize === 'hero' ? 5 : shelfSize === 'featured' ? 4 : shelfSize === 'standard' ? 2 : 1;
       return {
         note,
         relationCount,
@@ -95,7 +99,9 @@ function toShelfItems(
         tone: note.inFocus || note.isFocus ? 'paper' : 'panel',
         shelfSize,
         previewLength,
-        metadataLimit
+        metadataLimit,
+        isPinnedLarge: resolved.isPinnedLarge,
+        didDowngrade: resolved.didDowngrade
       };
     });
 }
@@ -295,8 +301,27 @@ export function ShelfView({ notes, relationships, projects, workspaces, onOpenNo
                       <span>{formatRecency(item.note.updatedAt)}</span>
                     </div>
                     <p>{getSummaryPreview(item.note, item.previewLength)}</p>
+                    {(item.shelfSize === 'featured' || item.shelfSize === 'hero') ? (
+                      <div className="shelf-item__detail">
+                        {[getRecapPreview(item.note, 180), getUnresolvedPreview(item.note, 180), getSuggestedFollowUpPreview(item.note, 180)]
+                          .filter((line): line is string => Boolean(line))
+                          .slice(0, item.shelfSize === 'hero' ? 3 : 2)
+                          .map((line, index) => <p key={`${item.note.id}-detail-${index}`}>{line}</p>)}
+                        {item.isPinnedLarge && !getRecapPreview(item.note, 180) && !getUnresolvedPreview(item.note, 180) && !getSuggestedFollowUpPreview(item.note, 180) ? (
+                          <p>Pick up here: add a recap, open question, or follow-up so this pinned card stays rich at a glance.</p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="shelf-item__meta">
-                      {[item.stateLabel, item.projectLabel, item.workspaceLabel, item.relationCount > 0 ? `${item.relationCount} related` : null]
+                      {[
+                        item.stateLabel,
+                        item.projectLabel,
+                        item.workspaceLabel,
+                        item.relationCount > 0 ? `${item.relationCount} related` : null,
+                        item.note.attachments?.length ? `${item.note.attachments.length} attachment${item.note.attachments.length === 1 ? '' : 's'}` : null,
+                        item.note.inferredRelationships?.length ? `${item.note.inferredRelationships.length} inferred` : null,
+                        item.didDowngrade ? 'Auto-fit size' : null
+                      ]
                         .filter((value): value is string => Boolean(value))
                         .slice(0, item.metadataLimit)
                         .map((label) => <span key={label}>{label}</span>)}
