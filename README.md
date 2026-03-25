@@ -148,6 +148,10 @@ npm run build
 
 ### Planning artifact
 - Product planning artifact: `docs/codex_epics_and_stories.json`
+- Discern design brief (March 25, 2026): `docs/DISCERN_DESIGN_BRIEF_2026-03-25.md`
+- UI implementation rules addendum: `docs/UI_RULES_ADDENDUM.md`
+- External review reconciliation (March 25, 2026): `docs/EXTERNAL_REVIEW_RECONCILIATION_2026-03-25.md`
+- Mobile modal surface recommendation: `docs/MOBILE_MODAL_SURFACE_RECOMMENDATION.md`
 
 ## Direction
 Atomic Notes is being shaped around three principles:

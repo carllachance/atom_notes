@@ -9064,10 +9064,11 @@ body {
   }
 
   .body-mode-switch button {
-    padding: 0.24rem 0.5rem;
+    padding: 0.3rem 0.52rem;
     font-size: 0.69rem;
     white-space: nowrap;
-    min-height: 26px;
+    min-height: 32px;
+    min-width: 0;
   }
 
   .body-mode-switch button:nth-child(n + 3) {
@@ -9202,6 +9203,36 @@ body {
 
 .note-tab-label-mobile {
   display: none;
+}
+
+.body-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.16rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 88%, black 12%);
+}
+
+.body-mode-switch button {
+  min-height: 32px;
+  min-width: 68px;
+  border-radius: 999px;
+  padding: 0.3rem 0.62rem;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.body-mode-switch button.active {
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--accent-primary) 62%, var(--line-subtle));
+  color: var(--text-primary);
+}
+
+.body-mode-switch button:disabled {
+  opacity: 0.55;
 }
 
 .view-layer-canvas--hidden {
@@ -9374,9 +9405,15 @@ body {
 }
 
 .shelf-toolbar__controls label {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--text-secondary);
+  display: grid;
+  gap: 0.22rem;
+}
+
+.shelf-toolbar__label {
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-secondary) 84%, transparent);
 }
 
 .shelf-toolbar__controls select {
@@ -9391,6 +9428,7 @@ body {
 @media (max-width: 760px) {
   .shelf-view {
     padding-top: 0.72rem;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
   }
 
   .shelf-toolbar {
@@ -9431,7 +9469,11 @@ body {
   }
 
   .shelf-toolbar__controls label {
-    font-size: 0.7rem;
+    gap: 0.2rem;
+  }
+
+  .shelf-toolbar__label {
+    font-size: 0.64rem;
   }
 
   .shelf-toolbar__controls select {
@@ -9474,9 +9516,9 @@ body {
 }
 
 .shelf-group__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
 }
 
 .shelf-group__header h2 {
@@ -9487,9 +9529,18 @@ body {
   color: var(--text-secondary);
 }
 
-.shelf-group__header span {
-  font-size: 0.78rem;
+.shelf-group__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.2rem;
+  padding: 0 0.36rem;
+  border-radius: 999px;
+  font-size: 0.73rem;
   color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--line-subtle) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 58%, transparent);
 }
 
 .shelf-group__items {
@@ -9549,20 +9600,17 @@ body {
 }
 
 .shelf-item__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.68rem;
+  display: block;
+  padding-right: 1.6rem;
+  min-height: 1.45rem;
 }
 
 .shelf-item__head strong {
   font-size: 0.97rem;
-}
-
-.shelf-item__head span {
-  font-size: 0.75rem;
-  color: color-mix(in srgb, currentColor 64%, transparent);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .shelf-item p {
@@ -9615,6 +9663,17 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.38rem;
+}
+
+.shelf-item__footer {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: auto;
+}
+
+.shelf-item__time {
+  font-size: 0.71rem;
+  color: color-mix(in srgb, currentColor 62%, transparent);
 }
 
 .shelf-item__meta span {
@@ -9876,11 +9935,11 @@ body {
 
 .shelf-item--featured,
 .shelf-item--hero {
-  border-color: color-mix(in srgb, var(--line-strong) 80%, var(--accent-focus-soft));
+  border-color: color-mix(in srgb, var(--line-strong) 72%, var(--accent-focus-soft));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 18%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 12%, transparent), transparent 34%),
     color-mix(in srgb, var(--surface-2) 84%, black 16%);
-  box-shadow: 0 10px 26px rgba(5, 9, 22, 0.28);
+  box-shadow: 0 8px 22px rgba(5, 9, 22, 0.22);
 }
 
 .shelf-item--paper {
