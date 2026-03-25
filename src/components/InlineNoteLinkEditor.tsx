@@ -43,6 +43,8 @@ type InlineNoteLinkEditorProps = {
   onDismissProactiveSuggestion: (suggestionId: string) => void;
   onChangeProactiveSuggestionType: (suggestionId: string, type: RelationshipType) => void;
   onSelectionChange?: (selection: { start: number; end: number; text: string } | null) => void;
+  sourceJumpRequest?: { start: number; end: number; nonce: number } | null;
+  onSourceJumpConsumed?: () => void;
 };
 
 type SuggestionItem =
@@ -57,6 +59,24 @@ const BLOCK_CONVERSIONS: Array<{ type: BlockConversionType; label: string; title
   { type: 'open_question', label: '?', title: 'Convert to open question' },
   { type: 'follow_up', label: '↗', title: 'Convert to follow-up' }
 ];
+
+export function resolveBlockSelectionForRange(
+  blocks: SemanticEditableBlock[],
+  blockStarts: number[],
+  range: { start: number; end: number }
+) {
+  const targetIndex = blocks.findIndex((block, index) => {
+    const start = (blockStarts[index] ?? 0) + getBlockPrefix(block).length;
+    const end = start + block.text.length;
+    return range.start >= start && range.start <= end;
+  });
+  if (targetIndex === -1) return null;
+  const block = blocks[targetIndex];
+  const blockStart = (blockStarts[targetIndex] ?? 0) + getBlockPrefix(block).length;
+  const localStart = Math.max(0, range.start - blockStart);
+  const localEnd = Math.max(localStart, Math.min(block.text.length, range.end - blockStart));
+  return { targetIndex, localStart, localEnd };
+}
 
 export function InlineNoteLinkEditor({
   note,
@@ -74,7 +94,9 @@ export function InlineNoteLinkEditor({
   onAcceptProactiveSuggestion,
   onDismissProactiveSuggestion,
   onChangeProactiveSuggestionType,
-  onSelectionChange
+  onSelectionChange,
+  sourceJumpRequest = null,
+  onSourceJumpConsumed
 }: InlineNoteLinkEditorProps) {
   const blockRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
   const [blocks, setBlocks] = useState<SemanticEditableBlock[]>(() => parseSemanticBlocks(note.body));
@@ -169,6 +191,18 @@ export function InlineNoteLinkEditor({
   useEffect(() => {
     setActiveSuggestionIndex(0);
   }, [activeMatch?.start, activeMatch?.query]);
+
+  useEffect(() => {
+    if (!sourceJumpRequest) return;
+    const resolved = resolveBlockSelectionForRange(blocks, blockStarts, sourceJumpRequest);
+    if (!resolved) return;
+    const { targetIndex, localStart, localEnd } = resolved;
+    const target = blockRefs.current[targetIndex];
+    if (!target) return;
+    target.focus();
+    target.setSelectionRange(localStart, localEnd);
+    onSourceJumpConsumed?.();
+  }, [sourceJumpRequest, blocks, blockStarts, onSourceJumpConsumed]);
 
   const replaceActiveWikiLink = (label: string) => {
     if (!activeMatch) return null;

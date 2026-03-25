@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getCompactDisplayTitle, getRecapPreview, getSummaryPreview, getUnresolvedPreview } from '../noteText';
+import { getCompactDisplayTitle, getRecapPreview, getSuggestedFollowUpPreview, getSummaryPreview, getUnresolvedPreview } from '../noteText';
 import { NoteCardModel } from '../types';
 
 type HomeSurfaceProps = {
@@ -64,7 +64,7 @@ export function HomeSurface({
                 <div>
                   <small>{note.kicker}</small>
                   <strong>{getCompactDisplayTitle(note, 48)}</strong>
-                  <p>{getRecapPreview(note, 108) || getSummaryPreview(note, 108)}</p>
+                  <p>{getRecapPreview(note, 108) || getUnresolvedPreview(note, 108) || getSuggestedFollowUpPreview(note, 108) || getSummaryPreview(note, 108)}</p>
                 </div>
                 <span>Continue</span>
               </button>
@@ -88,7 +88,7 @@ export function HomeSurface({
                 <div>
                   <small>{note.kicker}</small>
                   <strong>{getCompactDisplayTitle(note, 48)}</strong>
-                  <p>{getUnresolvedPreview(note, 108) || getSummaryPreview(note, 108)}</p>
+                  <p>{getUnresolvedPreview(note, 108) || getSuggestedFollowUpPreview(note, 108) || getRecapPreview(note, 108) || getSummaryPreview(note, 108)}</p>
                 </div>
                 <span>Open</span>
               </button>

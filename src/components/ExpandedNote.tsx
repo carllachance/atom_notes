@@ -19,7 +19,7 @@ import { getCompactDisplayTitle } from '../noteText';
 import { isRelationshipTypeDirectional } from '../relationshipLogic';
 import { getProactiveLinkSuggestions, ProactiveLinkSuggestion } from '../relationships/inlineLinking';
 import { getResolvedTaskFragments, getTaskStateLabel } from '../tasks/taskPromotions';
-import { getLikelyActionFragments } from '../tasks/actionFragmentSuggestions';
+import { applyFollowUpLifecycleAction, getLikelyActionFragments } from '../tasks/actionFragmentSuggestions';
 import { ProjectDraft } from '../projects/projectModel';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { relinkExternalReference, summarizeNoteSourceHealth } from '../notes/provenance';
@@ -358,6 +358,7 @@ export function ExpandedNote({
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<string[]>([]);
   const [suggestionTypeOverrides, setSuggestionTypeOverrides] = useState<Record<string, RelationshipType>>({});
   const [selectedTextRange, setSelectedTextRange] = useState<TextSelection | null>(null);
+  const [sourceJumpRequest, setSourceJumpRequest] = useState<{ start: number; end: number; nonce: number } | null>(null);
   const [customRefinementInstruction, setCustomRefinementInstruction] = useState('');
   const [refinementPreview, setRefinementPreview] = useState<RefinementSuggestion | null>(null);
   const [refinementPreviewDraft, setRefinementPreviewDraft] = useState('');
@@ -1063,6 +1064,8 @@ export function ExpandedNote({
                       setSuggestionTypeOverrides((current) => ({ ...current, [suggestionId]: type }));
                     }}
                     onSelectionChange={setSelectedTextRange}
+                    sourceJumpRequest={sourceJumpRequest}
+                    onSourceJumpConsumed={() => setSourceJumpRequest(null)}
                   />
                 </div>
               </div>
@@ -1086,7 +1089,35 @@ export function ExpandedNote({
                         <button
                           type="button"
                           className="ghost-button"
+                          onClick={() => setSourceJumpRequest({ start: fragment.start, end: fragment.end, nonce: Date.now() })}
+                        >
+                          Jump to source
+                        </button>
+                        {fragment.semanticType === 'follow_up' ? (
+                          <>
+                            <button
+                              type="button"
+                              className="ghost-button"
+                              onClick={() => onChange(note.id, { body: applyFollowUpLifecycleAction(note.body, fragment, 'accept') })}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              className="ghost-button"
+                              onClick={() => onChange(note.id, { body: applyFollowUpLifecycleAction(note.body, fragment, 'dismiss') })}
+                            >
+                              Dismiss
+                            </button>
+                          </>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="ghost-button"
                           onClick={() => {
+                            if (fragment.semanticType === 'follow_up') {
+                              onChange(note.id, { body: applyFollowUpLifecycleAction(note.body, fragment, 'promote_to_task') });
+                            }
                             const result = onPromoteFragmentToTask(note.id, fragment);
                             if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
                           }}
