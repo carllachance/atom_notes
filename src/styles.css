@@ -9923,6 +9923,100 @@ body {
   color: color-mix(in srgb, var(--accent-warm) 74%, var(--text-primary) 26%);
 }
 
+/* Correction pass: note-mode focus, content-first edit, overflow safety, and Discern mint rebalance */
+.view-layer-canvas--note-mode {
+  background: color-mix(in srgb, var(--surface-1) 94%, #0f1219 6%);
+}
+
+.view-layer-canvas--note-mode .spatial-canvas,
+.view-layer-canvas--note-mode .canvas-recovery-helper,
+.view-layer-canvas--note-mode .lens-empty-state {
+  display: none;
+}
+
+.note-assist-toggle,
+.note-mobile-close {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.note-mobile-close {
+  display: none;
+}
+
+.capture-followups__row,
+.capture-followups__row > div,
+.capture-followups__row .ghost-button,
+.inline-task-strip-chip,
+.inline-task-strip-chip strong,
+.inline-task-strip-chip small,
+.mobile-summary-row,
+.mobile-summary-row span,
+.mobile-summary-row strong,
+.focus-count-chip,
+.recall-resume-chip {
+  min-width: 0;
+}
+
+.capture-followups__row > div,
+.capture-followups__row strong,
+.capture-followups__row small,
+.inline-task-strip-chip strong,
+.inline-task-strip-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.capture-followups__row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.capture-followups__row .ghost-button {
+  white-space: nowrap;
+}
+
+.shelf-item--paper {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-mint) 28%, #f2f7f1 72%),
+    color-mix(in srgb, var(--accent-mint) 36%, #e7eee4 64%)
+  );
+  border-color: color-mix(in srgb, var(--accent-mint) 52%, rgba(29, 57, 45, 0.28));
+  color: #1f2c25;
+}
+
+@media (max-width: 767px) {
+  .recall-band {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .recall-band__utility-cluster .ghost-button span:last-child,
+  .focus-state-indicator {
+    display: none;
+  }
+
+  .note-header-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .note-mobile-close {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .note-danger-menu summary.ghost-button {
+    margin-left: auto;
+  }
+
+  .expanded-note-main--edit .capture-followups,
+  .expanded-note-main--edit .note-quiet-utilities {
+    border-radius: 10px;
+  }
+}
+
 .expanded-note-shell {
   padding: 34px calc(var(--thinking-rail-reserved, 24px) + 18px) 18px 18px;
 }

@@ -48,6 +48,7 @@ type NoteOpenOverlaySceneProps = {
   expandedNoteProps: Omit<ComponentProps<typeof ExpandedNote>, 'note' | 'notes' | 'noteProjects' | 'noteWorkspace'>;
   relationshipWebOverride?: ReactNode;
   mobileNoteMode?: boolean;
+  suppressBackgroundContext?: boolean;
   components?: {
     SpatialCanvasComponent?: SpatialCanvasComponent;
     RelationshipWebComponent?: RelationshipWebComponent;
@@ -119,6 +120,7 @@ export function NoteOpenOverlayScene({
   expandedNoteProps,
   relationshipWebOverride,
   mobileNoteMode = false,
+  suppressBackgroundContext = false,
   components
 }: NoteOpenOverlaySceneProps) {
   const activeNote = activeNoteId ? notes.find((note) => note.id === activeNoteId) ?? null : null;
@@ -149,8 +151,8 @@ export function NoteOpenOverlayScene({
         onClearRelatedHover={onClearRelatedHover}
         relationshipWebComponent={components?.RelationshipWebComponent}
         relationshipWebOverride={relationshipWebOverride}
-        showBackdrop={!mobileNoteMode}
-        showRelationshipWeb={!mobileNoteMode}
+        showBackdrop={!mobileNoteMode && !suppressBackgroundContext}
+        showRelationshipWeb={!mobileNoteMode && !suppressBackgroundContext}
         expandedNote={activeNote ? (
           <ExpandedNoteComponent
             {...expandedNoteProps}

@@ -262,7 +262,7 @@ export function App() {
               onRestoreDeletedNote={restoreDeletedNote}
             />
           ) : null}
-          <div className={`view-layer view-layer-canvas ${!activeNote && browseSurface === 'shelf' ? 'view-layer-canvas--hidden' : ''}`}>
+          <div className={`view-layer view-layer-canvas ${!activeNote && browseSurface === 'shelf' ? 'view-layer-canvas--hidden' : ''} ${activeNote ? 'view-layer-canvas--note-mode' : ''}`}>
             <NoteOpenOverlayScene
               notes={scene.notes}
               visibleNotes={visibleNotes}
@@ -372,8 +372,9 @@ export function App() {
                 ExpandedNoteComponent: ExpandedNote
               }}
               mobileNoteMode={mobileNoteMode}
+              suppressBackgroundContext
             />
-            {canvasVisibility.shouldShowRecoveryHelper ? (
+            {!activeNote && canvasVisibility.shouldShowRecoveryHelper ? (
               <div className="canvas-recovery-helper" role="status" aria-live="polite">
                 <div>
                   <strong>
@@ -399,8 +400,8 @@ export function App() {
                 </div>
               </div>
             ) : null}
-            {scene.lens.kind === 'workspace' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are anchored in this workspace yet. Keep the scope, then capture or assign notes into it.</div> : null}
-            {scene.lens.kind === 'project' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are attached to this project yet. Add a project inside a note to give it a calm shared cluster.</div> : null}
+            {!activeNote && scene.lens.kind === 'workspace' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are anchored in this workspace yet. Keep the scope, then capture or assign notes into it.</div> : null}
+            {!activeNote && scene.lens.kind === 'project' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are attached to this project yet. Add a project inside a note to give it a calm shared cluster.</div> : null}
           </div>
         </section>
 

@@ -363,6 +363,7 @@ export function ExpandedNote({
   const [refinementPreview, setRefinementPreview] = useState<RefinementSuggestion | null>(null);
   const [refinementPreviewDraft, setRefinementPreviewDraft] = useState('');
   const [constellationFilter, setConstellationFilter] = useState<'all' | RelationshipType>('all');
+  const [editAssistOpen, setEditAssistOpen] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
   const inlineHighlightTimerRef = useRef<number | null>(null);
 
@@ -391,6 +392,7 @@ export function ExpandedNote({
     setRefinementPreview(null);
     setRefinementPreviewDraft('');
     setConstellationFilter('all');
+    setEditAssistOpen(false);
   }, [initialPosition, note?.id, note?.trace]);
 
   useEffect(() => {
@@ -706,6 +708,16 @@ export function ExpandedNote({
             </div>
           </div>
           <div className="note-header-tools note-header-tools--compact">
+            {panelMode === 'edit' ? (
+              <button
+                type="button"
+                className={`ghost-button note-assist-toggle ${editAssistOpen ? 'active' : ''}`}
+                onClick={() => setEditAssistOpen((current) => !current)}
+              >
+                {editAssistOpen ? 'Hide helpers' : 'Show helpers'}
+              </button>
+            ) : null}
+            <button type="button" className="ghost-button note-mobile-close" onClick={onClose} aria-label="Close note">Close</button>
             <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onFocusLensPin}>{focusLensPinned ? 'Pinned' : 'Pin layout'}</button>
             <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onFocusLensReset}>Reset view</button>
             <button type="button" className="ghost-button focus-lens-action note-mobile-secondary-action" onClick={onClose}>Close</button>
@@ -1070,7 +1082,7 @@ export function ExpandedNote({
                 </div>
               </div>
 
-              {likelyActionFragments.length ? (
+              {editAssistOpen && likelyActionFragments.length ? (
                 <section className="capture-followups" aria-label="Likely follow-up suggestions">
                   <div className="section-head">
                     <div>
@@ -1130,7 +1142,7 @@ export function ExpandedNote({
                 </section>
               ) : null}
 
-              <div className="note-quiet-utilities">
+              {editAssistOpen ? <div className="note-quiet-utilities">
                 <LowerDisclosure
                   title="Transform"
                   summary={thinkingActive ? 'Thinking rail is open' : 'Refine only when needed'}
@@ -1224,7 +1236,7 @@ export function ExpandedNote({
                     </div>
                   ) : null}
                 </LowerDisclosure>
-              </div>
+              </div> : null}
             </div>
           ) : null}
 
