@@ -50,16 +50,40 @@ type RecallBandProps = {
   onToggleHorizon: () => void;
 };
 
-function describeFocusState(focusMode: FocusMode, focusCount: number) {
+function summarizeActiveFilters(
+  focusMode: FocusMode,
+  lens: Lens,
+  projects: Project[],
+  workspaces: Workspace[],
+  revealQuery: string
+): string | null {
+  const summaryTokens: string[] = [];
+
   if (focusMode.isolate) {
-    return `${focusCount} notes remain visible while Focus only is active.`;
+    summaryTokens.push('Focus only');
+  } else if (focusMode.highlight) {
+    summaryTokens.push('Highlight Focus');
   }
 
-  if (focusMode.highlight) {
-    return `${focusCount} notes remain tagged with subtle emphasis across the canvas.`;
+  if (lens.kind === 'project' || lens.kind === 'reveal') {
+    if (lens.projectId) {
+      const activeProject = projects.find((project) => project.id === lens.projectId);
+      summaryTokens.push(`Project: ${activeProject?.name ?? 'Unknown'}`);
+    }
   }
 
-  return `${focusCount} notes remain tagged without extra canvas emphasis.`;
+  if (lens.kind === 'workspace' || lens.kind === 'reveal') {
+    if (lens.workspaceId) {
+      const activeWorkspace = workspaces.find((workspace) => workspace.id === lens.workspaceId);
+      summaryTokens.push(`Workspace: ${activeWorkspace?.name ?? 'Unknown'}`);
+    }
+  }
+
+  if (revealQuery.trim()) {
+    summaryTokens.push(`Search: ${revealQuery.trim()}`);
+  }
+
+  return summaryTokens.length ? summaryTokens.join(' · ') : null;
 }
 
 function CaptureIcon() {
@@ -545,7 +569,8 @@ export function RecallBand({
   horizonOpen,
   onToggleHorizon
 }: RecallBandProps) {
-  const focusState = describeFocusState(focusMode, focusCount);
+  const activeFilterSummary = summarizeActiveFilters(focusMode, lens, projects, workspaces, revealQuery);
+  const showFilterSummary = browseSurface === 'shelf' && Boolean(activeFilterSummary);
 
   return (
     <header className="recall-band">
@@ -572,6 +597,11 @@ export function RecallBand({
           <span aria-hidden="true">✦</span>
           <span>Horizon</span>
         </button>
+        {demoLinks.map((link) => (
+          <a key={link.href} className="ghost-button recall-demo-link" href={link.href}>
+            {link.label}
+          </a>
+        ))}
       </div>
 
       {/* Primary Zone - Always visible */}
@@ -639,19 +669,12 @@ export function RecallBand({
         onFitAllNotes={onFitAllNotes}
       />
 
-      {/* Focus state indicator */}
-      <div className="focus-state-indicator" aria-live="polite">
-        <span className="active-lens-label">Focus filter</span>
-        <strong>{focusMode.isolate ? 'Focus only' : focusMode.highlight ? 'Highlight Focus' : 'Focus tags only'}</strong>
-        <small>{focusState}</small>
-      </div>
-
-      {/* Demo links */}
-      {demoLinks.map((link) => (
-        <a key={link.href} className="ghost-button recall-demo-link" href={link.href}>
-          {link.label}
-        </a>
-      ))}
+      {/* Compact filter summary - only when active and relevant to Shelf */}
+      {showFilterSummary ? (
+        <div className="focus-state-indicator focus-state-indicator--compact" aria-live="polite">
+          <small>{activeFilterSummary}</small>
+        </div>
+      ) : null}
     </header>
   );
 }
