@@ -209,9 +209,10 @@ export function loadScene(): SceneState {
       : [];
 
     const requestedLens = normalizeLensState(parsed.lens ?? parsed);
-    const activeNoteId = typeof parsed.activeNoteId === 'string' && normalizedNotes.some((note) => note.id === parsed.activeNoteId)
+    const activeNoteId = typeof parsed.activeNoteId === 'string' && normalizedNotes.some((note) => note.id === parsed.activeNoteId && !note.deleted && !note.archived)
       ? parsed.activeNoteId
       : null;
+    const restoredSecondarySurface = normalizeExpandedSecondarySurface(parsed.expandedSecondarySurface, parsed.aiPanel, parsed.captureComposer, parsed.quickCaptureOpen);
 
     const normalizedScene = {
       notes: normalizedNotes,
@@ -221,7 +222,7 @@ export function loadScene(): SceneState {
       insightTimeline: normalizeInsightTimeline(parsed.insightTimeline),
       isDragging: false,
       activeNoteId,
-      expandedSecondarySurface: normalizeExpandedSecondarySurface(parsed.expandedSecondarySurface, parsed.aiPanel, parsed.captureComposer, parsed.quickCaptureOpen),
+      expandedSecondarySurface: activeNoteId && restoredSecondarySurface === 'capture' ? 'none' : restoredSecondarySurface,
       captureComposer: normalizeCaptureComposer(parsed.captureComposer),
       focusMode: normalizeFocusMode(parsed.focusMode),
       aiPanel: normalizeAIPanel(parsed.aiPanel),

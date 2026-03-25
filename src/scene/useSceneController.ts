@@ -14,7 +14,7 @@ import { resolveCapturePlacement } from './capturePlacement';
 import { useAmbientGuidance } from './useAmbientGuidance';
 import { useSceneMutations } from './useSceneMutations';
 import { createAttachmentFromFile, processAttachment } from '../attachments/attachmentProcessing';
-import { handleCtrlTapInScene, openNoteInScene } from './sceneActions';
+import { closeActiveNoteInScene, handleCtrlTapInScene, openNoteInScene } from './sceneActions';
 import { FocusLensSession, buildFocusLensPresentation, pinFocusLensLayout, restoreFocusLensSnapshot, snapshotFocusLensPositions } from './focusLens';
 import { getCanvasRecoveryCenter } from './canvasVisibility';
 
@@ -50,6 +50,7 @@ export function useSceneController() {
   const [isStreamingResponse, setIsStreamingResponse] = useState(false);
   const [recentlyDeletedNoteId, setRecentlyDeletedNoteId] = useState<string | null>(null);
   const [focusLensSession, setFocusLensSession] = useState<FocusLensSession | null>(null);
+  const hasRehydratedOpenNoteRef = useRef(false);
   const [manualRecenterTarget, setManualRecenterTarget] = useState<{ x: number; y: number; requestId: number } | null>(null);
   const streamingTimerRef = useRef<number | null>(null);
   const processingAttachmentRef = useRef<string | null>(null);
@@ -189,19 +190,29 @@ export function useSceneController() {
   }, [mutations, scene]);
 
   const closeFocusLens = useCallback(() => {
-    mutations.closeActiveNote();
+    ambient.cancelHoverIntent();
+    setRelationshipFilter('all');
+    setInspectedRelationshipId(null);
+    setScene((prev) => {
+      if (prev.activeNoteId) ambient.onActiveNoteClosed(prev.activeNoteId);
+      const closed = closeActiveNoteInScene(prev);
+      return closed.expandedSecondarySurface === 'none' ? closed : { ...closed, expandedSecondarySurface: 'none' };
+    });
     setFocusLensSession(null);
-  }, [mutations]);
+  }, [ambient, setRelationshipFilter, setScene]);
 
   const goBackFocusLens = useCallback(() => {
     setFocusLensSession((current) => {
-      if (!current || current.focusStack.length < 2) return current;
+      if (!current || current.focusStack.length < 2) {
+        closeFocusLens();
+        return current;
+      }
       const nextStack = current.focusStack.slice(0, -1);
       const previousId = nextStack[nextStack.length - 1];
       setScene((prev) => openNoteInScene(prev, previousId));
       return { ...current, focusStack: nextStack };
     });
-  }, [setScene]);
+  }, [closeFocusLens, setScene]);
 
   const pinFocusLens = useCallback(() => {
     if (!focusLensPresentation.active || focusLensPresentation.pinned) return;
@@ -305,6 +316,25 @@ export function useSceneController() {
       setFocusLensSession(null);
     }
   }, [activeNote]);
+
+  useEffect(() => {
+    if (hasRehydratedOpenNoteRef.current) return;
+    hasRehydratedOpenNoteRef.current = true;
+
+    if (!scene.activeNoteId) return;
+    const restoredNote = scene.notes.find((note) => note.id === scene.activeNoteId && !note.deleted && !note.archived) ?? null;
+    if (!restoredNote) {
+      setScene((prev) => closeActiveNoteInScene(prev));
+      return;
+    }
+
+    setFocusLensSession({
+      rootNoteId: restoredNote.id,
+      focusStack: [restoredNote.id],
+      snapshot: snapshotFocusLensPositions(scene),
+      pinned: false
+    });
+  }, [scene, setScene]);
 
   useEffect(() => {
     if (!activeNote) {

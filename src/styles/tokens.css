@@ -2,14 +2,14 @@
 
 :root {
   /* Core surfaces */
-  --bg-app: #13161c;
-  --bg-shell: #191e27;
-  --bg-canvas: #1d2330;
+  --bg-app: #10141b;
+  --bg-shell: #1a212c;
+  --bg-canvas: #202938;
   --bg-paper: #eae3d6;
   --bg-paper-soft: #ddd4c6;
   --bg-paper-muted: #cfc5b7;
-  --bg-panel: #232a36;
-  --bg-panel-soft: #2c3443;
+  --bg-panel: #273241;
+  --bg-panel-soft: #313e52;
 
   /* Backward-compatible aliases */
   --canvas-bg: var(--bg-app);
@@ -40,17 +40,19 @@
   --text-placeholder: #82786f;
 
   /* Accent palette */
-  --accent-plum: #4e628e;
-  --accent-forest: #3f7473;
-  --accent-brass: #8e7447;
-  --accent-ink-blue: #3c5879;
+  --accent-plum: #5a6f9b;
+  --accent-forest: #5e9088;
+  --accent-brass: #b99658;
+  --accent-ink-blue: #445e86;
   --accent-wine: #7a575f;
+  --accent-mint: #6faea3;
+  --accent-warm: #d0ab64;
 
   /* Interaction aliases */
   --accent-primary: var(--accent-plum);
-  --accent-soft: rgba(78, 98, 142, 0.24);
-  --accent-focus: #6a86b8;
-  --accent-focus-soft: rgba(106, 134, 184, 0.24);
+  --accent-soft: rgba(90, 111, 155, 0.28);
+  --accent-focus: #7b95c2;
+  --accent-focus-soft: rgba(123, 149, 194, 0.28);
 
   /* Semantic states */
   --state-grounded: #527f68;

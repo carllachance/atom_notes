@@ -64,11 +64,47 @@ test('sceneStorage migrates legacy project reveal state into a formal project le
   assert.equal(loaded.notes[0].workspaceId, 'w-1');
   assert.equal(loaded.workspaces[0].key, 'OPS');
   assert.deepEqual(loaded.lens, { kind: 'project', projectId: 'p-1', mode: 'strict' });
-  assert.equal(loaded.expandedSecondarySurface, 'capture');
+  assert.equal(loaded.expandedSecondarySurface, 'none');
   saveScene(loaded as SceneState);
   const persisted = JSON.parse(localStorage.getItem(SCENE_KEY) as string) as SceneState;
   assert.equal(persisted.projects[0].id, 'p-1');
   assert.equal(persisted.workspaces[0].id, 'w-1');
+});
+
+test('sceneStorage fails safe for invalid restored open-note state', () => {
+  localStorage.setItem(
+    SCENE_KEY,
+    JSON.stringify({
+      notes: [{ id: 'n-archived', title: 'Archived', body: 'Body', archived: true }],
+      relationships: [],
+      projects: [],
+      workspaces: [],
+      activeNoteId: 'n-archived',
+      expandedSecondarySurface: 'capture'
+    })
+  );
+
+  const loaded = loadScene();
+  assert.equal(loaded.activeNoteId, null);
+  assert.equal(loaded.expandedSecondarySurface, 'capture');
+});
+
+test('sceneStorage keeps valid restored open-note state but suppresses capture surface', () => {
+  localStorage.setItem(
+    SCENE_KEY,
+    JSON.stringify({
+      notes: [{ id: 'n-open', title: 'Open', body: 'Body' }],
+      relationships: [],
+      projects: [],
+      workspaces: [],
+      activeNoteId: 'n-open',
+      expandedSecondarySurface: 'capture'
+    })
+  );
+
+  const loaded = loadScene();
+  assert.equal(loaded.activeNoteId, 'n-open');
+  assert.equal(loaded.expandedSecondarySurface, 'none');
 });
 
 test('sceneStorage persists source health and note verification fields', () => {
