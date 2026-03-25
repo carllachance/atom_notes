@@ -102,7 +102,7 @@ type ExpandedNoteProps = {
 
 type DragState = { dx: number; dy: number };
 type PanelMode = 'read' | 'edit' | 'constellation' | 'source';
-type UtilityPanel = 'none' | 'sources' | 'transform' | 'workspace' | 'project';
+type UtilityPanel = 'none' | 'sources' | 'related' | 'actions' | 'transform' | 'workspace' | 'project';
 type TextSelection = { start: number; end: number; text: string };
 type SuggestedLinkRow = ProactiveLinkSuggestion & {
   selectedType: RelationshipType;
@@ -527,9 +527,23 @@ export function ExpandedNote({
   const workspaceSectionOpen = expandedUtilityPanel === 'workspace';
   const projectSectionOpen = expandedUtilityPanel === 'project';
   const sourceSectionOpen = expandedUtilityPanel === 'sources';
+  const relatedSectionOpen = expandedUtilityPanel === 'related';
+  const actionsSectionOpen = expandedUtilityPanel === 'actions';
   const transformSectionOpen = expandedUtilityPanel === 'transform';
   const showWorkspaceComposer = composerSurface === 'workspace';
   const showProjectComposer = composerSurface === 'project';
+  const visibleMobileRelatedNotes = visibleTraceNotes.slice(0, 3);
+  const mobileRelatedOverflow = Math.max(0, firstRingNotes.length - visibleMobileRelatedNotes.length + focusLensOverflowCount);
+  const sourcesSummary = sourceNote
+    ? getCompactDisplayTitle(sourceNote, 30)
+    : attachmentCount
+      ? `${attachmentCount} source${attachmentCount === 1 ? '' : 's'}`
+      : 'No linked sources';
+  const sourceStatus = sourceHealth.hasOrphanedEvidence
+    ? 'Needs attention'
+    : attachmentCount
+      ? `${attachmentReadyCount}/${attachmentCount} ready`
+      : 'Quiet';
   const activeRelationshipRows = constellationFilter === 'all'
     ? connectedGroups
     : connectedGroups.map((group) => ({ ...group, items: group.items.filter((relationship) => relationship.type === constellationFilter) }));
@@ -900,6 +914,77 @@ export function ExpandedNote({
                   </div>
                 </LowerDisclosure>
               </div>
+
+              <section className="mobile-note-summary" aria-label="Mobile note summary">
+                <LowerDisclosure
+                  title="Sources"
+                  summary={`${sourcesSummary} · ${sourceStatus}`}
+                  open={sourceSectionOpen}
+                  onToggle={() => toggleUtilityPanel('sources')}
+                >
+                  <div className="mobile-summary-list">
+                    <button type="button" className="mobile-summary-row" onClick={() => setPanelMode('source')}>
+                      <span>Open source details</span>
+                      <strong>{sourceStatus}</strong>
+                    </button>
+                    {sourceNote ? (
+                      <button
+                        type="button"
+                        className="mobile-summary-row"
+                        onClick={() => {
+                          const relationship = sceneRelationshipForTask(note.id, sourceNote.id, relationships);
+                          if (relationship) onOpenRelated(sourceNote.id, relationship.id);
+                        }}
+                      >
+                        <span>Linked source note</span>
+                        <strong>{getCompactDisplayTitle(sourceNote, 34)}</strong>
+                      </button>
+                    ) : null}
+                  </div>
+                </LowerDisclosure>
+
+                <LowerDisclosure
+                  title="Related notes"
+                  summary={visibleMobileRelatedNotes.length ? `${visibleMobileRelatedNotes.length} shown` : 'No strong links yet'}
+                  open={relatedSectionOpen}
+                  onToggle={() => toggleUtilityPanel('related')}
+                >
+                  <div className="mobile-summary-list">
+                    {visibleMobileRelatedNotes.map((relationship) => (
+                      <button
+                        key={relationship.relationshipId}
+                        type="button"
+                        className="mobile-summary-row"
+                        onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
+                        onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
+                        onClick={() => onOpenRelated(relationship.targetId, relationship.relationshipId)}
+                      >
+                        <span>{getPlainEnglishRelationshipCue(relationship.relationship)}</span>
+                        <strong>{relationship.targetTitle}</strong>
+                      </button>
+                    ))}
+                    {mobileRelatedOverflow > 0 ? (
+                      <button type="button" className="mobile-summary-row mobile-summary-row--more" onClick={() => setPanelMode('constellation')}>
+                        <span>More connected notes</span>
+                        <strong>+{mobileRelatedOverflow} more</strong>
+                      </button>
+                    ) : null}
+                  </div>
+                </LowerDisclosure>
+
+                <LowerDisclosure
+                  title="Actions"
+                  summary="Next steps"
+                  open={actionsSectionOpen}
+                  onToggle={() => toggleUtilityPanel('actions')}
+                >
+                  <div className="mobile-summary-actions">
+                    <button type="button" className="ghost-button" onClick={() => setPanelMode('constellation')}>Open constellation</button>
+                    <button type="button" className="ghost-button" onClick={() => toggleUtilityPanel('transform')}>Transform</button>
+                    <button type="button" className="ghost-button" onClick={onThinkAboutNote}>Ask Horizon</button>
+                  </div>
+                </LowerDisclosure>
+              </section>
             </div>
           ) : null}
 

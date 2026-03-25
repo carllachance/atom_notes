@@ -7898,6 +7898,47 @@ body,
   gap: 12px;
 }
 
+.mobile-note-summary {
+  display: none;
+}
+
+.mobile-summary-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-summary-row {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-subtle);
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+}
+
+.mobile-summary-row span {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.mobile-summary-row strong {
+  font-size: 0.86rem;
+  color: var(--text-primary);
+  font-weight: 520;
+}
+
+.mobile-summary-row--more strong {
+  color: color-mix(in srgb, var(--text-primary) 88%, var(--accent-primary));
+}
+
+.mobile-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .source-health-chip {
   display: grid;
   gap: 2px;
@@ -8765,13 +8806,21 @@ body {
     grid-template-columns: 1fr;
     grid-template-areas:
       "body"
-      "summary"
-      "cues";
+      "summary";
   }
 
   .note-cornell-cues {
-    position: static;
-    max-height: none;
+    display: none;
+  }
+
+  .note-cornell-summary,
+  .expanded-note-main--reading .note-quiet-utilities {
+    display: none;
+  }
+
+  .mobile-note-summary {
+    display: grid;
+    gap: 10px;
   }
 
   .ai-panel {
