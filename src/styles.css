@@ -4483,7 +4483,7 @@ body {
 
 
 :root {
-  --font-ui: 'Lexend', 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+  --font-ui: 'Afacad Flux', 'Inter', 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, monospace;
   --accent-yellow: #f2c96f;
   --accent-yellow-soft: rgba(242, 201, 111, 0.16);
@@ -8197,7 +8197,7 @@ body,
    Unified Dark Slate Theme Pass — Shell, Home, Editor
    ===================================================== */
 :root {
-  --app-font: "Inter", "Avenir Next", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --app-font: "Afacad Flux", "Inter", "Avenir Next", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
   --ink-0: var(--text-primary);
   --ink-1: var(--text-secondary);
   --ink-2: var(--text-muted);
@@ -10080,4 +10080,93 @@ body {
 .semantic-block-actions {
   justify-self: end;
   align-self: start;
+}
+
+/* Typography continuity pass: Afacad Flux + spacing rebalance for compact controls/header/note rhythm. */
+:root {
+  --font-ui: "Afacad Flux", "Inter", "Avenir Next", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --app-font: "Afacad Flux", "Inter", "Avenir Next", "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+}
+
+.expanded-note-header strong,
+.note-title-field,
+.home-surface__panel-head strong,
+.home-surface__resume-head h1,
+.home-surface__capture-head h1 {
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  line-height: 1.24;
+}
+
+.note-body-field,
+.note-body-surface .markdown-projection,
+.note-body-surface .markdown-empty {
+  font-family: var(--font-ui);
+  font-size: clamp(1rem, 0.97rem + 0.18vw, 1.08rem);
+  line-height: 1.72;
+  letter-spacing: 0.002em;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.chip,
+.relationship-strip button,
+.focus-count-chip,
+.recall-resume-chip,
+.ghost-button {
+  font-weight: 500;
+}
+
+.chip {
+  min-height: 30px;
+  padding: 6px 11px;
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
+.relationship-strip {
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.relationship-strip button {
+  min-height: 30px;
+  padding: 5px 10px;
+}
+
+.expanded-note-header {
+  gap: 12px;
+}
+
+@media (max-width: 767px) {
+  .expanded-note-header {
+    gap: 10px;
+  }
+
+  .note-title-field {
+    font-size: 1.04rem;
+    line-height: 1.28;
+  }
+
+  .chip,
+  .relationship-strip button,
+  .focus-count-chip,
+  .recall-resume-chip {
+    min-height: 32px;
+    font-size: 0.8rem;
+    padding-block: 6px;
+  }
+
+  .relationship-strip {
+    gap: 6px;
+    padding: 7px 8px;
+  }
+
+  .note-body-field,
+  .note-body-surface .markdown-projection,
+  .note-body-surface .markdown-empty {
+    padding: 22px 18px 28px;
+    font-size: 1rem;
+    line-height: 1.68;
+  }
 }

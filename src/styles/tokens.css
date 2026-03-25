@@ -137,7 +137,7 @@
   --radius-modal: var(--radius-lg);
 
   /* Typography */
-  --font-ui: 'Inter', 'SF Pro Text', system-ui, sans-serif;
+  --font-ui: 'Afacad Flux', 'Inter', 'SF Pro Text', system-ui, sans-serif;
   --font-editorial: 'Iowan Old Style', 'Georgia', serif;
   --font-stack: var(--font-ui);
   --font-mono: 'JetBrains Mono', monospace;
