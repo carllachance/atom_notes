@@ -33,13 +33,14 @@ test('study onboarding defaults to study starter for studying use case', () => {
   assert.equal(profile.selectedPresetId, 'study_starter');
 });
 
-test('study support generation keeps retrieval-first quiz and answer check blocks separate', () => {
-  const quiz = generateStudyBlock(sampleNote, 'quiz');
+test('study support generation keeps retrieval-first quiz and answer check blocks separate', async () => {
+  const quiz = await generateStudyBlock(sampleNote, 'quiz');
   assert.ok(quiz);
   assert.equal(quiz?.content.kind, 'quiz_set');
   assert.equal((quiz?.content.kind === 'quiz_set' ? quiz.content.questions.length : 0) > 0, true);
+  assert.equal((quiz?.provenance.citations.length ?? 0) > 0, true);
 
-  const check = generateStudyBlock(sampleNote, 'answer_check', [], 'ATP is made in mitochondria after glucose breakdown.');
+  const check = await generateStudyBlock(sampleNote, 'answer_check', [], 'ATP is made in mitochondria after glucose breakdown.');
   assert.ok(check);
   assert.equal(check?.content.kind, 'answer_check');
   if (check?.content.kind === 'answer_check') {
@@ -49,9 +50,26 @@ test('study support generation keeps retrieval-first quiz and answer check block
 });
 
 
-test('answer_check requires user input before generating a block', () => {
-  const withoutAnswer = generateStudyBlock(sampleNote, 'answer_check');
+test('answer_check requires user input before generating a block', async () => {
+  const withoutAnswer = await generateStudyBlock(sampleNote, 'answer_check');
   assert.equal(withoutAnswer, null);
+});
+
+test('review recommendations include spaced schedule from interaction history', async () => {
+  const block = await generateStudyBlock(sampleNote, 'review_recommendation', [{
+    id: 'i-1',
+    noteId: sampleNote.id,
+    interactionType: 'answer_check',
+    createdAt: Date.now(),
+    aiFeedback: 'off-track, try again'
+  }]);
+
+  assert.ok(block);
+  assert.equal(block?.content.kind, 'review_recommendation');
+  if (block?.content.kind === 'review_recommendation') {
+    assert.equal(block.content.schedule.length > 0, true);
+    assert.equal(block.content.schedule[0]?.intervalDays >= 1, true);
+  }
 });
 
 test('study helpers stay hidden for generic notes unless eligibility signals are present', () => {

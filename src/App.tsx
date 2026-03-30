@@ -41,6 +41,8 @@ export function App() {
     onboardingProfile,
     studyActionsEnabled,
     studySupportBlocks,
+    studyGenerationLoading,
+    studyGenerationError,
     visibleNotes,
     totalActiveNotes,
     archivedNotes,
@@ -378,6 +380,8 @@ export function App() {
                 onPositionChange: (noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position })),
                 studyActionsEnabled,
                 studySupportBlocks,
+    studyGenerationLoading,
+    studyGenerationError,
                 onRunStudyAction: runStudyAction,
                 onRemoveStudyBlock: removeStudyBlock
               }}

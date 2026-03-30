@@ -1,6 +1,25 @@
 import { now } from '../notes/noteModel';
 import { NoteCardModel } from '../types';
-import { StudyInteraction, StudyInteractionType, StudySupportBlock } from './studyModel';
+import {
+  StudyBlockCitation,
+  StudyInteraction,
+  StudyInteractionType,
+  StudyReviewSchedule,
+  StudySupportBlock
+} from './studyModel';
+
+export type StudyGenerationRequest = {
+  note: NoteCardModel;
+  interactionType: StudyInteractionType;
+  interactions: StudyInteraction[];
+  userAnswer?: string;
+};
+
+export type StudyGenerationBackend = {
+  generateBlock(request: StudyGenerationRequest): Promise<StudySupportBlock | null>;
+};
+
+const DEFAULT_MODEL_ID = 'atom-notes-local-heuristic-v1';
 
 function splitSentences(body: string) {
   return body
@@ -30,7 +49,83 @@ function deterministicShuffle<T>(items: T[], seedSource: string) {
   return copy;
 }
 
-export function generateStudyBlock(note: NoteCardModel, interactionType: StudyInteractionType, interactions: StudyInteraction[] = [], userAnswer?: string): StudySupportBlock | null {
+
+function provenanceExplanationFor(interactionType: StudyInteractionType): string {
+  switch (interactionType) {
+    case 'explain':
+      return 'Explanation is constrained to high-salience source sentences from this note.';
+    case 'key_ideas':
+      return 'Key ideas are extracted from top-ranked factual sentences in this note.';
+    case 'quiz':
+      return 'Quiz prompts and anchors are generated directly from cited source sentences.';
+    case 'flashcards':
+      return 'Flashcards are derived from cited note claims with minimal paraphrase.';
+    case 'answer_check':
+      return 'Answer check compares learner wording against cited anchor text from this note.';
+    case 'review_recommendation':
+      return 'Review recommendations combine cited concepts with interaction-history spacing signals.';
+    default:
+      return 'Generated from note content with explicit citation anchors.';
+  }
+}
+
+function buildCitations(note: NoteCardModel, sentences: string[], interactionType: StudyInteractionType): StudyBlockCitation[] {
+  const capped = sentences.slice(0, 3);
+  return capped.map((sourceText, index) => ({
+    id: `${note.id}-${interactionType}-cite-${index}`,
+    noteId: note.id,
+    sourceText,
+    explanation: `Supports ${interactionType.replace('_', ' ')} output with a direct note quote.`
+  }));
+}
+
+function scheduleFromInteractions(noteId: string, interactions: StudyInteraction[]): StudyReviewSchedule[] {
+  const ordered = [...interactions].sort((a, b) => b.createdAt - a.createdAt);
+  const recentChecks = ordered.filter((entry) => entry.interactionType === 'answer_check' || entry.interactionType === 'quiz').slice(0, 4);
+  if (!recentChecks.length) {
+    return [{
+      noteId,
+      nextReviewAt: now() + 24 * 60 * 60 * 1000,
+      intervalDays: 1,
+      confidence: 'medium',
+      reason: 'No prior quiz/check history; start with next-day recall.'
+    }];
+  }
+
+  return recentChecks.map((entry, index) => {
+    const feedback = entry.aiFeedback?.toLowerCase() ?? '';
+    const confidence = /off-track|try again|low/.test(feedback) ? 'low' : /good start|high/.test(feedback) ? 'high' : 'medium';
+    const baseDays = confidence === 'high' ? 4 : confidence === 'medium' ? 2 : 1;
+    const intervalDays = Math.max(1, baseDays + index);
+    return {
+      noteId,
+      nextReviewAt: now() + intervalDays * 24 * 60 * 60 * 1000,
+      intervalDays,
+      confidence,
+      reason: confidence === 'low'
+        ? 'Recent checks showed weak recall; review sooner.'
+        : confidence === 'high'
+          ? 'Recent checks were strong; spacing out review.'
+          : 'Balanced recall signal; keep moderate spacing.'
+    };
+  });
+}
+
+function withProvenance(block: Omit<StudySupportBlock, 'provenance'>, note: NoteCardModel, sentences: string[], interactionType: StudyInteractionType, generator: 'model' | 'heuristic'): StudySupportBlock {
+  return {
+    ...block,
+    provenance: {
+      generator,
+      modelId: DEFAULT_MODEL_ID,
+      generatedAt: block.createdAt,
+      explanation: provenanceExplanationFor(interactionType),
+      citations: buildCitations(note, sentences, interactionType)
+    }
+  };
+}
+
+function generateHeuristicStudyBlock(request: StudyGenerationRequest): StudySupportBlock | null {
+  const { note, interactionType, interactions, userAnswer } = request;
   const sentences = splitSentences(note.body);
   if (sentences.length === 0) return null;
 
@@ -39,7 +134,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
 
   if (interactionType === 'explain') {
     const text = `AI help: ${sentences.slice(0, 2).join(' ')} Focus first on describing this in your own words, then compare.`;
-    return {
+    return withProvenance({
       id,
       noteId: note.id,
       interactionType,
@@ -49,11 +144,11 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       sourceNoteUpdatedAt: note.updatedAt,
       generatedFrom: 'note-content',
       content: { kind: 'explanation', text }
-    };
+    }, note, sentences, interactionType, 'heuristic');
   }
 
   if (interactionType === 'key_ideas') {
-    return {
+    return withProvenance({
       id,
       noteId: note.id,
       interactionType,
@@ -63,7 +158,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       sourceNoteUpdatedAt: note.updatedAt,
       generatedFrom: 'note-content',
       content: { kind: 'key_ideas', ideas: sentences.slice(0, 5).map((sentence) => sentence.replace(/\s+/g, ' ')) }
-    };
+    }, note, sentences, interactionType, 'heuristic');
   }
 
   if (interactionType === 'quiz') {
@@ -81,7 +176,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       };
     });
 
-    return {
+    return withProvenance({
       id,
       noteId: note.id,
       interactionType,
@@ -91,7 +186,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       sourceNoteUpdatedAt: note.updatedAt,
       generatedFrom: 'note-content',
       content: { kind: 'quiz_set', questions }
-    };
+    }, note, sentences, interactionType, 'heuristic');
   }
 
   if (interactionType === 'flashcards') {
@@ -101,7 +196,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       answer: sentence
     }));
 
-    return {
+    return withProvenance({
       id,
       noteId: note.id,
       interactionType,
@@ -111,7 +206,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       sourceNoteUpdatedAt: note.updatedAt,
       generatedFrom: 'note-content',
       content: { kind: 'flashcard_set', cards }
-    };
+    }, note, sentences, interactionType, 'heuristic');
   }
 
   if (interactionType === 'review_recommendation') {
@@ -120,7 +215,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       ? weakSignals.slice(0, 4)
       : sentences.slice(0, 3).map((sentence) => `Review this concept: ${sentence.slice(0, 96)}${sentence.length > 96 ? '…' : ''}`);
 
-    return {
+    return withProvenance({
       id,
       noteId: note.id,
       interactionType,
@@ -129,8 +224,13 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       createdAt,
       sourceNoteUpdatedAt: note.updatedAt,
       generatedFrom: 'note-content',
-      content: { kind: 'review_recommendation', recommendations, basis: weakSignals.length ? 'Based on your recent quiz/check interactions.' : 'No prior checks yet; showing most important concepts first.' }
-    };
+      content: {
+        kind: 'review_recommendation',
+        recommendations,
+        basis: weakSignals.length ? 'Based on your recent quiz/check interactions.' : 'No prior checks yet; showing most important concepts first.',
+        schedule: scheduleFromInteractions(note.id, interactions)
+      }
+    }, note, sentences, interactionType, 'heuristic');
   }
 
   if (interactionType === 'answer_check') {
@@ -145,7 +245,7 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       ? 'Now tighten it: include one concrete detail and one causal link from the note.'
       : 'Try again using one exact concept from the note, then state why it matters.';
 
-    return {
+    return withProvenance({
       id,
       noteId: note.id,
       interactionType,
@@ -155,10 +255,50 @@ export function generateStudyBlock(note: NoteCardModel, interactionType: StudyIn
       sourceNoteUpdatedAt: note.updatedAt,
       generatedFrom: 'note-content',
       content: { kind: 'answer_check', prompt: `Use this anchor idea: ${reference}`, learnerAnswer: userAnswer, evaluation, guidance, confidence }
-    };
+    }, note, sentences, interactionType, 'heuristic');
   }
 
   return null;
+}
+
+async function generateWithModel(request: StudyGenerationRequest): Promise<StudySupportBlock | null> {
+  const modelHook = (globalThis as typeof globalThis & {
+    __ATOM_NOTES_STUDY_MODEL__?: (request: StudyGenerationRequest) => Promise<StudySupportBlock | null>;
+  }).__ATOM_NOTES_STUDY_MODEL__;
+
+  if (!modelHook) return null;
+  try {
+    const result = await modelHook(request);
+    if (!result) return null;
+    return {
+      ...result,
+      provenance: {
+        ...result.provenance,
+        generator: 'model',
+        modelId: result.provenance.modelId || 'atom-notes-external-model',
+        citations: result.provenance.citations ?? []
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
+class DefaultStudyGenerationBackend implements StudyGenerationBackend {
+  async generateBlock(request: StudyGenerationRequest): Promise<StudySupportBlock | null> {
+    const modelBlock = await generateWithModel(request);
+    return modelBlock ?? generateHeuristicStudyBlock(request);
+  }
+}
+
+let activeBackend: StudyGenerationBackend = new DefaultStudyGenerationBackend();
+
+export function setStudyGenerationBackend(backend: StudyGenerationBackend) {
+  activeBackend = backend;
+}
+
+export async function generateStudyBlock(note: NoteCardModel, interactionType: StudyInteractionType, interactions: StudyInteraction[] = [], userAnswer?: string): Promise<StudySupportBlock | null> {
+  return activeBackend.generateBlock({ note, interactionType, interactions, userAnswer });
 }
 
 export function buildStudyInteraction(noteId: string, interactionType: StudyInteractionType, userResponse?: string, aiFeedback?: string): StudyInteraction {

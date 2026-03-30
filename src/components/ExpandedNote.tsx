@@ -104,6 +104,8 @@ type ExpandedNoteProps = {
   studySupportBlocks?: StudySupportBlock[];
   onRunStudyAction?: (action: 'explain' | 'key_ideas' | 'quiz' | 'flashcards' | 'review_recommendation' | 'answer_check', userAnswer?: string) => void;
   onRemoveStudyBlock?: (noteId: string, blockId: string) => void;
+  studyGenerationLoading?: boolean;
+  studyGenerationError?: string | null;
 };
 
 type DragState = { dx: number; dy: number };
@@ -352,7 +354,9 @@ export function ExpandedNote({
   studyActionsEnabled,
   studySupportBlocks,
   onRunStudyAction,
-  onRemoveStudyBlock
+  onRemoveStudyBlock,
+  studyGenerationLoading,
+  studyGenerationError
 }: ExpandedNoteProps) {
   const [panelMode, setPanelMode] = useState<PanelMode>('read');
   const [expandedUtilityPanel, setExpandedUtilityPanel] = useState<UtilityPanel>('none');
@@ -807,6 +811,8 @@ export function ExpandedNote({
                     blocks={studySupportBlocks ?? []}
                     onRunAction={(action, userAnswer) => onRunStudyAction?.(action, userAnswer)}
                     onRemoveBlock={(blockId) => onRemoveStudyBlock?.(note.id, blockId)}
+                    loading={studyGenerationLoading}
+                    error={studyGenerationError}
                   />
                 </details>
               ) : null}

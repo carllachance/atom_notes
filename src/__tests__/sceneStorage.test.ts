@@ -2,6 +2,7 @@ import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { demoNotes, demoRelationships, demoWorkspaces } from '../data/demoSeed';
 import { loadScene, saveScene, SCENE_KEY } from '../scene/sceneStorage';
+import { STUDY_PERSISTENCE_KEY } from '../learning/studyPersistence';
 import type { SceneState } from '../types';
 
 function makeStorage() {
@@ -148,4 +149,117 @@ test('sceneStorage persists source health and note verification fields', () => {
   const persisted = JSON.parse(localStorage.getItem(SCENE_KEY) as string) as SceneState;
   assert.equal(persisted.notes[0].verificationState, 'needs-review');
   assert.equal(persisted.notes[0].provenance?.externalReferences[0].sourceHealth, 'orphaned');
+});
+
+
+test('sceneStorage mirrors onboarding/study artifacts into durable study persistence backend', () => {
+  const loaded = loadScene();
+  const scene: SceneState = {
+    ...loaded,
+    onboardingProfile: {
+      ageRange: 'college_adult_learner',
+      primaryUseCase: 'studying_school',
+      selectedPresetId: 'study_starter',
+      starterLenses: ['study'],
+      activeLensId: 'study',
+      configuredAt: 123
+    },
+    studySupportBlocks: {
+      'n-1': []
+    },
+    studyInteractions: {
+      'n-1': []
+    }
+  };
+
+  saveScene(scene);
+  const persisted = JSON.parse(localStorage.getItem(STUDY_PERSISTENCE_KEY) as string) as Record<string, unknown>;
+  assert.equal(Boolean(persisted['local-user']), true);
+});
+
+
+test('sceneStorage round-trips durable study data and applies recency precedence over stale scene data', () => {
+  localStorage.setItem(STUDY_PERSISTENCE_KEY, JSON.stringify({
+    'local-user': {
+      onboardingProfile: {
+        ageRange: 'college_adult_learner',
+        primaryUseCase: 'studying_school',
+        selectedPresetId: 'study_starter',
+        starterLenses: ['study'],
+        activeLensId: 'study',
+        configuredAt: 500
+      },
+      blocksByNoteId: {
+        'note-1': [{
+          id: 'block-new',
+          noteId: 'note-1',
+          interactionType: 'key_ideas',
+          title: 'Key ideas',
+          label: 'AI study support',
+          createdAt: 500,
+          sourceNoteUpdatedAt: 1,
+          generatedFrom: 'note-content',
+          content: { kind: 'key_ideas', ideas: ['durable'] },
+          provenance: {
+            generator: 'heuristic',
+            modelId: 'm',
+            generatedAt: 500,
+            explanation: 'durable source',
+            citations: []
+          }
+        }]
+      },
+      interactionsByNoteId: {
+        'note-1': [{ id: 'i-new', noteId: 'note-1', interactionType: 'quiz', createdAt: 500 }]
+      }
+    }
+  }));
+
+  localStorage.setItem(SCENE_KEY, JSON.stringify({
+    notes: [{ id: 'note-1', title: 'N1', body: 'Body text long enough for note. Body text long enough for note.' }],
+    relationships: [],
+    projects: [],
+    workspaces: [],
+    onboardingProfile: {
+      ageRange: 'working_adult',
+      primaryUseCase: 'work_projects',
+      selectedPresetId: 'work_starter',
+      starterLenses: ['work'],
+      activeLensId: 'work',
+      configuredAt: 100
+    },
+    studySupportBlocks: {
+      'note-1': [{
+        id: 'block-old',
+        noteId: 'note-1',
+        interactionType: 'key_ideas',
+        title: 'Key ideas',
+        label: 'AI study support',
+        createdAt: 100,
+        sourceNoteUpdatedAt: 1,
+        generatedFrom: 'note-content',
+        content: { kind: 'key_ideas', ideas: ['scene'] },
+        provenance: {
+          generator: 'heuristic',
+          modelId: 'm',
+          generatedAt: 100,
+          explanation: 'scene source',
+          citations: []
+        }
+      }]
+    },
+    studyInteractions: {
+      'note-1': [{ id: 'i-old', noteId: 'note-1', interactionType: 'quiz', createdAt: 100 }]
+    }
+  }));
+
+  const loaded = loadScene();
+  assert.equal(loaded.onboardingProfile?.configuredAt, 500);
+  assert.equal(loaded.studySupportBlocks?.['note-1']?.[0]?.id, 'block-new');
+  assert.equal(loaded.studyInteractions?.['note-1']?.[0]?.id, 'i-new');
+
+  saveScene(loaded as SceneState);
+  const persistedDurable = JSON.parse(localStorage.getItem(STUDY_PERSISTENCE_KEY) as string) as Record<string, any>;
+  assert.equal(persistedDurable['local-user'].onboardingProfile.configuredAt, 500);
+  assert.equal(persistedDurable['local-user'].blocksByNoteId['note-1'][0].id, 'block-new');
 });

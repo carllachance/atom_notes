@@ -7,6 +7,7 @@ import { isStarterLensId, sanitizeStarterLenses } from '../learning/lensPresets'
 import { createDemoScene } from '../data/demoScene';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { normalizeLens } from './lens';
+import { loadStudyPersistence, saveStudyPersistence } from '../learning/studyPersistence';
 
 export const SCENE_KEY = 'atom-notes.scene.v10';
 
@@ -177,7 +178,28 @@ function normalizeStudyBlocks(raw: unknown): Record<string, StudySupportBlock[]>
   const input = raw as Record<string, StudySupportBlock[]>;
   return Object.fromEntries(Object.entries(input).map(([noteId, blocks]) => [
     noteId,
-    Array.isArray(blocks) ? blocks.filter((block) => block && typeof block === 'object').map((block) => ({ ...block, noteId })) : []
+    Array.isArray(blocks)
+      ? blocks
+          .filter((block) => block && typeof block === 'object')
+          .map((block) => {
+            const citations = Array.isArray(block.provenance?.citations) ? block.provenance.citations : [];
+            const content = block.content?.kind === 'review_recommendation'
+              ? { ...block.content, schedule: Array.isArray(block.content.schedule) ? block.content.schedule : [] }
+              : block.content;
+            return {
+              ...block,
+              noteId,
+              content,
+              provenance: {
+                generator: block.provenance?.generator === 'model' ? 'model' : 'heuristic',
+                modelId: String(block.provenance?.modelId ?? 'atom-notes-local-heuristic-v1'),
+                generatedAt: Number(block.provenance?.generatedAt ?? block.createdAt ?? now()),
+                explanation: String(block.provenance?.explanation ?? 'Generated from note content.'),
+                citations
+              }
+            };
+          })
+      : []
   ]));
 }
 
@@ -188,6 +210,49 @@ function normalizeStudyInteractions(raw: unknown): Record<string, StudyInteracti
     noteId,
     Array.isArray(interactions) ? interactions.filter((entry) => entry && typeof entry === 'object').map((entry) => ({ ...entry, noteId })) : []
   ]));
+}
+
+
+function latestBlockTimestamp(blocks: StudySupportBlock[] | undefined): number {
+  return Math.max(0, ...((blocks ?? []).map((block) => Number(block.createdAt ?? 0))));
+}
+
+function latestInteractionTimestamp(interactions: StudyInteraction[] | undefined): number {
+  return Math.max(0, ...((interactions ?? []).map((entry) => Number(entry.createdAt ?? 0))));
+}
+
+function mergeStudyBlocksByRecency(
+  sceneBlocks: Record<string, StudySupportBlock[]>,
+  durableBlocks: Record<string, StudySupportBlock[]>
+): Record<string, StudySupportBlock[]> {
+  const noteIds = new Set([...Object.keys(sceneBlocks), ...Object.keys(durableBlocks)]);
+  return Object.fromEntries([...noteIds].map((noteId) => {
+    const sceneEntries = sceneBlocks[noteId] ?? [];
+    const durableEntries = durableBlocks[noteId] ?? [];
+    if (!sceneEntries.length) return [noteId, durableEntries];
+    if (!durableEntries.length) return [noteId, sceneEntries];
+    return [noteId, latestBlockTimestamp(sceneEntries) >= latestBlockTimestamp(durableEntries) ? sceneEntries : durableEntries];
+  }));
+}
+
+function mergeStudyInteractionsByRecency(
+  sceneInteractions: Record<string, StudyInteraction[]>,
+  durableInteractions: Record<string, StudyInteraction[]>
+): Record<string, StudyInteraction[]> {
+  const noteIds = new Set([...Object.keys(sceneInteractions), ...Object.keys(durableInteractions)]);
+  return Object.fromEntries([...noteIds].map((noteId) => {
+    const sceneEntries = sceneInteractions[noteId] ?? [];
+    const durableEntries = durableInteractions[noteId] ?? [];
+    if (!sceneEntries.length) return [noteId, durableEntries];
+    if (!durableEntries.length) return [noteId, sceneEntries];
+    return [noteId, latestInteractionTimestamp(sceneEntries) >= latestInteractionTimestamp(durableEntries) ? sceneEntries : durableEntries];
+  }));
+}
+
+function resolveOnboardingProfilePrecedence(sceneProfile: OnboardingProfile | null, durableProfile: OnboardingProfile | null): OnboardingProfile | null {
+  if (!sceneProfile) return durableProfile;
+  if (!durableProfile) return sceneProfile;
+  return Number(sceneProfile.configuredAt ?? 0) >= Number(durableProfile.configuredAt ?? 0) ? sceneProfile : durableProfile;
 }
 
 function isLegacyWelcomeScene(scene: Pick<SceneState, 'notes' | 'relationships' | 'projects' | 'workspaces'>) {
@@ -203,6 +268,7 @@ function isLegacyWelcomeScene(scene: Pick<SceneState, 'notes' | 'relationships' 
 
 export function loadScene(): SceneState {
   const fallback = createDemoScene();
+  const durableStudyState = loadStudyPersistence('local-user');
 
   const raw =
     localStorage.getItem(SCENE_KEY) ??
@@ -215,7 +281,18 @@ export function loadScene(): SceneState {
     localStorage.getItem('atom-notes.scene.v3') ??
     localStorage.getItem('atom-notes.scene.v2') ??
     localStorage.getItem('atom-notes.scene.v1');
-  if (!raw) return fallback;
+  if (!raw) {
+    const durableOnboardingProfile = normalizeOnboardingProfile(durableStudyState?.onboardingProfile ?? null);
+    const fallbackStudy = createEmptyStudySupportState();
+    const durableStudyBlocks = normalizeStudyBlocks(durableStudyState?.blocksByNoteId ?? fallbackStudy.blocksByNoteId);
+    const durableStudyInteractions = normalizeStudyInteractions(durableStudyState?.interactionsByNoteId ?? fallbackStudy.interactionsByNoteId);
+    return {
+      ...fallback,
+      onboardingProfile: resolveOnboardingProfilePrecedence(fallback.onboardingProfile ?? null, durableOnboardingProfile),
+      studySupportBlocks: mergeStudyBlocksByRecency(normalizeStudyBlocks(fallback.studySupportBlocks ?? {}), durableStudyBlocks),
+      studyInteractions: mergeStudyInteractionsByRecency(normalizeStudyInteractions(fallback.studyInteractions ?? {}), durableStudyInteractions)
+    };
+  }
 
   try {
     const parsed = JSON.parse(raw) as Partial<SceneState> & {
@@ -255,11 +332,17 @@ export function loadScene(): SceneState {
     const restoredSecondarySurface = normalizeExpandedSecondarySurface(parsed.expandedSecondarySurface, parsed.aiPanel, parsed.captureComposer, parsed.quickCaptureOpen);
 
     const normalizedStudy = createEmptyStudySupportState();
+    const sceneOnboardingProfile = normalizeOnboardingProfile(parsed.onboardingProfile);
+    const durableOnboardingProfile = normalizeOnboardingProfile(durableStudyState?.onboardingProfile ?? null);
+    const sceneStudyBlocks = normalizeStudyBlocks(parsed.studySupportBlocks ?? normalizedStudy.blocksByNoteId);
+    const durableStudyBlocks = normalizeStudyBlocks(durableStudyState?.blocksByNoteId ?? normalizedStudy.blocksByNoteId);
+    const sceneStudyInteractions = normalizeStudyInteractions(parsed.studyInteractions ?? normalizedStudy.interactionsByNoteId);
+    const durableStudyInteractions = normalizeStudyInteractions(durableStudyState?.interactionsByNoteId ?? normalizedStudy.interactionsByNoteId);
 
     const normalizedScene = {
-      onboardingProfile: normalizeOnboardingProfile(parsed.onboardingProfile),
-      studySupportBlocks: normalizeStudyBlocks(parsed.studySupportBlocks ?? normalizedStudy.blocksByNoteId),
-      studyInteractions: normalizeStudyInteractions(parsed.studyInteractions ?? normalizedStudy.interactionsByNoteId),
+      onboardingProfile: resolveOnboardingProfilePrecedence(sceneOnboardingProfile, durableOnboardingProfile),
+      studySupportBlocks: mergeStudyBlocksByRecency(sceneStudyBlocks, durableStudyBlocks),
+      studyInteractions: mergeStudyInteractionsByRecency(sceneStudyInteractions, durableStudyInteractions),
       notes: normalizedNotes,
       relationships: refreshInferredRelationships(normalizedNotes, normalizedRelationships as Relationship[], now()),
       projects: normalizedProjects,
@@ -279,10 +362,24 @@ export function loadScene(): SceneState {
 
     return isLegacyWelcomeScene(normalizedScene) ? fallback : normalizedScene;
   } catch {
-    return fallback;
+    const durableOnboardingProfile = normalizeOnboardingProfile(durableStudyState?.onboardingProfile ?? null);
+    const fallbackStudy = createEmptyStudySupportState();
+    const durableStudyBlocks = normalizeStudyBlocks(durableStudyState?.blocksByNoteId ?? fallbackStudy.blocksByNoteId);
+    const durableStudyInteractions = normalizeStudyInteractions(durableStudyState?.interactionsByNoteId ?? fallbackStudy.interactionsByNoteId);
+    return {
+      ...fallback,
+      onboardingProfile: resolveOnboardingProfilePrecedence(fallback.onboardingProfile ?? null, durableOnboardingProfile),
+      studySupportBlocks: mergeStudyBlocksByRecency(normalizeStudyBlocks(fallback.studySupportBlocks ?? {}), durableStudyBlocks),
+      studyInteractions: mergeStudyInteractionsByRecency(normalizeStudyInteractions(fallback.studyInteractions ?? {}), durableStudyInteractions)
+    };
   }
 }
 
 export function saveScene(scene: SceneState): void {
   localStorage.setItem(SCENE_KEY, JSON.stringify(scene));
+  saveStudyPersistence('local-user', {
+    onboardingProfile: scene.onboardingProfile ?? null,
+    blocksByNoteId: scene.studySupportBlocks ?? {},
+    interactionsByNoteId: scene.studyInteractions ?? {}
+  });
 }

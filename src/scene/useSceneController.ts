@@ -48,6 +48,8 @@ export function useSceneController() {
   const [viewportCenter, setViewportCenter] = useState({ x: 540, y: 360 });
   const [highlightedNoteIds, setHighlightedNoteIds] = useState<string[]>([]);
   const [pendingAction, setPendingAction] = useState<ActionSuggestion | null>(null);
+  const [studyGenerationLoading, setStudyGenerationLoading] = useState(false);
+  const [studyGenerationError, setStudyGenerationError] = useState<string | null>(null);
   const [inspectedRelationshipId, setInspectedRelationshipId] = useState<string | null>(null);
   const [lastRelationshipEdit, setLastRelationshipEdit] = useState<{ before: Relationship; afterId: string } | null>(null);
   const [streamingResponse, setStreamingResponse] = useState<InsightsResponse | null>(null);
@@ -77,6 +79,10 @@ export function useSceneController() {
     () => scene.notes.find((note) => note.id === scene.activeNoteId && !note.deleted) ?? null,
     [scene.activeNoteId, scene.notes]
   );
+
+  useEffect(() => {
+    setStudyGenerationError(null);
+  }, [activeNote?.id]);
   const studyActionsEnabled = useMemo(() => shouldOfferStudyActions(activeNote, scene.lens, scene.onboardingProfile ?? null), [activeNote, scene.lens, scene.onboardingProfile]);
   const visibleNotes = focusFilteredVisibleNotes;
   const archivedNotes = lensPresentation.archivedNotes;
@@ -780,23 +786,34 @@ export function useSceneController() {
       : prev));
   }, []);
 
-  const runStudyAction = useCallback((interactionType: StudyInteractionType, userAnswer?: string) => {
+  const runStudyAction = useCallback(async (interactionType: StudyInteractionType, userAnswer?: string) => {
     if (!activeNote || !studyActionsEnabled) return;
-    const noteInteractions = selectStudyInteractionsForNote(scene.studyInteractions, activeNote.id);
-    const block = generateStudyBlock(activeNote, interactionType, noteInteractions, userAnswer);
-    if (!block) return;
-    const interaction = buildStudyInteraction(
-      activeNote.id,
-      interactionType,
-      userAnswer,
-      block.content.kind === 'answer_check' ? block.content.evaluation : undefined
-    );
+    setStudyGenerationLoading(true);
+    setStudyGenerationError(null);
+    try {
+      const noteInteractions = selectStudyInteractionsForNote(scene.studyInteractions, activeNote.id);
+      const block = await generateStudyBlock(activeNote, interactionType, noteInteractions, userAnswer);
+      if (!block) {
+        setStudyGenerationError('Unable to generate this helper right now. Try again with a bit more source text.');
+        return;
+      }
+      const interaction = buildStudyInteraction(
+        activeNote.id,
+        interactionType,
+        userAnswer,
+        block.content.kind === 'answer_check' ? block.content.evaluation : undefined
+      );
 
-    setScene((prev) => ({
-      ...prev,
-      studySupportBlocks: upsertStudyBlockForNote(prev.studySupportBlocks, activeNote.id, block),
-      studyInteractions: upsertStudyInteractionForNote(prev.studyInteractions, activeNote.id, interaction)
-    }));
+      setScene((prev) => ({
+        ...prev,
+        studySupportBlocks: upsertStudyBlockForNote(prev.studySupportBlocks, activeNote.id, block),
+        studyInteractions: upsertStudyInteractionForNote(prev.studyInteractions, activeNote.id, interaction)
+      }));
+    } catch {
+      setStudyGenerationError('Study helper generation failed. Please retry.');
+    } finally {
+      setStudyGenerationLoading(false);
+    }
   }, [activeNote, scene.studyInteractions, studyActionsEnabled]);
 
   const removeStudyBlock = useCallback((noteId: string, blockId: string) => {
@@ -815,6 +832,8 @@ export function useSceneController() {
     studyActionsEnabled,
     studySupportBlocks: selectStudyBlocksForNote(scene.studySupportBlocks, activeNote?.id ?? null),
     studyInteractions: selectStudyInteractionsForNote(scene.studyInteractions, activeNote?.id ?? null),
+    studyGenerationLoading,
+    studyGenerationError,
     visibleNotes,
     totalActiveNotes,
     archivedNotes,
