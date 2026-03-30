@@ -2,11 +2,13 @@ import { normalizeNote, now } from '../notes/noteModel';
 import { normalizeProject } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import { AIInteractionMode, ActionSuggestion, AIPanelViewState, CaptureComposerState, ExpandedSecondarySurface, FocusMode, InsightTimelineEntry, Lens, Relationship, RelationshipType, SceneState, Workspace } from '../types';
+import { createEmptyStudySupportState, OnboardingProfile, StudyInteraction, StudySupportBlock } from '../learning/studyModel';
+import { isStarterLensId, sanitizeStarterLenses } from '../learning/lensPresets';
 import { createDemoScene } from '../data/demoScene';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { normalizeLens } from './lens';
 
-export const SCENE_KEY = 'atom-notes.scene.v9';
+export const SCENE_KEY = 'atom-notes.scene.v10';
 
 function normalizeRelationshipType(raw: unknown): RelationshipType {
   switch (raw) {
@@ -151,6 +153,43 @@ function normalizeAIPanel(raw: Partial<AIPanelViewState> | undefined): AIPanelVi
   };
 }
 
+
+function normalizeOnboardingProfile(raw: unknown): OnboardingProfile | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const candidate = raw as Partial<OnboardingProfile>;
+  if (!candidate.ageRange || !candidate.primaryUseCase) return null;
+  const starterLenses = sanitizeStarterLenses(candidate.starterLenses);
+  const activeLensId = isStarterLensId(candidate.activeLensId)
+    ? candidate.activeLensId
+    : starterLenses[0] ?? 'study';
+  return {
+    ageRange: candidate.ageRange,
+    primaryUseCase: candidate.primaryUseCase,
+    selectedPresetId: candidate.selectedPresetId ?? 'mixed_starter',
+    starterLenses,
+    activeLensId,
+    configuredAt: Number(candidate.configuredAt ?? now())
+  };
+}
+
+function normalizeStudyBlocks(raw: unknown): Record<string, StudySupportBlock[]> {
+  if (!raw || typeof raw !== 'object') return {};
+  const input = raw as Record<string, StudySupportBlock[]>;
+  return Object.fromEntries(Object.entries(input).map(([noteId, blocks]) => [
+    noteId,
+    Array.isArray(blocks) ? blocks.filter((block) => block && typeof block === 'object').map((block) => ({ ...block, noteId })) : []
+  ]));
+}
+
+function normalizeStudyInteractions(raw: unknown): Record<string, StudyInteraction[]> {
+  if (!raw || typeof raw !== 'object') return {};
+  const input = raw as Record<string, StudyInteraction[]>;
+  return Object.fromEntries(Object.entries(input).map(([noteId, interactions]) => [
+    noteId,
+    Array.isArray(interactions) ? interactions.filter((entry) => entry && typeof entry === 'object').map((entry) => ({ ...entry, noteId })) : []
+  ]));
+}
+
 function isLegacyWelcomeScene(scene: Pick<SceneState, 'notes' | 'relationships' | 'projects' | 'workspaces'>) {
   return (
     scene.notes.length === 1 &&
@@ -167,6 +206,7 @@ export function loadScene(): SceneState {
 
   const raw =
     localStorage.getItem(SCENE_KEY) ??
+    localStorage.getItem('atom-notes.scene.v9') ??
     localStorage.getItem('atom-notes.scene.v8') ??
     localStorage.getItem('atom-notes.scene.v7') ??
     localStorage.getItem('atom-notes.scene.v6') ??
@@ -214,7 +254,12 @@ export function loadScene(): SceneState {
       : null;
     const restoredSecondarySurface = normalizeExpandedSecondarySurface(parsed.expandedSecondarySurface, parsed.aiPanel, parsed.captureComposer, parsed.quickCaptureOpen);
 
+    const normalizedStudy = createEmptyStudySupportState();
+
     const normalizedScene = {
+      onboardingProfile: normalizeOnboardingProfile(parsed.onboardingProfile),
+      studySupportBlocks: normalizeStudyBlocks(parsed.studySupportBlocks ?? normalizedStudy.blocksByNoteId),
+      studyInteractions: normalizeStudyInteractions(parsed.studyInteractions ?? normalizedStudy.interactionsByNoteId),
       notes: normalizedNotes,
       relationships: refreshInferredRelationships(normalizedNotes, normalizedRelationships as Relationship[], now()),
       projects: normalizedProjects,
