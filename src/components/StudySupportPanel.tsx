@@ -6,6 +6,8 @@ type StudySupportPanelProps = {
   blocks: StudySupportBlock[];
   onRunAction: (action: 'explain' | 'key_ideas' | 'quiz' | 'flashcards' | 'review_recommendation' | 'answer_check', userAnswer?: string) => void;
   onRemoveBlock: (blockId: string) => void;
+  loading?: boolean;
+  error?: string | null;
 };
 
 const ACTIONS: Array<{ id: StudySupportPanelProps['onRunAction'] extends (action: infer A, ...args: any[]) => any ? A : never; label: string }> = [
@@ -16,7 +18,7 @@ const ACTIONS: Array<{ id: StudySupportPanelProps['onRunAction'] extends (action
   { id: 'review_recommendation', label: 'Review next' }
 ];
 
-export function StudySupportPanel({ enabled, blocks, onRunAction, onRemoveBlock }: StudySupportPanelProps) {
+export function StudySupportPanel({ enabled, blocks, onRunAction, onRemoveBlock, loading = false, error = null }: StudySupportPanelProps) {
   const [answerDraft, setAnswerDraft] = useState('');
   const [revealedCardIds, setRevealedCardIds] = useState<string[]>([]);
 
@@ -31,17 +33,21 @@ export function StudySupportPanel({ enabled, blocks, onRunAction, onRemoveBlock 
 
       <div className="study-support-actions">
         {ACTIONS.map((action) => (
-          <button key={action.id} type="button" className="ghost-button" onClick={() => onRunAction(action.id)}>{action.label}</button>
+          <button key={action.id} type="button" className="ghost-button" onClick={() => onRunAction(action.id)} disabled={loading}>{action.label}</button>
         ))}
       </div>
 
       <div className="study-answer-check">
         <label htmlFor="study-answer-input">Check my answer</label>
         <textarea id="study-answer-input" value={answerDraft} onChange={(event) => setAnswerDraft(event.target.value)} placeholder="Write your answer first, then run check…" />
-        <button type="button" className="ghost-button" onClick={() => onRunAction('answer_check', answerDraft)} disabled={!answerDraft.trim()}>
+        <button type="button" className="ghost-button" onClick={() => onRunAction('answer_check', answerDraft)} disabled={!answerDraft.trim() || loading}>
           Check my answer
         </button>
       </div>
+
+
+      {loading ? <p role="status" aria-live="polite">Generating study helper…</p> : null}
+      {error ? <p role="alert">{error}</p> : null}
 
       <div className="study-support-blocks">
         {blocks.map((block) => (
@@ -90,6 +96,15 @@ export function StudySupportPanel({ enabled, blocks, onRunAction, onRemoveBlock 
               <>
                 <p>{block.content.basis}</p>
                 <ul>{block.content.recommendations.map((item) => <li key={item}>{item}</li>)}</ul>
+                {block.content.schedule.length ? (
+                  <ul>
+                    {block.content.schedule.map((slot, index) => (
+                      <li key={`${block.id}-schedule-${index}`}>
+                        Review in {slot.intervalDays} day{slot.intervalDays === 1 ? '' : 's'} ({slot.confidence} confidence)
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </>
             ) : null}
             {block.content.kind === 'answer_check' ? (
@@ -99,6 +114,19 @@ export function StudySupportPanel({ enabled, blocks, onRunAction, onRemoveBlock 
                 <p>{block.content.guidance}</p>
               </>
             ) : null}
+            <details>
+              <summary>Grounding</summary>
+              <p>{block.provenance.explanation}</p>
+              <ul>
+                {block.provenance.citations.map((citation) => (
+                  <li key={citation.id}>
+                    <strong>Source:</strong> {citation.sourceText}
+                    <br />
+                    <span>{citation.explanation}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </article>
         ))}
       </div>

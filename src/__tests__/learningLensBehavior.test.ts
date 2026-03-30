@@ -14,7 +14,14 @@ const blockA: StudySupportBlock = {
   createdAt: 1,
   sourceNoteUpdatedAt: 1,
   generatedFrom: 'note-content',
-  content: { kind: 'key_ideas', ideas: ['A1'] }
+  content: { kind: 'key_ideas', ideas: ['A1'] },
+  provenance: {
+    generator: 'heuristic',
+    modelId: 'test-model',
+    generatedAt: 1,
+    explanation: 'test',
+    citations: []
+  }
 };
 
 const blockB: StudySupportBlock = {

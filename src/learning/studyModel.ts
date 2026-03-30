@@ -30,13 +30,36 @@ export type OnboardingProfile = {
 
 export type StudyInteractionType = 'explain' | 'key_ideas' | 'quiz' | 'flashcards' | 'answer_check' | 'review_recommendation';
 
+export type StudyBlockCitation = {
+  id: string;
+  noteId: string;
+  sourceText: string;
+  explanation: string;
+};
+
+export type StudyBlockProvenance = {
+  generator: 'model' | 'heuristic';
+  modelId: string;
+  generatedAt: number;
+  explanation: string;
+  citations: StudyBlockCitation[];
+};
+
+export type StudyReviewSchedule = {
+  noteId: string;
+  nextReviewAt: number;
+  intervalDays: number;
+  confidence: 'low' | 'medium' | 'high';
+  reason: string;
+};
+
 export type StudyBlockContent =
   | { kind: 'explanation'; text: string }
   | { kind: 'key_ideas'; ideas: string[] }
   | { kind: 'quiz_set'; questions: Array<{ id: string; prompt: string; choices: string[]; answer: string; rationale: string }> }
   | { kind: 'flashcard_set'; cards: Array<{ id: string; prompt: string; answer: string }> }
   | { kind: 'answer_check'; prompt: string; learnerAnswer: string; evaluation: string; guidance: string; confidence: 'low' | 'medium' | 'high' }
-  | { kind: 'review_recommendation'; recommendations: string[]; basis: string };
+  | { kind: 'review_recommendation'; recommendations: string[]; basis: string; schedule: StudyReviewSchedule[] };
 
 export type StudySupportBlock = {
   id: string;
@@ -48,6 +71,7 @@ export type StudySupportBlock = {
   sourceNoteUpdatedAt: number;
   generatedFrom: 'note-content';
   content: StudyBlockContent;
+  provenance: StudyBlockProvenance;
 };
 
 export type StudyInteraction = {
