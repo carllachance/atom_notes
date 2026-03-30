@@ -1,3 +1,5 @@
+import { OnboardingProfile, StudyInteraction, StudySupportBlock } from './learning/studyModel';
+
 export type LensScopeMode = 'context' | 'strict';
 
 export type UniverseLens = {
@@ -283,6 +285,9 @@ export type AIPanelViewState = {
 };
 
 export type SceneState = {
+  onboardingProfile?: OnboardingProfile | null;
+  studySupportBlocks?: Record<string, StudySupportBlock[]>;
+  studyInteractions?: Record<string, StudyInteraction[]>;
   notes: NoteCardModel[];
   relationships: Relationship[];
   projects: Project[];

@@ -83,6 +83,10 @@ function render() {
       onFocusLensBack={() => {}}
       onFocusLensPin={() => {}}
       onFocusLensReset={() => {}}
+      studyActionsEnabled={false}
+      studySupportBlocks={[]}
+      onRunStudyAction={() => {}}
+      onRemoveStudyBlock={() => {}}
     />
   );
 }

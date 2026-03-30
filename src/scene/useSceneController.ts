@@ -10,6 +10,10 @@ import { ActionSuggestion, AIInteractionMode, InsightsResponse, Relationship, Re
 import { getWorkspaceForNote } from '../workspaces/workspaceSelectors';
 import { loadScene, saveScene } from './sceneStorage';
 import { getLensPresentation } from './lens';
+import { OnboardingProfile, shouldOfferStudyActions, StarterLensId, StudyInteractionType } from '../learning/studyModel';
+import { setActiveStarterLens as applyActiveStarterLens } from '../learning/lensPresets';
+import { removeStudyBlockForNote, selectStudyBlocksForNote, selectStudyInteractionsForNote, upsertStudyBlockForNote, upsertStudyInteractionForNote } from '../learning/studyState';
+import { buildStudyInteraction, generateStudyBlock } from '../learning/studySupportService';
 import { resolveCapturePlacement } from './capturePlacement';
 import { useAmbientGuidance } from './useAmbientGuidance';
 import { useSceneMutations } from './useSceneMutations';
@@ -73,6 +77,7 @@ export function useSceneController() {
     () => scene.notes.find((note) => note.id === scene.activeNoteId && !note.deleted) ?? null,
     [scene.activeNoteId, scene.notes]
   );
+  const studyActionsEnabled = useMemo(() => shouldOfferStudyActions(activeNote, scene.lens, scene.onboardingProfile ?? null), [activeNote, scene.lens, scene.onboardingProfile]);
   const visibleNotes = focusFilteredVisibleNotes;
   const archivedNotes = lensPresentation.archivedNotes;
   const deletedNotes = useMemo(
@@ -765,11 +770,51 @@ export function useSceneController() {
     mutations.retryAttachmentProcessing(scene.activeNoteId, attachmentId);
   }, [mutations, scene.activeNoteId]);
 
+  const setOnboardingProfile = useCallback((profile: OnboardingProfile) => {
+    setScene((prev) => ({ ...prev, onboardingProfile: profile }));
+  }, []);
+
+  const setActiveStarterLens = useCallback((lensId: StarterLensId) => {
+    setScene((prev) => (prev.onboardingProfile
+      ? { ...prev, onboardingProfile: applyActiveStarterLens(prev.onboardingProfile, lensId) }
+      : prev));
+  }, []);
+
+  const runStudyAction = useCallback((interactionType: StudyInteractionType, userAnswer?: string) => {
+    if (!activeNote || !studyActionsEnabled) return;
+    const noteInteractions = selectStudyInteractionsForNote(scene.studyInteractions, activeNote.id);
+    const block = generateStudyBlock(activeNote, interactionType, noteInteractions, userAnswer);
+    if (!block) return;
+    const interaction = buildStudyInteraction(
+      activeNote.id,
+      interactionType,
+      userAnswer,
+      block.content.kind === 'answer_check' ? block.content.evaluation : undefined
+    );
+
+    setScene((prev) => ({
+      ...prev,
+      studySupportBlocks: upsertStudyBlockForNote(prev.studySupportBlocks, activeNote.id, block),
+      studyInteractions: upsertStudyInteractionForNote(prev.studyInteractions, activeNote.id, interaction)
+    }));
+  }, [activeNote, scene.studyInteractions, studyActionsEnabled]);
+
+  const removeStudyBlock = useCallback((noteId: string, blockId: string) => {
+    setScene((prev) => ({
+      ...prev,
+      studySupportBlocks: removeStudyBlockForNote(prev.studySupportBlocks, noteId, blockId)
+    }));
+  }, []);
+
   return {
     scene,
     activeNote,
     activeNoteProjects,
     activeWorkspace,
+    onboardingProfile: scene.onboardingProfile,
+    studyActionsEnabled,
+    studySupportBlocks: selectStudyBlocksForNote(scene.studySupportBlocks, activeNote?.id ?? null),
+    studyInteractions: selectStudyInteractionsForNote(scene.studyInteractions, activeNote?.id ?? null),
     visibleNotes,
     totalActiveNotes,
     archivedNotes,
@@ -829,6 +874,10 @@ export function useSceneController() {
     addAttachmentsToActiveNote,
     removeAttachment,
     retryAttachmentProcessing,
+    setOnboardingProfile,
+    setActiveStarterLens,
+    runStudyAction,
+    removeStudyBlock,
     onCanvasScroll: mutations.onCanvasScroll,
     onViewportCenterChange,
     onOpenNote: openFocusLensNote,

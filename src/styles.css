@@ -10229,3 +10229,104 @@ body {
     line-height: 1.68;
   }
 }
+
+.learning-onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #04070f 70%, transparent);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+}
+
+.learning-onboarding-modal {
+  width: min(560px, calc(100vw - 32px));
+  border-radius: 16px;
+  border: 1px solid var(--rule-dark);
+  background: color-mix(in srgb, var(--bg-panel) 92%, #0a1020 8%);
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.learning-onboarding-modal label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.learning-onboarding-modal select,
+.study-answer-check textarea {
+  border-radius: 10px;
+  border: 1px solid var(--rule-dark);
+  background: color-mix(in srgb, var(--bg-shell) 85%, transparent);
+  color: inherit;
+  padding: 8px;
+}
+
+.learning-starter-chips,
+.learning-lens-chip-row,
+.study-support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.learning-lens-chip-row {
+  padding: 0 8px;
+}
+
+.study-support-panel {
+  margin-top: 10px;
+  border: 1px solid var(--rule-dark);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  background: color-mix(in srgb, var(--bg-shell) 82%, transparent);
+}
+
+.study-support-header span,
+.study-support-block small {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.study-answer-check {
+  display: grid;
+  gap: 6px;
+}
+
+.study-answer-check textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.study-support-block {
+  border-top: 1px solid var(--rule-dark);
+  padding-top: 8px;
+}
+
+.study-support-block header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.study-support-disclosure {
+  margin-top: 10px;
+  border: 1px solid var(--rule-dark);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-shell) 70%, transparent);
+}
+
+.study-support-disclosure > summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.study-support-disclosure[open] > summary {
+  border-bottom: 1px solid var(--rule-dark);
+}

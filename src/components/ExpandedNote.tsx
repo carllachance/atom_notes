@@ -27,6 +27,8 @@ import { NoteCardModel, Project, Relationship, RelationshipType, Workspace } fro
 import { AttachmentPanel } from './attachments/AttachmentPanel';
 import { FocusLensRelatedNote } from '../scene/focusLens';
 import { RelationshipGraph } from './RelationshipGraph';
+import { StudySupportPanel } from './StudySupportPanel';
+import { StudySupportBlock } from '../learning/studyModel';
 
 type VisibleRelationship = {
   id: string;
@@ -98,6 +100,10 @@ type ExpandedNoteProps = {
   onFocusLensPin: () => void;
   onFocusLensReset: () => void;
   onPositionChange?: (noteId: string, position: { x: number; y: number }) => void;
+  studyActionsEnabled?: boolean;
+  studySupportBlocks?: StudySupportBlock[];
+  onRunStudyAction?: (action: 'explain' | 'key_ideas' | 'quiz' | 'flashcards' | 'review_recommendation' | 'answer_check', userAnswer?: string) => void;
+  onRemoveStudyBlock?: (noteId: string, blockId: string) => void;
 };
 
 type DragState = { dx: number; dy: number };
@@ -342,7 +348,11 @@ export function ExpandedNote({
   onFocusLensBack,
   onFocusLensPin,
   onFocusLensReset,
-  onPositionChange
+  onPositionChange,
+  studyActionsEnabled,
+  studySupportBlocks,
+  onRunStudyAction,
+  onRemoveStudyBlock
 }: ExpandedNoteProps) {
   const [panelMode, setPanelMode] = useState<PanelMode>('read');
   const [expandedUtilityPanel, setExpandedUtilityPanel] = useState<UtilityPanel>('none');
@@ -767,7 +777,6 @@ export function ExpandedNote({
                 ))}
                 {traceOverflow > 0 ? <span className="note-trace-overflow">+{traceOverflow} linked</span> : null}
               </aside>
-
               <div className="note-body-surface note-cornell-body" data-mode="read">
                 <MarkdownProjectionView
                   source={note.body}
@@ -788,6 +797,19 @@ export function ExpandedNote({
                   })}
                 />
               </div>
+
+
+              {studyActionsEnabled ? (
+                <details className="study-support-disclosure">
+                  <summary>Learning helpers</summary>
+                  <StudySupportPanel
+                    enabled={Boolean(studyActionsEnabled)}
+                    blocks={studySupportBlocks ?? []}
+                    onRunAction={(action, userAnswer) => onRunStudyAction?.(action, userAnswer)}
+                    onRemoveBlock={(blockId) => onRemoveStudyBlock?.(note.id, blockId)}
+                  />
+                </details>
+              ) : null}
 
               {resolvedPromotedFragments.length ? (
                 <div className="inline-task-strip" aria-label="Inline task links">

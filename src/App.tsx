@@ -10,7 +10,10 @@ import { ShelfView } from './components/ShelfView';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
+import { LearningLensOnboarding } from './components/LearningLensOnboarding';
 import { summarizeCanvasVisibility } from './scene/canvasVisibility';
+import { resolveStarterLensMeta } from './learning/lensPresets';
+import { getLearningLensShellMode } from './scene/learningLensShell';
 import { useSceneController } from './scene/useSceneController';
 import { buildMemorySummary } from './store/memorySummary';
 import { createBookmark, recordHistoryEntry, useBookmarks, useHistoryStack } from './store/sessionSlice';
@@ -35,6 +38,9 @@ export function App() {
     activeNote,
     activeNoteProjects,
     activeWorkspace,
+    onboardingProfile,
+    studyActionsEnabled,
+    studySupportBlocks,
     visibleNotes,
     totalActiveNotes,
     archivedNotes,
@@ -95,6 +101,10 @@ export function App() {
     addAttachmentsToActiveNote,
     removeAttachment,
     retryAttachmentProcessing,
+    setOnboardingProfile,
+    setActiveStarterLens,
+    runStudyAction,
+    removeStudyBlock,
     onCanvasScroll,
     onViewportCenterChange,
     onOpenNote,
@@ -142,6 +152,7 @@ export function App() {
     () => buildMemorySummary(historyStack, bookmarks, scene.notes, activeNote?.id ?? null),
     [historyStack, bookmarks, scene.notes, activeNote?.id]
   );
+  const learningLensShellMode = getLearningLensShellMode(onboardingProfile);
 
   useEffect(() => {
     if (hasAutoRecoveredRef.current) return;
@@ -364,7 +375,11 @@ export function App() {
                 onFocusLensBack: goBackFocusLens,
                 onFocusLensPin: pinFocusLens,
                 onFocusLensReset: resetFocusLens,
-                onPositionChange: (noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position }))
+                onPositionChange: (noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position })),
+                studyActionsEnabled,
+                studySupportBlocks,
+                onRunStudyAction: runStudyAction,
+                onRemoveStudyBlock: removeStudyBlock
               }}
               components={{
                 SpatialCanvasComponent: SpatialCanvas,
@@ -449,6 +464,26 @@ export function App() {
         <div className="undo-toast" role="status" aria-live="polite">
           <span>Note moved to trash.</span>
           <button type="button" className="ghost-button" onClick={undoDelete}>Undo</button>
+        </div>
+      ) : null}
+
+      {/* Learning Lens app-shell behavior is centralized here so it can be gated or disabled in one place. */}
+      {learningLensShellMode === 'onboarding' ? (
+        <LearningLensOnboarding onComplete={setOnboardingProfile} />
+      ) : null}
+      {learningLensShellMode === 'chips' && onboardingProfile ? (
+        <div className="learning-lens-chip-row">
+          {onboardingProfile.starterLenses.map((lensId) => (
+            <button
+              key={lensId}
+              type="button"
+              className={`ghost-button ${onboardingProfile.activeLensId === lensId ? 'active' : ''}`}
+              title={resolveStarterLensMeta(lensId).description}
+              onClick={() => setActiveStarterLens(lensId)}
+            >
+              {resolveStarterLensMeta(lensId).label}
+            </button>
+          ))}
         </div>
       ) : null}
     </ThinkingSurface>

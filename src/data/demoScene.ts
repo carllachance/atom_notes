@@ -2,6 +2,7 @@ import { refreshInferredRelationships } from '../relationshipLogic';
 import { NoteCardModel, Relationship, RelationshipType, SceneState, Workspace } from '../types';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { demoNotes, demoRelationships, demoWorkspaces, DemoNote, DemoRelationship } from './demoSeed';
+import { createEmptyStudySupportState } from '../learning/studyModel';
 
 const WORKSPACE_LAYOUT_COLUMNS = 3;
 const WORKSPACE_X_GAP = 460;
@@ -152,7 +153,12 @@ export function createDemoScene(nowTs = Date.now()): SceneState {
     .filter((relationship): relationship is Relationship => Boolean(relationship))
     .map((relationship) => ({ ...relationship, createdAt: nowTs, lastActiveAt: nowTs }));
 
+  const studySupportState = createEmptyStudySupportState();
+
   return {
+    onboardingProfile: null,
+    studySupportBlocks: studySupportState.blocksByNoteId,
+    studyInteractions: studySupportState.interactionsByNoteId,
     notes,
     relationships: refreshInferredRelationships(notes, relationships, nowTs),
     projects: [],
