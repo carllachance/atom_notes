@@ -18,6 +18,10 @@ export type WorkspaceLens = {
   mode: LensScopeMode;
 };
 
+export type LibraryLens = {
+  kind: 'library';
+};
+
 export type RevealLens = {
   kind: 'reveal';
   query: string;
@@ -30,7 +34,7 @@ export type ArchiveLens = {
   kind: 'archive';
 };
 
-export type Lens = UniverseLens | ProjectLens | WorkspaceLens | RevealLens | ArchiveLens;
+export type Lens = UniverseLens | ProjectLens | WorkspaceLens | LibraryLens | RevealLens | ArchiveLens;
 
 export type NoteIntent = 'task' | 'link' | 'code' | 'note';
 export type TaskState = 'open' | 'done';
@@ -128,6 +132,48 @@ export type Workspace = {
   updatedAt: number;
 };
 
+export type GroupSuggestion = {
+  id: string;
+  groupId: string;
+  confidence: number;
+  explanation: string;
+  createdAt: number;
+};
+
+export type StandaloneReference = {
+  id: string;
+  label: string;
+  kind: 'reference' | 'attachment';
+  text: string;
+  workspaceIds: string[];
+  projectIds: string[];
+  colorHint?: string;
+  metadata?: Record<string, string>;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ResearchSourceKind = 'note' | 'attachment' | 'chat' | 'reference';
+export type ResearchOutputKind = 'summary' | 'flash_cards' | 'speaker_notes' | 'outline';
+export type ResearchMode = 'strict_knowledge_base' | 'ai_starting_point';
+
+export type ResearchSource = {
+  id: string;
+  kind: ResearchSourceKind;
+  label: string;
+  sourceId: string;
+};
+
+export type ResearchSourceSet = {
+  id: string;
+  name: string;
+  sourceIds: string[];
+  mode: ResearchMode;
+  suggestedOutputs: ResearchOutputKind[];
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type NoteCardModel = {
   id: string;
   title: string | null;
@@ -146,7 +192,11 @@ export type NoteCardModel = {
   isFocus?: boolean;
   projectIds: string[];
   inferredProjectIds?: string[];
+  workspaceIds?: string[];
+  inferredWorkspaceIds?: string[];
   workspaceId: string | null;
+  projectSuggestions?: GroupSuggestion[];
+  workspaceSuggestions?: GroupSuggestion[];
   intent?: NoteIntent;
   intentConfidence?: number;
   taskState?: TaskState;
@@ -292,6 +342,8 @@ export type SceneState = {
   relationships: Relationship[];
   projects: Project[];
   workspaces: Workspace[];
+  libraryItems?: StandaloneReference[];
+  researchSourceSets?: ResearchSourceSet[];
   insightTimeline?: InsightTimelineEntry[];
   isDragging: boolean;
   activeNoteId: string | null;

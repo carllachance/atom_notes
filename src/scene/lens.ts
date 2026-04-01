@@ -1,6 +1,6 @@
-import { buildSparseProjectConnectorSegments } from '../projects/projectSelectors';
-import { getProjectById } from '../projects/projectSelectors';
-import { getWorkspaceById } from '../workspaces/workspaceSelectors';
+import { buildSparseProjectConnectorSegments, getProjectById } from '../projects/projectSelectors';
+import { querySearchIndex } from '../search/searchService';
+import { getWorkspaceById, getWorkspaceIdsForNote } from '../workspaces/workspaceSelectors';
 import { Lens, LensScopeMode, NoteCardModel, Project, Relationship, SceneState, Workspace } from '../types';
 
 export type LensNoteEmphasis = 'primary' | 'supporting' | 'context';
@@ -59,17 +59,11 @@ export function normalizeLens(raw: unknown): Lens {
 
   switch (candidate.kind) {
     case 'project':
-      return {
-        kind: 'project',
-        projectId: typeof candidate.projectId === 'string' ? candidate.projectId : null,
-        mode: normalizeScopeMode(candidate.mode)
-      };
+      return { kind: 'project', projectId: typeof candidate.projectId === 'string' ? candidate.projectId : null, mode: normalizeScopeMode(candidate.mode) };
     case 'workspace':
-      return {
-        kind: 'workspace',
-        workspaceId: typeof candidate.workspaceId === 'string' ? candidate.workspaceId : null,
-        mode: normalizeScopeMode(candidate.mode)
-      };
+      return { kind: 'workspace', workspaceId: typeof candidate.workspaceId === 'string' ? candidate.workspaceId : null, mode: normalizeScopeMode(candidate.mode) };
+    case 'library':
+      return { kind: 'library' };
     case 'reveal':
       return {
         kind: 'reveal',
@@ -82,7 +76,7 @@ export function normalizeLens(raw: unknown): Lens {
       return { kind: 'archive' };
     case 'universe':
       return { kind: 'universe' };
-    default: {
+    default:
       if (candidate.projectReveal?.activeProjectId || candidate.projectReveal?.isolate) {
         return {
           kind: 'project',
@@ -91,46 +85,45 @@ export function normalizeLens(raw: unknown): Lens {
         };
       }
       if (typeof candidate.revealQuery === 'string' && candidate.revealQuery.trim()) {
-        return {
-          kind: 'reveal',
-          query: candidate.revealQuery.trim(),
-          workspaceId: null,
-          projectId: null,
-          mode: 'context'
-        };
+        return { kind: 'reveal', query: candidate.revealQuery.trim(), workspaceId: null, projectId: null, mode: 'context' };
       }
       if (candidate.currentView === 'archive') return { kind: 'archive' };
       return createDefaultLens();
-    }
   }
 }
 
 export function getLensLabel(lens: Lens, scene: Pick<SceneState, 'projects' | 'workspaces'>): string {
   if (lens.kind === 'archive') return 'Archive lens';
   if (lens.kind === 'universe') return 'Shared universe';
+  if (lens.kind === 'library') return 'Library lens';
   if (lens.kind === 'project') {
     const project = scene.projects.find((candidate) => candidate.id === lens.projectId);
     return project ? `${project.name} project lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}` : 'Project lens';
   }
   if (lens.kind === 'workspace') {
     const workspace = scene.workspaces.find((candidate) => candidate.id === lens.workspaceId);
-    return workspace
-      ? `${workspace.name} workspace lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}`
-      : 'Workspace lens';
+    return workspace ? `${workspace.name} workspace lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}` : 'Workspace lens';
   }
 
   const scopeBits = [
     lens.projectId ? scene.projects.find((candidate) => candidate.id === lens.projectId)?.name : null,
     lens.workspaceId ? scene.workspaces.find((candidate) => candidate.id === lens.workspaceId)?.name : null
   ].filter(Boolean);
-  const scope = scopeBits.length ? ` · ${scopeBits.join(' / ')}` : '';
-  return `Reveal lens${scope}`;
+  return `Reveal lens${scopeBits.length ? ` · ${scopeBits.join(' / ')}` : ''}`;
 }
 
 function matchesRevealQuery(note: NoteCardModel, query: string) {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return false;
   return `${note.title ?? ''}\n${note.body}`.toLowerCase().includes(normalized);
+}
+
+function hasLibraryMaterial(note: NoteCardModel) {
+  return Boolean(
+    (note.attachments?.length ?? 0) ||
+    (note.provenance?.externalReferences?.length ?? 0) ||
+    note.intent === 'link'
+  );
 }
 
 function collectNeighborIds(primaryIds: Set<string>, relationships: Relationship[], allowedIds: Set<string>) {
@@ -140,7 +133,6 @@ function collectNeighborIds(primaryIds: Set<string>, relationships: Relationship
     const fromPrimary = primaryIds.has(relationship.fromId);
     const toPrimary = primaryIds.has(relationship.toId);
     if (!fromPrimary && !toPrimary) continue;
-
     const neighborId = fromPrimary ? relationship.toId : relationship.fromId;
     if (!allowedIds.has(neighborId) || primaryIds.has(neighborId)) continue;
     relatedIds.add(neighborId);
@@ -151,13 +143,20 @@ function collectNeighborIds(primaryIds: Set<string>, relationships: Relationship
 
 function getScopedNotes(notes: NoteCardModel[], lens: Lens) {
   if (lens.kind === 'project' || lens.kind === 'reveal') {
-    const projectScoped = lens.projectId ? notes.filter((note) => note.projectIds.includes(lens.projectId!)) : notes;
+    const projectId = lens.projectId ?? null;
+    const projectScoped = projectId ? notes.filter((note) => note.projectIds.includes(projectId)) : notes;
     if (lens.kind !== 'reveal' || !lens.workspaceId) return projectScoped;
-    return projectScoped.filter((note) => note.workspaceId === lens.workspaceId);
+    const workspaceId = lens.workspaceId;
+    return projectScoped.filter((note) => getWorkspaceIdsForNote(note).includes(workspaceId));
   }
 
   if (lens.kind === 'workspace') {
-    return lens.workspaceId ? notes.filter((note) => note.workspaceId === lens.workspaceId) : notes;
+    const workspaceId = lens.workspaceId;
+    return workspaceId ? notes.filter((note) => getWorkspaceIdsForNote(note).includes(workspaceId)) : notes;
+  }
+
+  if (lens.kind === 'library') {
+    return notes.filter((note) => hasLibraryMaterial(note));
   }
 
   return notes;
@@ -173,36 +172,28 @@ function resolveBuckets(scene: SceneState, lens: Lens, activeNoteId: string | nu
   }
 
   if (lens.kind === 'universe') {
-    return {
-      primaryIds: new Set(activeNotes.map((note) => note.id)),
-      supportingIds: new Set(),
-      revealMatchIds: []
-    };
+    return { primaryIds: new Set(activeNotes.map((note) => note.id)), supportingIds: new Set(), revealMatchIds: [] };
   }
 
-  if (lens.kind === 'project') {
+  if (lens.kind === 'project' || lens.kind === 'workspace' || lens.kind === 'library') {
     const scopedNotes = getScopedNotes(activeNotes, lens);
     const primaryIds = new Set(scopedNotes.map((note) => note.id));
-    const supportingIds = lens.mode === 'context' ? collectNeighborIds(primaryIds, scene.relationships, allowedIds) : new Set<string>();
-    return { primaryIds, supportingIds, revealMatchIds: [] };
-  }
-
-  if (lens.kind === 'workspace') {
-    const scopedNotes = getScopedNotes(activeNotes, lens);
-    const primaryIds = new Set(scopedNotes.map((note) => note.id));
-    const supportingIds = lens.mode === 'context' ? collectNeighborIds(primaryIds, scene.relationships, allowedIds) : new Set<string>();
+    const supportingIds = lens.kind === 'library'
+      ? new Set<string>()
+      : lens.mode === 'context'
+        ? collectNeighborIds(primaryIds, scene.relationships, allowedIds)
+        : new Set<string>();
     return { primaryIds, supportingIds, revealMatchIds: [] };
   }
 
   const scopedNotes = getScopedNotes(activeNotes, lens);
-  const revealMatches = scopedNotes.filter((note) => matchesRevealQuery(note, lens.query));
+  const matchedIds = new Set(querySearchIndex(scene, lens.query).map((hit) => hit.noteId));
+  const revealMatches = scopedNotes.filter((note) => matchedIds.has(note.id) || matchesRevealQuery(note, lens.query));
   const primaryIds = new Set(revealMatches.map((note) => note.id));
 
   if (!primaryIds.size && activeNoteId) {
     const activeNote = activeNotes.find((note) => note.id === activeNoteId);
-    if (activeNote && matchesRevealQuery(activeNote, lens.query)) {
-      primaryIds.add(activeNote.id);
-    }
+    if (activeNote && (matchedIds.has(activeNote.id) || matchesRevealQuery(activeNote, lens.query))) primaryIds.add(activeNote.id);
   }
 
   const supportingIds = lens.mode === 'context' ? collectNeighborIds(primaryIds, scene.relationships, allowedIds) : new Set<string>();
@@ -217,22 +208,27 @@ function makeContextLabel(
   workspacesById: Map<string, Workspace>,
   isSupporting: boolean
 ) {
+  const workspaceIds = getWorkspaceIdsForNote(note);
+
   if (lens.kind === 'project' && activeProject) {
     if (note.projectIds.includes(activeProject.id)) return `${activeProject.key} project`;
     if (isSupporting) {
-      const workspaceLabel = activeWorkspace && note.workspaceId === activeWorkspace.id ? ` in ${activeWorkspace.name}` : '';
+      const workspaceLabel = activeWorkspace && workspaceIds.includes(activeWorkspace.id) ? ` in ${activeWorkspace.name}` : '';
       return `Surfaced beyond ${activeProject.name}${workspaceLabel}`;
     }
   }
 
   if ((lens.kind === 'workspace' || lens.kind === 'reveal') && activeWorkspace) {
-    if (note.workspaceId === activeWorkspace.id) return `${activeWorkspace.name} scope`;
-    if (note.workspaceId) return `Surfaced from ${workspacesById.get(note.workspaceId)?.name ?? 'another workspace'}`;
+    if (workspaceIds.includes(activeWorkspace.id)) return `${activeWorkspace.name} scope`;
+    if (workspaceIds.length) return `Surfaced from ${workspacesById.get(workspaceIds[0])?.name ?? 'another workspace'}`;
     return 'No workspace assigned';
   }
 
+  if (lens.kind === 'library') {
+    return hasLibraryMaterial(note) ? 'Library material' : null;
+  }
+
   if (lens.kind === 'reveal' && isSupporting) return 'Surfaced by relationships';
-  if (!note.workspaceId) return null;
   return null;
 }
 
@@ -240,14 +236,11 @@ export function getLensPresentation(scene: SceneState): LensPresentation {
   const lens = normalizeLens(scene.lens);
   const archivedNotes = scene.notes.filter((note) => note.archived && !note.deleted);
   const { primaryIds, supportingIds, revealMatchIds } = resolveBuckets(scene, lens, scene.activeNoteId);
-  const visibleNotes =
-    lens.kind === 'archive'
-      ? archivedNotes
-      : scene.notes.filter((note) => !note.archived && !note.deleted && (primaryIds.has(note.id) || supportingIds.has(note.id)));
-  const activeProject =
-    lens.kind === 'project' || lens.kind === 'reveal' ? getProjectById(scene, lens.projectId ?? null) : null;
-  const activeWorkspace =
-    lens.kind === 'workspace' || lens.kind === 'reveal' ? getWorkspaceById(scene, lens.workspaceId ?? null) : null;
+  const visibleNotes = lens.kind === 'archive'
+    ? archivedNotes
+    : scene.notes.filter((note) => !note.archived && !note.deleted && (primaryIds.has(note.id) || supportingIds.has(note.id)));
+  const activeProject = lens.kind === 'project' || lens.kind === 'reveal' ? getProjectById(scene, lens.projectId ?? null) : null;
+  const activeWorkspace = lens.kind === 'workspace' || lens.kind === 'reveal' ? getWorkspaceById(scene, lens.workspaceId ?? null) : null;
   const noteMetaById: Record<string, LensNotePresentation> = {};
   const workspacesById = new Map(scene.workspaces.map((workspace) => [workspace.id, workspace]));
   const projectsById = new Map(scene.projects.map((project) => [project.id, project]));
@@ -255,6 +248,7 @@ export function getLensPresentation(scene: SceneState): LensPresentation {
   for (const note of visibleNotes) {
     const isPrimary = primaryIds.has(note.id);
     const isSupporting = supportingIds.has(note.id);
+    const workspaceIds = getWorkspaceIdsForNote(note);
     const projectState: LensProjectState = activeProject
       ? note.projectIds.includes(activeProject.id)
         ? 'member'
@@ -263,24 +257,22 @@ export function getLensPresentation(scene: SceneState): LensPresentation {
           : 'none'
       : 'none';
     const workspaceState: LensWorkspaceState = activeWorkspace
-      ? note.workspaceId === activeWorkspace.id
+      ? workspaceIds.includes(activeWorkspace.id)
         ? 'member'
-        : note.workspaceId
+        : workspaceIds.length
           ? 'supporting'
           : 'orphan'
-      : note.workspaceId
+      : workspaceIds.length
         ? 'none'
         : 'orphan';
     const primaryProject = note.projectIds.map((projectId) => projectsById.get(projectId)).find(Boolean) ?? null;
-    const projectAccent = activeProject && note.projectIds.includes(activeProject.id)
-      ? activeProject.color
-      : primaryProject?.color ?? null;
-
-    const workspaceLabel = note.workspaceId
-      ? (() => {
-          const workspace = workspacesById.get(note.workspaceId);
-          return workspace ? `${workspace.key} · ${workspace.name}` : 'Workspace assigned';
-        })()
+    const projectAccent = activeProject && note.projectIds.includes(activeProject.id) ? activeProject.color : primaryProject?.color ?? null;
+    const workspaceLabel = workspaceIds.length
+      ? workspaceIds
+          .map((workspaceId) => workspacesById.get(workspaceId))
+          .filter(Boolean)
+          .map((workspace) => `${workspace!.key} · ${workspace!.name}`)
+          .join(' + ')
       : 'No workspace assigned';
 
     noteMetaById[note.id] = {

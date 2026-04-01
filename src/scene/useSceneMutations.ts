@@ -32,7 +32,7 @@ import {
 } from '../relationships/relationshipActions';
 import { createProjectAndAssignToNoteInScene, setNoteProjectsInScene } from '../projects/projectActions';
 import { ProjectDraft } from '../projects/projectModel';
-import { createWorkspaceAndAssignToNoteInScene, setNoteWorkspaceInScene } from '../workspaces/workspaceActions';
+import { createWorkspaceAndAssignToNoteInScene, setNoteWorkspaceInScene, setNoteWorkspacesInScene } from '../workspaces/workspaceActions';
 import { WorkspaceDraft } from '../workspaces/workspaceModel';
 import { addAttachmentsToNoteInScene, markAttachmentFailedInScene, markAttachmentProcessedInScene, markAttachmentProcessingInScene, removeAttachmentFromNoteInScene, retryAttachmentProcessingInScene } from '../attachments/attachmentActions';
 
@@ -191,6 +191,10 @@ export function useSceneMutations({
     setScene((prev) => setNoteWorkspaceInScene(prev, id, workspaceId));
   }, [setScene]);
 
+  const setNoteWorkspaces = useCallback((id: string, workspaceIds: string[]) => {
+    setScene((prev) => setNoteWorkspacesInScene(prev, id, workspaceIds));
+  }, [setScene]);
+
   const createWorkspaceForNote = useCallback((id: string, draft: WorkspaceDraft) => {
     setScene((prev) => createWorkspaceAndAssignToNoteInScene(prev, id, draft));
   }, [setScene]);
@@ -248,6 +252,7 @@ export function useSceneMutations({
     setNoteProjects,
     createProjectForNote,
     setNoteWorkspace,
+    setNoteWorkspaces,
     createWorkspaceForNote,
     addAttachments,
     removeAttachment,

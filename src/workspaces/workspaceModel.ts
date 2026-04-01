@@ -3,6 +3,7 @@ import { now } from '../notes/noteModel';
 
 const WORKSPACE_COLORS = ['#7aa2f7', '#8f7cf7', '#5fbf97', '#d5a95b', '#e58b8b', '#73c7d9'];
 const HEX_COLOR_PATTERN = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+export const INBOX_WORKSPACE_KEY = 'INBOX';
 
 export type WorkspaceDraft = {
   key?: string;
@@ -66,5 +67,25 @@ export function createWorkspace(draft: WorkspaceDraft, index: number): Workspace
     description: String(draft.description ?? '').trim(),
     createdAt: t,
     updatedAt: t
+  };
+}
+
+export function ensureInboxWorkspace(workspaces: Workspace[]): { workspaces: Workspace[]; inboxWorkspace: Workspace } {
+  const existing = workspaces.find((workspace) => workspace.key === INBOX_WORKSPACE_KEY);
+  if (existing) return { workspaces, inboxWorkspace: existing };
+
+  const inboxWorkspace = createWorkspace(
+    {
+      key: INBOX_WORKSPACE_KEY,
+      name: 'Inbox',
+      color: '#f2c14e',
+      description: 'Default landing workspace for new notes.'
+    },
+    workspaces.length
+  );
+
+  return {
+    workspaces: [...workspaces, inboxWorkspace],
+    inboxWorkspace
   };
 }

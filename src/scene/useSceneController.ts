@@ -8,7 +8,7 @@ import { getProjectsForNote } from '../projects/projectSelectors';
 import { getRankedRelationshipsForNote, getRelationshipTargetNoteId, refreshInferredRelationships } from '../relationshipLogic';
 import { ActionSuggestion, AIInteractionMode, InsightsResponse, Relationship, RelationshipType, SceneState } from '../types';
 import { getWorkspaceForNote } from '../workspaces/workspaceSelectors';
-import { loadScene, saveScene } from './sceneStorage';
+import { getSceneStoreMode, loadScene, loadSceneForMode, saveScene, saveSceneForMode, setSceneStoreMode, type SceneStoreMode } from './sceneStorage';
 import { getLensPresentation } from './lens';
 import { OnboardingProfile, shouldOfferStudyActions, StarterLensId, StudyInteractionType } from '../learning/studyModel';
 import { setActiveStarterLens as applyActiveStarterLens } from '../learning/lensPresets';
@@ -21,6 +21,8 @@ import { createAttachmentFromFile, processAttachment } from '../attachments/atta
 import { closeActiveNoteInScene, handleCtrlTapInScene, openNoteInScene } from './sceneActions';
 import { FocusLensSession, buildFocusLensPresentation, pinFocusLensLayout, restoreFocusLensSnapshot, snapshotFocusLensPositions } from './focusLens';
 import { getCanvasRecoveryCenter } from './canvasVisibility';
+import { ensureInboxWorkspace } from '../workspaces/workspaceModel';
+import { getSuggestedFocusCandidates } from './focusSuggestions';
 
 const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
@@ -41,6 +43,7 @@ function makeEmptyInsightsResponse(response: InsightsResponse): InsightsResponse
 }
 
 export function useSceneController() {
+  const [sceneMode, setSceneModeState] = useState<SceneStoreMode>(() => getSceneStoreMode());
   const [scene, setScene] = useState<SceneState>(loadScene);
   const [relationshipFilter, setRelationshipFilter] = useState<'all' | RelationshipType>('all');
   const [, setTraceClock] = useState(0);
@@ -94,6 +97,7 @@ export function useSceneController() {
   const totalActiveNotes = useMemo(() => scene.notes.filter((note) => !note.archived && !note.deleted).length, [scene.notes]);
   const visibleNoteIds = useMemo(() => new Set(visibleNotes.map((note) => note.id)), [visibleNotes]);
   const focusCount = useMemo(() => scene.notes.filter((note) => !note.archived && Boolean(note.isFocus ?? note.inFocus)).length, [scene.notes]);
+  const focusSuggestions = useMemo(() => focusCount > 0 ? [] : getSuggestedFocusCandidates(scene.notes, scene.relationships), [focusCount, scene.notes, scene.relationships]);
   const activeNoteProjects = useMemo(() => (activeNote ? getProjectsForNote(scene, activeNote.id) : []), [activeNote, scene]);
   const activeWorkspace = useMemo(() => (activeNote ? getWorkspaceForNote(scene, activeNote.id) : null), [activeNote, scene]);
 
@@ -240,6 +244,24 @@ export function useSceneController() {
     setRelationshipFilter('all');
   }, [focusLensSession, setRelationshipFilter, setScene]);
 
+  const switchSceneMode = useCallback((mode: SceneStoreMode) => {
+    if (mode === sceneMode) return;
+    saveSceneForMode(scene, sceneMode);
+    setSceneStoreMode(mode);
+    setSceneModeState(mode);
+    setRelationshipFilter('all');
+    setInspectedRelationshipId(null);
+    setPendingAction(null);
+    setActiveRevealMatchIndex(0);
+    setStreamingResponse(null);
+    setIsStreamingResponse(false);
+    setRecentlyDeletedNoteId(null);
+    setFocusLensSession(null);
+    hasRehydratedOpenNoteRef.current = false;
+    setManualRecenterTarget(null);
+    setScene(loadSceneForMode(mode));
+  }, [scene, sceneMode]);
+
   useEffect(() => {
     saveScene(scene);
   }, [scene]);
@@ -368,7 +390,7 @@ export function useSceneController() {
     const note = scene.notes.find((candidate) => candidate.id === noteId);
     if (!note) return;
     window.setTimeout(async () => {
-      const metadata = await inferNoteMetadata(note, scene.notes, scene.projects);
+      const metadata = await inferNoteMetadata(note, scene.notes, scene.projects, scene.workspaces);
       setScene((prev) => ({
         ...prev,
         notes: prev.notes.map((candidate) =>
@@ -501,7 +523,12 @@ export function useSceneController() {
     const draft = scene.captureComposer.draft;
     if (!draft.trim()) return;
     const inheritedProjectIds = scene.lens.kind === 'project' && scene.lens.projectId ? [scene.lens.projectId] : [];
-    const inheritedWorkspaceId = scene.lens.kind === 'workspace' ? scene.lens.workspaceId : scene.lens.kind === 'reveal' ? scene.lens.workspaceId : null;
+    const ensuredWorkspaces = ensureInboxWorkspace(scene.workspaces);
+    const inheritedWorkspaceId = scene.lens.kind === 'workspace'
+      ? scene.lens.workspaceId
+      : scene.lens.kind === 'reveal'
+        ? scene.lens.workspaceId
+        : ensuredWorkspaces.inboxWorkspace.id;
     const placement = resolveCapturePlacement(scene.notes, viewportCenter, activeNote, highestZ + 1);
     const createdNote = createNote(draft, highestZ + 1, inheritedProjectIds, inheritedWorkspaceId, placement);
 
@@ -510,6 +537,7 @@ export function useSceneController() {
       return {
         ...prev,
         notes,
+        workspaces: ensuredWorkspaces.workspaces,
         relationships: refreshInferredRelationships(notes, prev.relationships, now()),
         activeNoteId: createdNote.id,
         expandedSecondarySurface: 'none',
@@ -525,7 +553,7 @@ export function useSceneController() {
 
     setHighlightedNoteIds([createdNote.id]);
     runAsyncInference(createdNote.id);
-  }, [scene.captureComposer.draft, scene.lens, scene.notes, viewportCenter, activeNote, highestZ, runAsyncInference]);
+  }, [scene.captureComposer.draft, scene.lens, scene.notes, scene.workspaces, viewportCenter, activeNote, highestZ, runAsyncInference]);
 
   const cancelCapture = useCallback(() => {
     mutations.setExpandedSurface('none');
@@ -601,7 +629,12 @@ export function useSceneController() {
 
   const pinInsightToNewNote = useCallback((content: string) => {
     const inheritedProjectIds = scene.lens.kind === 'project' && scene.lens.projectId ? [scene.lens.projectId] : [];
-    const inheritedWorkspaceId = scene.lens.kind === 'workspace' ? scene.lens.workspaceId : scene.lens.kind === 'reveal' ? scene.lens.workspaceId : null;
+    const ensuredWorkspaces = ensureInboxWorkspace(scene.workspaces);
+    const inheritedWorkspaceId = scene.lens.kind === 'workspace'
+      ? scene.lens.workspaceId
+      : scene.lens.kind === 'reveal'
+        ? scene.lens.workspaceId
+        : ensuredWorkspaces.inboxWorkspace.id;
     const placement = resolveCapturePlacement(scene.notes, viewportCenter, activeNote, highestZ + 1);
     const createdNote = createNote(content, highestZ + 1, inheritedProjectIds, inheritedWorkspaceId, placement);
 
@@ -610,6 +643,7 @@ export function useSceneController() {
       return {
         ...prev,
         notes,
+        workspaces: ensuredWorkspaces.workspaces,
         relationships: refreshInferredRelationships(notes, prev.relationships, now()),
         activeNoteId: createdNote.id
       };
@@ -623,7 +657,7 @@ export function useSceneController() {
 
     setHighlightedNoteIds([createdNote.id]);
     runAsyncInference(createdNote.id);
-  }, [activeNote, highestZ, runAsyncInference, scene.lens, scene.notes, viewportCenter]);
+  }, [activeNote, highestZ, runAsyncInference, scene.lens, scene.notes, scene.workspaces, viewportCenter]);
 
   const streamInsightsResponse = useCallback((response: InsightsResponse, onComplete: () => void) => {
     const answerParts = response.answer.split(/(\s+)/).filter(Boolean);
@@ -840,8 +874,10 @@ export function useSceneController() {
     deletedNotes,
     projects: scene.projects,
     workspaces: scene.workspaces,
+    sceneMode,
     lensPresentation,
     focusCount,
+    focusSuggestions,
     highlightedNoteIds,
     hoveredNoteId: ambient.hoveredNoteId,
     relationshipFilter,
@@ -865,6 +901,7 @@ export function useSceneController() {
     revealActiveNoteId,
     pendingAction,
     setPendingAction,
+    switchSceneMode,
     setRelationshipFilter,
     inspectRelationship,
     closeRelationshipInspector,
@@ -889,6 +926,7 @@ export function useSceneController() {
     setNoteProjects: mutations.setNoteProjects,
     createProjectForNote: mutations.createProjectForNote,
     setNoteWorkspace: mutations.setNoteWorkspace,
+    setNoteWorkspaces: mutations.setNoteWorkspaces,
     createWorkspaceForNote: mutations.createWorkspaceForNote,
     addAttachmentsToActiveNote,
     removeAttachment,
