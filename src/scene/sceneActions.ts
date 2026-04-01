@@ -4,6 +4,7 @@ import { normalizeProjectIds } from '../projects/projectModel';
 import { refreshInferredRelationships } from '../relationshipLogic';
 import { ExpandedSecondarySurface, FocusMode, Lens, NoteCardModel, SceneState } from '../types';
 import { createDefaultLens, normalizeLens } from './lens';
+import { getWorkspaceIdsForNote } from '../workspaces/workspaceSelectors';
 
 export function updateNoteInScene(
   scene: SceneState,
@@ -16,14 +17,30 @@ export function updateNoteInScene(
     ...('title' in updates ? { title: normalizeOptionalTitle((updates.title as string | null | undefined) ?? null) } : {}),
     ...('projectIds' in updates ? { projectIds: normalizeProjectIds(updates.projectIds) } : {}),
     ...('inferredProjectIds' in updates ? { inferredProjectIds: normalizeProjectIds(updates.inferredProjectIds) } : {}),
-    ...('workspaceId' in updates ? { workspaceId: typeof updates.workspaceId === 'string' && updates.workspaceId.trim() ? updates.workspaceId : null } : {}),
+    ...('workspaceIds' in updates
+      ? {
+          workspaceIds: normalizeProjectIds((updates as Partial<NoteCardModel>).workspaceIds),
+          workspaceId: normalizeProjectIds((updates as Partial<NoteCardModel>).workspaceIds)[0] ?? null
+        }
+      : {}),
+    ...('workspaceId' in updates
+      ? {
+          workspaceIds: typeof updates.workspaceId === 'string' && updates.workspaceId.trim() ? [updates.workspaceId] : [],
+          workspaceId: typeof updates.workspaceId === 'string' && updates.workspaceId.trim() ? updates.workspaceId : null
+        }
+      : {}),
     ...('isFocus' in updates ? { inFocus: Boolean(updates.isFocus), isFocus: Boolean(updates.isFocus) } : {}),
     ...('inFocus' in updates ? { inFocus: Boolean(updates.inFocus), isFocus: Boolean(updates.inFocus) } : {})
   };
 
   const notes = scene.notes.map((note) => {
     if (note.id !== id) return note;
-    return { ...note, ...normalizedUpdates, trace: trace ?? normalizedUpdates.trace ?? note.trace, updatedAt: now() };
+    const nextNote = { ...note, ...normalizedUpdates, trace: trace ?? normalizedUpdates.trace ?? note.trace, updatedAt: now() };
+    if (!('workspaceId' in updates) && !('workspaceIds' in updates)) {
+      nextNote.workspaceIds = getWorkspaceIdsForNote(nextNote);
+      nextNote.workspaceId = nextNote.workspaceIds[0] ?? null;
+    }
+    return nextNote;
   });
 
   return { ...scene, notes, relationships: refreshInferredRelationships(notes, scene.relationships, now()) };

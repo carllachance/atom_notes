@@ -137,6 +137,21 @@ function normalizeSuggestedRelationships(value: unknown): SuggestedRelationship[
     .filter((value): value is SuggestedRelationship => Boolean(value));
 }
 
+function normalizeWorkspaceIds(value: unknown, workspaceId: string | null): string[] {
+  const rawIds = Array.isArray(value) ? value : workspaceId ? [workspaceId] : [];
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const candidate of rawIds) {
+    const id = String(candidate ?? '').trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    normalized.push(id);
+  }
+
+  return normalized;
+}
+
 
 function normalizeAttachments(value: unknown): NoteCardModel['attachments'] {
   if (!Array.isArray(value)) return [];
@@ -222,7 +237,11 @@ export function createNote(
     isFocus: false,
     projectIds: normalizeProjectIds(projectIds),
     inferredProjectIds: [],
+    workspaceIds: normalizeWorkspaceIds(null, typeof workspaceId === 'string' && workspaceId.trim() ? workspaceId : null),
+    inferredWorkspaceIds: [],
     workspaceId: typeof workspaceId === 'string' && workspaceId.trim() ? workspaceId : null,
+    projectSuggestions: [],
+    workspaceSuggestions: [],
     intent: undefined,
     intentConfidence: undefined,
     taskState: undefined,
@@ -244,6 +263,8 @@ export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: strin
         : null;
   const normalizedTitle = normalizeOptionalTitle(typeof note.title === 'string' ? note.title : null);
   const body = String(note.body ?? '');
+  const workspaceIds = normalizeWorkspaceIds((note as Partial<NoteCardModel>).workspaceIds, rawWorkspaceId && rawWorkspaceId.trim() ? rawWorkspaceId : null);
+  const primaryWorkspaceId = workspaceIds[0] ?? null;
 
   return {
     id: String(note.id ?? `legacy-${i}`),
@@ -263,7 +284,11 @@ export function normalizeNote(note: Partial<NoteCardModel> & { workspace?: strin
     isFocus: Boolean(note.isFocus ?? note.inFocus),
     projectIds: normalizeProjectIds(note.projectIds),
     inferredProjectIds: normalizeProjectIds(note.inferredProjectIds),
-    workspaceId: rawWorkspaceId && rawWorkspaceId.trim() ? rawWorkspaceId : null,
+    workspaceIds,
+    inferredWorkspaceIds: normalizeProjectIds((note as Partial<NoteCardModel>).inferredWorkspaceIds),
+    workspaceId: primaryWorkspaceId,
+    projectSuggestions: Array.isArray((note as Partial<NoteCardModel>).projectSuggestions) ? (note as Partial<NoteCardModel>).projectSuggestions : [],
+    workspaceSuggestions: Array.isArray((note as Partial<NoteCardModel>).workspaceSuggestions) ? (note as Partial<NoteCardModel>).workspaceSuggestions : [],
     intent: normalizeIntent(note.intent),
     intentConfidence: note.intentConfidence == null ? undefined : Number(note.intentConfidence),
     taskState: normalizeTaskState(note.taskState),

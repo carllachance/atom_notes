@@ -23,6 +23,7 @@ const note: NoteCardModel = {
   projectIds: ['project-1'],
   inferredProjectIds: [],
   workspaceId: null,
+  workspaceIds: [],
   inferredRelationships: [],
   attachments: []
 };
@@ -67,6 +68,7 @@ function render() {
       onSetProjectIds={() => {}}
       onCreateProject={() => {}}
       onSetWorkspaceId={() => {}}
+      onSetWorkspaceIds={() => {}}
       onCreateWorkspace={() => {}}
       onSetProjectLens={() => {}}
       onSetWorkspaceLens={() => {}}
@@ -91,22 +93,19 @@ function render() {
   );
 }
 
-test('expanded note defaults to calm read mode with collapsed progressive disclosures', () => {
+test('expanded note defaults to a single document surface with helpers collapsed', () => {
   const markup = render();
-  assert.match(markup, /role="tab" aria-selected="true" class="active">Read<\/button>/);
+  assert.match(markup, /role="tab" aria-selected="true" class="active">Document<\/button>/);
   assert.match(markup, /role="tab" aria-selected="false" class="">Constellation<\/button>/);
-  assert.match(markup, /Workspace unassigned/);
-  assert.match(markup, /Threads · Operations Planning/);
-  assert.match(markup, /Sources<\/strong><small>Quiet until needed<\/small>/);
-  assert.match(markup, /Transform<\/strong><small>One quiet transform at a time<\/small>/);
-  assert.equal((markup.match(/aria-expanded="false"/g) ?? []).length >= 2, true);
+  assert.match(markup, /Write freely/);
+  assert.match(markup, /Show helpers/);
   assert.equal(markup.includes('Follow</button>'), false);
   assert.equal(markup.includes('Remove link'), false);
 });
 
-test('expanded note keeps source-heavy surfaces out of read mode until requested', () => {
+test('expanded note keeps source-heavy surfaces out of the default document surface', () => {
   const markup = render();
   assert.equal(markup.includes('Source material</strong>'), false);
   assert.equal(markup.includes('Connection detail'), false);
-  assert.match(markup, /Open constellation/);
+  assert.match(markup, />Constellation<\/button>/);
 });

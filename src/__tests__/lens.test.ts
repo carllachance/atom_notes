@@ -7,7 +7,7 @@ function makeScene(): SceneState {
   return {
     notes: [
       { id: 'a', title: 'Alpha', body: 'Launch brief policy', anchors: [], trace: 'idle', x: 0, y: 0, z: 1, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: true, isFocus: true, projectIds: ['p1'], inferredProjectIds: [], workspaceId: 'w1', inferredRelationships: [] },
-      { id: 'b', title: 'Beta', body: 'Cross-team policy mirror', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: ['p2'], inferredProjectIds: [], workspaceId: 'w2', inferredRelationships: [] },
+      { id: 'b', title: 'Beta', body: 'Cross-team policy mirror', anchors: [], trace: 'idle', x: 0, y: 0, z: 2, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: ['p2'], inferredProjectIds: [], workspaceId: 'w2', inferredRelationships: [], attachments: [{ id: 'att-1', name: 'mirror.pdf', mimeType: 'application/pdf', fileSize: 120, addedAt: 0, fileKind: 'pdf', rawFile: { dataUrl: 'data:application/pdf;base64,AA==', contentHash: 'hash-1', lastModified: 0 }, processing: { status: 'processed', error: null, retryCount: 0, updatedAt: 0 }, extraction: null }] },
       { id: 'c', title: 'Gamma', body: 'Project-only execution note', anchors: [], trace: 'idle', x: 0, y: 0, z: 3, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: ['p1'], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
       { id: 'd', title: 'Delta', body: 'Loose idea with no affinities', anchors: [], trace: 'idle', x: 0, y: 0, z: 4, createdAt: 0, updatedAt: 0, archived: false, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] },
       { id: 'e', title: 'Echo', body: 'Archived', anchors: [], trace: 'idle', x: 0, y: 0, z: 5, createdAt: 0, updatedAt: 0, archived: true, deleted: false, deletedAt: null, inFocus: false, isFocus: false, projectIds: [], inferredProjectIds: [], workspaceId: null, inferredRelationships: [] }
@@ -72,4 +72,30 @@ test('notes with no project or workspace affinity still appear in the shared uni
   const reveal = getLensPresentation({ ...makeScene(), lens: { kind: 'reveal', query: 'loose idea', workspaceId: null, projectId: null, mode: 'strict' } });
   assert.deepEqual(reveal.visibleNotes.map((note) => note.id), ['d']);
   assert.equal(reveal.noteMetaById.d.workspaceState, 'orphan');
+});
+
+test('library lens narrows to notes with source material', () => {
+  const scene = makeScene();
+  scene.notes = scene.notes.map((note) => note.id === 'c'
+    ? {
+        ...note,
+        provenance: {
+          origin: 'manual',
+          createdAt: 0,
+          updatedAt: 0,
+          externalReferences: [{
+            id: 'ref-1',
+            kind: 'url',
+            label: 'Spec',
+            value: 'https://example.com/spec',
+            confidence: 0.9,
+            isInferred: false,
+            createdAt: 0
+          }]
+        }
+      }
+    : note);
+  const presentation = getLensPresentation({ ...scene, lens: { kind: 'library' } });
+  assert.deepEqual(presentation.visibleNotes.map((note) => note.id), ['b', 'c']);
+  assert.equal(presentation.lensLabel, 'Library lens');
 });

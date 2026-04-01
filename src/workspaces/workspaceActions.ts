@@ -1,6 +1,7 @@
 import { now } from '../notes/noteModel';
 import { SceneState } from '../types';
 import { createWorkspace, WorkspaceDraft } from './workspaceModel';
+import { getWorkspaceIdsForNote } from './workspaceSelectors';
 
 function resolveWorkspace(scene: SceneState, draft: WorkspaceDraft) {
   const requestedKey = String(draft.key ?? draft.name ?? '')
@@ -48,6 +49,7 @@ export function createWorkspaceAndAssignToNoteInScene(scene: SceneState, noteId:
       note.id === noteId
         ? {
             ...note,
+            workspaceIds: Array.from(new Set([...getWorkspaceIdsForNote(note), workspace.id])),
             workspaceId: workspace.id,
             updatedAt: t,
             trace: 'scoped'
@@ -58,8 +60,14 @@ export function createWorkspaceAndAssignToNoteInScene(scene: SceneState, noteId:
 }
 
 export function setNoteWorkspaceInScene(scene: SceneState, noteId: string, workspaceId: string | null): SceneState {
+  const nextWorkspaceIds = workspaceId ? [workspaceId] : [];
+  return setNoteWorkspacesInScene(scene, noteId, nextWorkspaceIds);
+}
+
+export function setNoteWorkspacesInScene(scene: SceneState, noteId: string, workspaceIds: string[]): SceneState {
   const validWorkspaceIds = new Set(scene.workspaces.map((workspace) => workspace.id));
-  const nextWorkspaceId = workspaceId && validWorkspaceIds.has(workspaceId) ? workspaceId : null;
+  const nextWorkspaceIds = workspaceIds.filter((workspaceId) => validWorkspaceIds.has(workspaceId));
+  const nextWorkspaceId = nextWorkspaceIds[0] ?? null;
   const t = now();
 
   return {
@@ -68,6 +76,7 @@ export function setNoteWorkspaceInScene(scene: SceneState, noteId: string, works
       note.id === noteId
         ? {
             ...note,
+            workspaceIds: nextWorkspaceIds,
             workspaceId: nextWorkspaceId,
             updatedAt: t,
             trace: nextWorkspaceId ? 'scoped' : 'idle'

@@ -10,6 +10,54 @@ import { normalizeLens } from './lens';
 import { loadStudyPersistence, saveStudyPersistence } from '../learning/studyPersistence';
 
 export const SCENE_KEY = 'atom-notes.scene.v10';
+export const SCENE_MODE_KEY = 'atom-notes.scene-mode.v1';
+export type SceneStoreMode = 'sample' | 'blank';
+
+function getSceneStorageKey(mode: SceneStoreMode) {
+  return mode === 'sample' ? SCENE_KEY : `${SCENE_KEY}.${mode}`;
+}
+
+function createEmptyScene(): SceneState {
+  return {
+    onboardingProfile: null,
+    studySupportBlocks: {},
+    studyInteractions: {},
+    notes: [],
+    relationships: [],
+    projects: [],
+    workspaces: [],
+    libraryItems: [],
+    researchSourceSets: [],
+    insightTimeline: [],
+    isDragging: false,
+    activeNoteId: null,
+    expandedSecondarySurface: 'none',
+    captureComposer: { draft: '', lastCreatedNoteId: null },
+    focusMode: { highlight: true, isolate: false },
+    aiPanel: {
+      mode: 'ask',
+      query: '',
+      response: null,
+      transcript: [],
+      loading: false,
+      communicationState: 'idle',
+      interactionMode: 'live-stream'
+    },
+    lastCtrlTapTs: 0,
+    lens: { kind: 'universe' },
+    canvasScrollLeft: 0,
+    canvasScrollTop: 0
+  };
+}
+
+export function getSceneStoreMode(): SceneStoreMode {
+  const raw = localStorage.getItem(SCENE_MODE_KEY);
+  return raw === 'blank' ? 'blank' : 'sample';
+}
+
+export function setSceneStoreMode(mode: SceneStoreMode): void {
+  localStorage.setItem(SCENE_MODE_KEY, mode);
+}
 
 function normalizeRelationshipType(raw: unknown): RelationshipType {
   switch (raw) {
@@ -266,21 +314,25 @@ function isLegacyWelcomeScene(scene: Pick<SceneState, 'notes' | 'relationships' 
   );
 }
 
-export function loadScene(): SceneState {
-  const fallback = createDemoScene();
+export function loadSceneForMode(mode: SceneStoreMode): SceneState {
+  const fallback = mode === 'blank' ? createEmptyScene() : createDemoScene();
   const durableStudyState = loadStudyPersistence('local-user');
 
   const raw =
-    localStorage.getItem(SCENE_KEY) ??
-    localStorage.getItem('atom-notes.scene.v9') ??
-    localStorage.getItem('atom-notes.scene.v8') ??
-    localStorage.getItem('atom-notes.scene.v7') ??
-    localStorage.getItem('atom-notes.scene.v6') ??
-    localStorage.getItem('atom-notes.scene.v5') ??
-    localStorage.getItem('atom-notes.scene.v4') ??
-    localStorage.getItem('atom-notes.scene.v3') ??
-    localStorage.getItem('atom-notes.scene.v2') ??
-    localStorage.getItem('atom-notes.scene.v1');
+    localStorage.getItem(getSceneStorageKey(mode)) ??
+    (mode === 'sample'
+      ? (
+        localStorage.getItem('atom-notes.scene.v9') ??
+        localStorage.getItem('atom-notes.scene.v8') ??
+        localStorage.getItem('atom-notes.scene.v7') ??
+        localStorage.getItem('atom-notes.scene.v6') ??
+        localStorage.getItem('atom-notes.scene.v5') ??
+        localStorage.getItem('atom-notes.scene.v4') ??
+        localStorage.getItem('atom-notes.scene.v3') ??
+        localStorage.getItem('atom-notes.scene.v2') ??
+        localStorage.getItem('atom-notes.scene.v1')
+      )
+      : null);
   if (!raw) {
     const durableOnboardingProfile = normalizeOnboardingProfile(durableStudyState?.onboardingProfile ?? null);
     const fallbackStudy = createEmptyStudySupportState();
@@ -311,12 +363,15 @@ export function loadScene(): SceneState {
     const workspaceIds = new Set(normalizedWorkspaces.map((workspace) => workspace.id));
     const normalizedNotes = Array.isArray(parsed.notes)
       ? parsed.notes.map((note, i) => {
-          const normalized = normalizeNote(note, i);
+        const normalized = normalizeNote(note, i);
+          const nextWorkspaceIds = (normalized.workspaceIds ?? []).filter((workspaceId) => workspaceIds.has(workspaceId));
           return {
             ...normalized,
             projectIds: normalized.projectIds.filter((projectId) => projectIds.has(projectId)),
             inferredProjectIds: (normalized.inferredProjectIds ?? []).filter((projectId) => projectIds.has(projectId)),
-            workspaceId: normalized.workspaceId && workspaceIds.has(normalized.workspaceId) ? normalized.workspaceId : null
+            workspaceIds: nextWorkspaceIds,
+            inferredWorkspaceIds: (normalized.inferredWorkspaceIds ?? []).filter((workspaceId) => workspaceIds.has(workspaceId)),
+            workspaceId: nextWorkspaceIds[0] ?? null
           };
         })
       : fallback.notes;
@@ -347,6 +402,8 @@ export function loadScene(): SceneState {
       relationships: refreshInferredRelationships(normalizedNotes, normalizedRelationships as Relationship[], now()),
       projects: normalizedProjects,
       workspaces: normalizedWorkspaces,
+      libraryItems: Array.isArray(parsed.libraryItems) ? parsed.libraryItems : [],
+      researchSourceSets: Array.isArray(parsed.researchSourceSets) ? parsed.researchSourceSets : [],
       insightTimeline: normalizeInsightTimeline(parsed.insightTimeline),
       isDragging: false,
       activeNoteId,
@@ -360,7 +417,7 @@ export function loadScene(): SceneState {
       canvasScrollTop: Number(parsed.canvasScrollTop ?? 0)
     } satisfies SceneState;
 
-    return isLegacyWelcomeScene(normalizedScene) ? fallback : normalizedScene;
+    return mode === 'sample' && isLegacyWelcomeScene(normalizedScene) ? fallback : normalizedScene;
   } catch {
     const durableOnboardingProfile = normalizeOnboardingProfile(durableStudyState?.onboardingProfile ?? null);
     const fallbackStudy = createEmptyStudySupportState();
@@ -375,11 +432,19 @@ export function loadScene(): SceneState {
   }
 }
 
-export function saveScene(scene: SceneState): void {
-  localStorage.setItem(SCENE_KEY, JSON.stringify(scene));
+export function loadScene(): SceneState {
+  return loadSceneForMode(getSceneStoreMode());
+}
+
+export function saveSceneForMode(scene: SceneState, mode: SceneStoreMode): void {
+  localStorage.setItem(getSceneStorageKey(mode), JSON.stringify(scene));
   saveStudyPersistence('local-user', {
     onboardingProfile: scene.onboardingProfile ?? null,
     blocksByNoteId: scene.studySupportBlocks ?? {},
     interactionsByNoteId: scene.studyInteractions ?? {}
   });
+}
+
+export function saveScene(scene: SceneState): void {
+  saveSceneForMode(scene, getSceneStoreMode());
 }

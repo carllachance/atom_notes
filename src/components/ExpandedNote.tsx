@@ -3,7 +3,7 @@ import {
   DetailSurfaceRelationshipOption,
   getDetailSurfaceRelationshipOption
 } from '../detailSurface/detailSurfaceModel';
-import { ChangeEvent, PointerEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, PointerEvent, ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownProjectionView } from './MarkdownProjectionView';
 import { ThinkingGlyph } from './ThinkingGlyph';
 import { InlineNoteLinkEditor } from './InlineNoteLinkEditor';
@@ -83,6 +83,7 @@ type ExpandedNoteProps = {
   onSetProjectIds: (id: string, projectIds: string[]) => void;
   onCreateProject: (id: string, draft: ProjectDraft) => void;
   onSetWorkspaceId: (id: string, workspaceId: string | null) => void;
+  onSetWorkspaceIds?: (id: string, workspaceIds: string[]) => void;
   onCreateWorkspace: (id: string, draft: WorkspaceDraft) => void;
   onSetProjectLens: (projectId: string | null) => void;
   onSetWorkspaceLens: (workspaceId: string | null) => void;
@@ -131,6 +132,11 @@ type IconToolButtonProps = {
 const DEFAULT_PROJECT_DRAFT: ProjectDraft = { key: '', name: '', color: '#7aa2f7', description: '' };
 const DEFAULT_WORKSPACE_DRAFT: WorkspaceDraft = { key: '', name: '', color: '#5fbf97', description: '' };
 const TRACE_LIMIT = 3;
+
+function getPreferredInitialPanelMode(): PanelMode {
+  if (typeof window === 'undefined') return 'read';
+  return window.matchMedia('(max-width: 900px)').matches ? 'edit' : 'read';
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -230,7 +236,7 @@ function getConstellationIntro(groups: Array<{ key: 'upstream' | 'downstream' | 
   const nearby = groups.find((group) => group.key === 'nearby')?.items.length ?? 0;
 
   if (!upstream && !downstream && !nearby) {
-    return 'The local field is quiet for now. As this note starts touching others, they will gather here.';
+    return 'No direct connections are surfaced yet. As this note links outward, they will appear here.';
   }
 
   const phrases: string[] = [];
@@ -334,6 +340,7 @@ export function ExpandedNote({
   onSetProjectIds,
   onCreateProject,
   onSetWorkspaceId,
+  onSetWorkspaceIds,
   onCreateWorkspace,
   onSetProjectLens,
   onSetWorkspaceLens,
@@ -358,7 +365,7 @@ export function ExpandedNote({
   studyGenerationLoading,
   studyGenerationError
 }: ExpandedNoteProps) {
-  const [panelMode, setPanelMode] = useState<PanelMode>('read');
+  const [panelMode, setPanelMode] = useState<PanelMode>(() => getPreferredInitialPanelMode());
   const [expandedUtilityPanel, setExpandedUtilityPanel] = useState<UtilityPanel>('none');
   const [composerSurface, setComposerSurface] = useState<'workspace' | 'project' | null>(null);
   const [showDangerActions, setShowDangerActions] = useState(false);
@@ -380,6 +387,11 @@ export function ExpandedNote({
   const [editAssistOpen, setEditAssistOpen] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
   const inlineHighlightTimerRef = useRef<number | null>(null);
+  const documentSectionRef = useRef<HTMLElement | null>(null);
+  const constellationSectionRef = useRef<HTMLElement | null>(null);
+  const sourceSectionRef = useRef<HTMLDivElement | null>(null);
+  const editSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const editFieldRef = useRef<HTMLTextAreaElement | null>(null);
 
   const groupedRelationshipOptions = useMemo(() => {
     return DETAIL_SURFACE_RELATIONSHIP_OPTIONS.reduce<Record<DetailSurfaceRelationshipOption['group'], DetailSurfaceRelationshipOption[]>>((groups, option) => {
@@ -392,7 +404,7 @@ export function ExpandedNote({
   useEffect(() => {
     setPosition(initialPosition ?? { x: 0, y: 0 });
     setDragState(null);
-    setPanelMode(note?.trace === 'captured' ? 'edit' : 'read');
+    setPanelMode(getPreferredInitialPanelMode());
     setExpandedUtilityPanel('none');
     setComposerSurface(null);
     setShowDangerActions(false);
@@ -693,6 +705,28 @@ export function ExpandedNote({
     onInspectRelationship(relationship.id);
   };
 
+  const jumpToSection = (section: 'document' | 'constellation' | 'source') => {
+    setPanelMode('read');
+    window.requestAnimationFrame(() => {
+      const target = section === 'document'
+        ? documentSectionRef.current
+        : section === 'constellation'
+          ? constellationSectionRef.current
+          : sourceSectionRef.current;
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (panelMode !== 'edit') return;
+    const field = editFieldRef.current;
+    const surface = editSurfaceRef.current;
+    if (!field || !surface) return;
+    field.style.height = 'auto';
+    const minHeight = Math.max(320, surface.clientHeight);
+    field.style.height = `${Math.max(field.scrollHeight, minHeight)}px`;
+  }, [note?.body, panelMode]);
+
   return (
     <section className="expanded-note-shell" style={{ ['--thinking-rail-reserved' as string]: `${rightInset}px` }}>
       <aside ref={panelRef} className="expanded-note expanded-note--rescue note-surface note-surface--modal" data-panel-mode={panelMode} style={{ transform: `translate(${position.x}px, ${position.y}px)` }}>
@@ -705,31 +739,39 @@ export function ExpandedNote({
           <div className="expanded-note-header-main">
             <input className="note-title-field" aria-label="Note title" placeholder="Untitled note" value={note.title ?? ''} onChange={(event) => onChange(note.id, { title: event.target.value })} />
             <div className="body-mode-switch" role="tablist" aria-label="Note surface mode">
-              <ModeButton active={panelMode === 'read'} onClick={() => setPanelMode('read')}>Read</ModeButton>
-              <ModeButton active={panelMode === 'edit'} onClick={() => setPanelMode('edit')}>Edit</ModeButton>
-              <ModeButton active={panelMode === 'constellation'} onClick={() => setPanelMode('constellation')}>Constellation</ModeButton>
-              <ModeButton active={panelMode === 'source'} onClick={() => setPanelMode('source')}>
+              <ModeButton active={panelMode === 'edit' || panelMode === 'read'} onClick={() => jumpToSection('document')}>Document</ModeButton>
+              <ModeButton active={panelMode === 'constellation'} onClick={() => jumpToSection('constellation')}>Constellation</ModeButton>
+              <ModeButton active={panelMode === 'source'} onClick={() => jumpToSection('source')}>
                 <span className="note-tab-label-desktop">Source</span>
                 <span className="note-tab-label-mobile">Materials</span>
               </ModeButton>
             </div>
           </div>
           <div className="note-header-tools note-header-tools--compact">
+            {panelMode === 'read' ? (
+              <button
+                type="button"
+                className="ghost-button note-edit-toggle"
+                onClick={() => setPanelMode('edit')}
+              >
+                Edit
+              </button>
+            ) : null}
             {panelMode === 'edit' ? (
               <button
                 type="button"
-                className={`ghost-button note-assist-toggle ${editAssistOpen ? 'active' : ''}`}
-                onClick={() => setEditAssistOpen((current) => !current)}
+                className="ghost-button note-edit-toggle"
+                onClick={() => setPanelMode('read')}
               >
-                {editAssistOpen ? 'Hide helpers' : `Show helpers${helperSuggestionCount ? ` (${helperSuggestionCount})` : ''}`}
+                Done
               </button>
             ) : null}
             <button type="button" className="ghost-button note-mobile-close" onClick={onClose} aria-label="Close note">Close</button>
             <details className="note-danger-menu" open={showDangerActions} onToggle={(event) => setShowDangerActions((event.currentTarget as HTMLDetailsElement).open)}>
               <summary className="ghost-button">More</summary>
               <div className="note-danger-menu__panel note-danger-menu__panel--quiet">
-                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('constellation')}>Constellation</button>
-                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setPanelMode('source')}>Materials</button>
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => jumpToSection('constellation')}>Constellation</button>
+                <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => jumpToSection('source')}>Materials</button>
                 {panelMode === 'edit' ? (
                   <button type="button" className="ghost-button note-mobile-overflow-only" onClick={() => setEditAssistOpen((current) => !current)}>
                     {editAssistOpen ? 'Hide helpers' : 'Show helpers'}
@@ -738,13 +780,6 @@ export function ExpandedNote({
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensPin}>{focusLensPinned ? 'Unpin layout' : 'Pin layout'}</button>
                 <button type="button" className="ghost-button note-mobile-overflow-only" onClick={onFocusLensReset}>Reset view</button>
                 {focusLensCanGoBack ? <button type="button" className="ghost-button" onClick={onFocusLensBack}>Back</button> : null}
-                <IconToolButton
-                  label="Think about this note"
-                  kind="thinking"
-                  pressed={thinkingActive}
-                  pulse={hasFreshInsights && !thinkingActive}
-                  onClick={onThinkAboutNote}
-                />
                 <button type="button" className="ghost-button" onClick={() => onToggleFocus(note.id)}>{isFocus ? 'Remove focus' : 'Mark focus'}</button>
                 {note.intent === 'task' ? (
                   <button type="button" className="ghost-button" onClick={() => onSetTaskState(note.id, note.taskState === 'done' ? 'open' : 'done')}>
@@ -781,7 +816,7 @@ export function ExpandedNote({
                 ))}
                 {traceOverflow > 0 ? <span className="note-trace-overflow">+{traceOverflow} linked</span> : null}
               </aside>
-              <div className="note-body-surface note-cornell-body" data-mode="read">
+              <section ref={documentSectionRef} className="note-body-surface note-cornell-body" data-mode="read">
                 <MarkdownProjectionView
                   source={note.body}
                   note={note}
@@ -800,12 +835,12 @@ export function ExpandedNote({
                     body: toggleChecklistItem(note.body, { lineIndex }, checked)
                   })}
                 />
-              </div>
+              </section>
 
 
               {studyActionsEnabled ? (
                 <details className="study-support-disclosure">
-                  <summary>Learning helpers</summary>
+                  <summary>Study tools</summary>
                   <StudySupportPanel
                     enabled={Boolean(studyActionsEnabled)}
                     blocks={studySupportBlocks ?? []}
@@ -840,13 +875,13 @@ export function ExpandedNote({
                 </div>
               ) : null}
 
-              <section className="detail-section detail-section--constellation-summary note-cornell-summary" aria-label="Cornell summary">
+              <section ref={constellationSectionRef} className="detail-section detail-section--constellation-summary note-cornell-summary" aria-label="Constellation summary">
                 <div className="section-head">
                   <div>
                     <strong>Constellation</strong>
                     <p className="section-hint section-hint--constellation">{constellationIntro}</p>
                   </div>
-                  <button type="button" className="ghost-button" onClick={() => setPanelMode('constellation')}>Open constellation</button>
+                  <span className="section-meta">{relationships.length} direct links</span>
                 </div>
                 <div className="constellation-summary-grid">
                   <div><span>Upstream</span><strong>{upstreamCount}</strong></div>
@@ -854,23 +889,54 @@ export function ExpandedNote({
                   <div><span>Nearby</span><strong>{nearbyCount}</strong></div>
                   <div><span>Faint context</span><strong>{faintContextCount}</strong></div>
                 </div>
+                <div className="connections-flow-list connections-flow-list--compact" aria-label="Constellation links">
+                  {activeRelationshipRows.some((group) => group.items.length) ? activeRelationshipRows.map((group) => (
+                    group.items.length ? (
+                      <section key={group.key} className="connections-flow-group" aria-label={group.label}>
+                        <div className="connections-flow-head">
+                          <strong>{group.label}</strong>
+                          <span>{group.items.length}</span>
+                        </div>
+                        <div className="relations-list relations-list--quiet">
+                          {group.items.slice(0, 4).map((relationship) => (
+                            <button
+                              key={relationship.id}
+                              type="button"
+                              className={`relation-row relation-row--compact relation-row--${relationship.explicitness} relation-row--${group.key} relation-row--${getRelationshipTone(note.id, relationship)}`}
+                              onMouseEnter={() => onHoverRelatedNote(relationship.targetId)}
+                              onMouseLeave={() => onClearRelatedHover(relationship.targetId)}
+                              onClick={() => onOpenRelated(relationship.targetId, relationship.id)}
+                            >
+                              <div className="relation-heading">
+                                <span className="relation-title">{relationship.targetTitle}</span>
+                                <small>{getFlowLabel(note.id, relationship)} · {formatRelationshipType(relationship.type)} · {relationship.explicitness === 'inferred' ? 'Suggested' : 'Confirmed'}</small>
+                              </div>
+                              {relationship.explicitness === 'inferred' ? <p className="relation-explanation">{relationship.explanation}</p> : null}
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    ) : null
+                  )) : <p className="relations-empty">No direct connections yet.</p>}
+                </div>
               </section>
 
-              <div className="note-quiet-utilities">
-                <LowerDisclosure
-                  title="Sources"
-                  summary={
-                    sourceHealth.hasOrphanedEvidence
-                      ? 'Integrity check needed'
-                      : attachmentCount
-                        ? `${attachmentReadyCount}/${attachmentCount} ready`
-                        : sourceNote
-                          ? 'Linked source available'
-                          : 'Quiet until needed'
-                  }
-                  open={sourceSectionOpen}
-                  onToggle={() => toggleUtilityPanel('sources')}
-                >
+              <div ref={sourceSectionRef} className="note-quiet-utilities note-quiet-utilities--stacked">
+                <section className="detail-section detail-section--source-surface" aria-label="Source material">
+                  <div className="section-head">
+                    <div>
+                      <strong>Source</strong>
+                      <p className="section-hint">
+                        {sourceHealth.hasOrphanedEvidence
+                          ? 'Some linked source material needs attention.'
+                          : attachmentCount
+                            ? `${attachmentReadyCount} of ${attachmentCount} attachments are ready to inspect.`
+                            : sourceNote
+                              ? 'This note already points to source material.'
+                              : 'Add files or references when this note needs grounding.'}
+                      </p>
+                    </div>
+                  </div>
                   <div className={`source-health-chip source-health-chip--${sourceHealth.sourceHealthStatus}`}>
                     <strong>Source integrity: {sourceHealthSummaryLabel}</strong>
                     {sourceHealth.breakTypes.length ? <small>Breaks: {sourceHealth.breakTypes.join(', ').replace(/_/g, ' ')}</small> : null}
@@ -928,15 +994,15 @@ export function ExpandedNote({
                     onRemoveAttachment={onRemoveAttachment}
                     onRetryAttachment={onRetryAttachment}
                   />
-                </LowerDisclosure>
+                </section>
 
                 <LowerDisclosure
                   title="Transform"
-                  summary={thinkingActive ? 'Thinking rail is open' : 'One quiet transform at a time'}
+                  summary="Refine, summarize, or reshape this note"
                   open={transformSectionOpen}
                   onToggle={() => toggleUtilityPanel('transform')}
                 >
-                  {!thinkingActive ? (
+                  {(
                     <RefinementComposer
                       selectionActive={Boolean(selectedTextRange?.text.trim())}
                       preview={refinementPreview}
@@ -950,7 +1016,7 @@ export function ExpandedNote({
                       onApplyInsertBelow={applyRefinementInsertBelow}
                       onCancelPreview={clearRefinementPreview}
                     />
-                  ) : null}
+                  )}
                   <div className="quiet-action-row">
                     <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('clarify')}>Clarify</button>
                     <button type="button" className="ghost-button" onClick={() => runOutcomeRefinement('executive_summary')}>Exec summary</button>
@@ -964,74 +1030,28 @@ export function ExpandedNote({
 
           {panelMode === 'edit' ? (
             <div className="expanded-note-main expanded-note-main--edit" data-helpers-visible={helperUI.visible ? 'true' : 'false'}>
-              <div className="note-body-surface" data-mode="edit">
-                <div className="note-edit-stack">
-                  {!thinkingActive && transformSectionOpen ? (
-                    <RefinementComposer
-                      selectionActive={Boolean(selectedTextRange?.text.trim())}
-                      preview={refinementPreview}
-                      previewDraft={refinementPreviewDraft}
-                      customInstruction={customRefinementInstruction}
-                      onSelectPreset={runRefinement}
-                      onCustomInstructionChange={setCustomRefinementInstruction}
-                      onRunCustom={() => runRefinement('custom')}
-                      onPreviewDraftChange={setRefinementPreviewDraft}
-                      onApplyReplace={applyRefinementReplace}
-                      onApplyInsertBelow={applyRefinementInsertBelow}
-                      onCancelPreview={clearRefinementPreview}
-                    />
-                  ) : null}
-
-                  <InlineNoteLinkEditor
-                    note={note}
-                    notes={notes}
-                    relationshipsByTargetId={relationshipsByTargetId}
-                    highlightedTargetId={inlineHighlightedTargetId}
-                    proactiveSuggestions={visibleProactiveSuggestions}
-                    onBodyChange={(body) => onChange(note.id, { body })}
-                    onPromoteSelectionToTask={(selection) => {
-                      const result = onPromoteFragmentToTask(note.id, selection);
-                      if (result.taskNoteId) flashInlineTarget(result.taskNoteId);
-                      setPanelMode('read');
+              <div ref={editSurfaceRef} className="note-body-surface" data-mode="edit">
+                <div className="note-edit-stack note-edit-stack--simple">
+                  <textarea
+                    ref={editFieldRef}
+                    className="note-body-field"
+                    aria-label="Note body"
+                    placeholder="Write in markdown..."
+                    value={note.body}
+                    onChange={(event) => {
+                      onChange(note.id, { body: event.target.value });
+                      const target = event.currentTarget;
+                      target.style.height = 'auto';
+                      const minHeight = Math.max(320, editSurfaceRef.current?.clientHeight ?? 0);
+                      target.style.height = `${Math.max(target.scrollHeight, minHeight)}px`;
                     }}
-                    onCreateLink={({ targetId, type }) => {
-                      onCreateExplicitLink(note.id, targetId, type);
-                      flashInlineTarget(targetId);
+                    onSelect={(event) => {
+                      const target = event.currentTarget;
+                      const start = target.selectionStart ?? 0;
+                      const end = target.selectionEnd ?? 0;
+                      const text = target.value.slice(start, end);
+                      setSelectedTextRange(start === end ? null : { start, end, text });
                     }}
-                    onCreateLinkedNote={(title, type) => {
-                      const targetId = onCreateInlineLinkedNote(note.id, title, type);
-                      if (targetId) flashInlineTarget(targetId);
-                      return targetId;
-                    }}
-                    onUpdateRelationshipType={(relationshipId, type, targetId) => {
-                      const relationship = relationships.find((item) => item.id === relationshipId);
-                      if (!relationship) return;
-                      onUpdateRelationship(relationshipId, type, relationship.fromId, relationship.toId);
-                      flashInlineTarget(targetId);
-                    }}
-                    onHighlightTarget={(targetId) => {
-                      setInlineHighlightedTargetId(targetId);
-                      onHoverRelatedNote(targetId);
-                    }}
-                    onClearHighlight={(targetId) => {
-                      onClearRelatedHover(targetId);
-                      setInlineHighlightedTargetId((current) => (current === targetId ? null : current));
-                    }}
-                    onAcceptProactiveSuggestion={(suggestionId) => {
-                      const suggestion = visibleProactiveSuggestions.find((item) => item.id === suggestionId);
-                      if (!suggestion) return;
-                      acceptSuggestedLink(suggestion);
-                    }}
-                    onDismissProactiveSuggestion={(suggestionId) => {
-                      setDismissedSuggestionIds((current) => [...new Set([...current, suggestionId])]);
-                    }}
-                    onChangeProactiveSuggestionType={(suggestionId, type) => {
-                      setSuggestionTypeOverrides((current) => ({ ...current, [suggestionId]: type }));
-                    }}
-                    onSelectionChange={setSelectedTextRange}
-                    sourceJumpRequest={sourceJumpRequest}
-                    onSourceJumpConsumed={() => setSourceJumpRequest(null)}
-                    showProactiveSuggestions={helperUI.showProactiveSuggestions}
                   />
                 </div>
               </div>
@@ -1099,11 +1119,11 @@ export function ExpandedNote({
               {helperUI.visible ? <div className="note-quiet-utilities">
                 <LowerDisclosure
                   title="Transform"
-                  summary={thinkingActive ? 'Thinking rail is open' : 'Refine only when needed'}
+                  summary="Refine, summarize, or reshape this note"
                   open={transformSectionOpen}
                   onToggle={() => toggleUtilityPanel('transform')}
                 >
-                  {!thinkingActive ? (
+                  {(
                     <RefinementComposer
                       selectionActive={Boolean(selectedTextRange?.text.trim())}
                       preview={refinementPreview}
@@ -1117,7 +1137,7 @@ export function ExpandedNote({
                       onApplyInsertBelow={applyRefinementInsertBelow}
                       onCancelPreview={clearRefinementPreview}
                     />
-                  ) : null}
+                  )}
                 </LowerDisclosure>
 
                 <LowerDisclosure title="Anchored in" summary={workspaceSummary} open={workspaceSectionOpen} onToggle={() => toggleUtilityPanel('workspace')}>
@@ -1130,18 +1150,32 @@ export function ExpandedNote({
                       onClick={() => setComposerSurface((current) => current === 'workspace' ? null : 'workspace')}
                     />
                   </div>
-                  <div className="organize-choice-list">
-                    <label className="project-membership-row project-membership-row--empty">
-                      <input type="radio" name={`workspace-${note.id}`} checked={!note.workspaceId} onChange={() => onSetWorkspaceId(note.id, null)} />
-                      <span><strong>Assign later</strong><small>Keep this note in the shared field for now.</small></span>
-                    </label>
-                    {workspaces.map((workspace) => (
-                      <label key={workspace.id} className="project-membership-row" style={{ ['--project-accent' as string]: workspace.color }}>
-                        <input type="radio" name={`workspace-${note.id}`} checked={note.workspaceId === workspace.id} onChange={() => onSetWorkspaceId(note.id, workspace.id)} />
-                        <span><strong>{workspace.name}</strong><small>{workspace.key}</small></span>
+                    <div className="organize-choice-list">
+                      <label className="project-membership-row project-membership-row--empty">
+                        <input type="checkbox" checked={!note.workspaceIds?.length && !note.workspaceId} onChange={() => onSetWorkspaceIds?.(note.id, []) ?? onSetWorkspaceId(note.id, null)} />
+                        <span><strong>Shared field only</strong><small>Keep this note visible without a workspace lens.</small></span>
                       </label>
-                    ))}
-                  </div>
+                      {workspaces.map((workspace) => (
+                        <label key={workspace.id} className="project-membership-row" style={{ ['--project-accent' as string]: workspace.color }}>
+                          <input
+                            type="checkbox"
+                            checked={(note.workspaceIds ?? (note.workspaceId ? [note.workspaceId] : [])).includes(workspace.id)}
+                            onChange={(event) => {
+                              const currentWorkspaceIds = note.workspaceIds ?? (note.workspaceId ? [note.workspaceId] : []);
+                              const next = event.target.checked
+                                ? [...currentWorkspaceIds, workspace.id]
+                                : currentWorkspaceIds.filter((workspaceId) => workspaceId !== workspace.id);
+                              if (onSetWorkspaceIds) {
+                                onSetWorkspaceIds(note.id, next);
+                              } else {
+                                onSetWorkspaceId(note.id, next[0] ?? null);
+                              }
+                            }}
+                          />
+                          <span><strong>{workspace.name}</strong><small>{workspace.key}</small></span>
+                        </label>
+                      ))}
+                    </div>
                   {showWorkspaceComposer ? (
                     <div className="project-compose-inline">
                       <div className="project-compose-grid">
@@ -1233,11 +1267,11 @@ export function ExpandedNote({
               {attachmentCount > 0 ? (
                 <LowerDisclosure
                   title="Transform"
-                  summary={thinkingActive ? 'Thinking rail is open' : 'Source-aware transforms'}
+                  summary="Refine from attached source material"
                   open={transformSectionOpen}
                   onToggle={() => toggleUtilityPanel('transform')}
                 >
-                  {!thinkingActive ? (
+                  {(
                     <RefinementComposer
                       selectionActive={Boolean(selectedTextRange?.text.trim())}
                       preview={refinementPreview}
@@ -1251,7 +1285,7 @@ export function ExpandedNote({
                       onApplyInsertBelow={applyRefinementInsertBelow}
                       onCancelPreview={clearRefinementPreview}
                     />
-                  ) : null}
+                  )}
                 </LowerDisclosure>
               ) : null}
             </div>

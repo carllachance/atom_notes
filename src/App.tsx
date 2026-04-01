@@ -6,7 +6,6 @@ import { HomeSurface } from './components/HomeSurface';
 import { NoteOpenOverlayScene } from './components/NoteOpenOverlayScene';
 import { RecallBand } from './components/RecallBand';
 import { RelationshipWeb } from './components/RelationshipWeb';
-import { ShelfView } from './components/ShelfView';
 import { CanvasViewportMetrics } from './components/relationshipWebGeometry';
 import { SpatialCanvas } from './components/SpatialCanvas';
 import { ThinkingSurface } from './components/ThinkingSurface';
@@ -17,9 +16,10 @@ import { getLearningLensShellMode } from './scene/learningLensShell';
 import { useSceneController } from './scene/useSceneController';
 import { buildMemorySummary } from './store/memorySummary';
 import { createBookmark, recordHistoryEntry, useBookmarks, useHistoryStack } from './store/sessionSlice';
+import type { NoteCardModel } from './types';
 
 export function App() {
-  const [browseSurface, setBrowseSurface] = useState<'shelf' | 'canvas'>('shelf');
+  const horizonEnabled = false;
   const [isMobileViewport, setIsMobileViewport] = useState(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 900px)').matches : false));
   const [canvasMetrics, setCanvasMetrics] = useState<CanvasViewportMetrics | null>(null);
   const [notePanelPositions, setNotePanelPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -49,8 +49,10 @@ export function App() {
     deletedNotes,
     projects,
     workspaces,
+    sceneMode,
     lensPresentation,
     focusCount,
+    focusSuggestions,
     pendingAction,
     hoveredNoteId,
     relationshipFilter,
@@ -79,6 +81,7 @@ export function App() {
     goBackFocusLens,
     pinFocusLens,
     resetFocusLens,
+    switchSceneMode,
     updateNote,
     bringToFront,
     setIsDragging,
@@ -99,6 +102,7 @@ export function App() {
     setNoteProjects,
     createProjectForNote,
     setNoteWorkspace,
+    setNoteWorkspaces,
     createWorkspaceForNote,
     addAttachmentsToActiveNote,
     removeAttachment,
@@ -138,7 +142,7 @@ export function App() {
     cancelPendingAction
   } = useSceneController();
   const canvasVisibility = summarizeCanvasVisibility(scene, lensPresentation, visibleNotes, canvasMetrics);
-  const thinkingRailVisible = scene.expandedSecondarySurface === 'thinking';
+  const thinkingRailVisible = horizonEnabled && scene.expandedSecondarySurface === 'thinking';
   const captureExpanded = scene.expandedSecondarySurface === 'capture';
   const captureCompactedForOpenNote = isMobileViewport && Boolean(activeNote);
   const mobileNoteMode = isMobileViewport && Boolean(activeNote);
@@ -155,6 +159,7 @@ export function App() {
     [historyStack, bookmarks, scene.notes, activeNote?.id]
   );
   const learningLensShellMode = getLearningLensShellMode(onboardingProfile);
+  const desktopNoteOpen = Boolean(activeNote) && !mobileNoteMode;
 
   useEffect(() => {
     if (hasAutoRecoveredRef.current) return;
@@ -187,6 +192,8 @@ export function App() {
       setLens({ kind: 'project', projectId: null, mode: 'context' });
     } else if (entry.lensKind === 'workspace') {
       setLens({ kind: 'workspace', workspaceId: null, mode: 'context' });
+    } else if (entry.lensKind === 'library') {
+      setLens({ kind: 'library' });
     }
     setFocusMode(entry.focusMode);
     setReentryExpanded(false);
@@ -206,76 +213,118 @@ export function App() {
     setReentryExpanded(false);
   }, [onOpenNote, setLens, setFocusMode]);
 
+  const handleResetToDefault = useCallback(() => {
+    setLens({ kind: 'universe' });
+    setFocusMode({ highlight: true, isolate: false });
+    onRevealQueryChange('');
+    clearCanvasFilters();
+    clearCanvasFocus();
+    resetFocusLens();
+    setReentryExpanded(false);
+  }, [clearCanvasFilters, clearCanvasFocus, onRevealQueryChange, resetFocusLens, setFocusMode, setLens]);
+
+  const expandedNoteProps = activeNote ? {
+    projects,
+    workspaces,
+    relationships: relationshipPanelItems,
+    inspectedRelationship,
+    canUndoRelationshipEdit,
+    activeProjectRevealId: lensPresentation.activeProject?.id ?? null,
+    activeWorkspaceLensId: lensPresentation.activeWorkspace?.id ?? null,
+    thinkingActive: thinkingRailVisible,
+    hasFreshInsights,
+    initialPosition: desktopNoteOpen ? undefined : notePanelPositions[activeNote.id],
+    rightInset: thinkingRailReservedInset,
+    bottomInset: captureDockInset,
+    onClose: closeActiveNote,
+    onThinkAboutNote: () => setExpandedSurface('thinking'),
+    onDelete: deleteActiveNote,
+    onChange: (id: string, updates: Partial<NoteCardModel>) => {
+      const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
+      updateNote(id, updates, trace);
+    },
+    onArchive: onArchiveNote,
+    onRestoreArchive: restoreArchivedNote,
+    onOpenRelated: traverseToRelated,
+    onInspectRelationship: inspectRelationship,
+    onCloseRelationshipInspector: closeRelationshipInspector,
+    onCreateExplicitLink: createExplicitRelationship,
+    onCreateInlineLinkedNote: createInlineLinkedNote,
+    onConfirmRelationship: confirmRelationship,
+    onPromoteFragmentToTask: promoteNoteFragmentToTask,
+    onSetTaskState: setTaskState,
+    onUpdateRelationship: updateRelationship,
+    onRemoveRelationship: removeRelationship,
+    onUndoRelationshipEdit: undoRelationshipEdit,
+    onToggleFocus: toggleNoteFocus,
+    onSetProjectIds: setNoteProjects,
+    onCreateProject: createProjectForNote,
+    onSetWorkspaceId: setNoteWorkspace,
+    onSetWorkspaceIds: setNoteWorkspaces,
+    onCreateWorkspace: createWorkspaceForNote,
+    onSetProjectLens: (projectId: string | null) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' }),
+    onSetWorkspaceLens: (workspaceId: string | null) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' }),
+    onAddAttachments: addAttachmentsToActiveNote,
+    onRemoveAttachment: removeAttachment,
+    onRetryAttachment: retryAttachmentProcessing,
+    onHoverRelatedNote: onHoverStart,
+    onClearRelatedHover: onHoverEnd,
+    focusLensRelatedNotes: focusLensPresentation.relatedNotes,
+    focusLensOverflowCount: focusLensPresentation.overflowCount,
+    hoveredRelatedNoteId: hoveredNoteId,
+    focusLensCanGoBack: focusLensPresentation.canGoBack,
+    focusLensPinned: focusLensPresentation.pinned,
+    onFocusLensBack: goBackFocusLens,
+    onFocusLensPin: pinFocusLens,
+    onFocusLensReset: resetFocusLens,
+    onPositionChange: desktopNoteOpen ? undefined : (noteId: string, position: { x: number; y: number }) => setNotePanelPositions((current) => ({ ...current, [noteId]: position })),
+    studyActionsEnabled,
+    studySupportBlocks,
+    studyGenerationLoading,
+    studyGenerationError,
+    onRunStudyAction: runStudyAction,
+    onRemoveStudyBlock: removeStudyBlock
+  } : null;
+
   return (
     <ThinkingSurface>
       <RecallBand
-        count={visibleNotes.length}
-        totalCount={totalActiveNotes}
-        archivedCount={archivedNotes.length}
         lens={scene.lens}
-        lensLabel={lensPresentation.lensLabel}
-        projects={projects}
-        workspaces={workspaces}
         focusMode={scene.focusMode}
         focusCount={focusCount}
         revealQuery={revealState.query}
-        revealMatchCount={visibleRevealMatchIds.length}
         onSetLens={setLens}
-        onSetFocusMode={setFocusMode}
         onOpenComposer={() => onCaptureDraftChange(scene.captureComposer.draft)}
         onRevealQueryChange={onRevealQueryChange}
         onReveal={onReveal}
-        onRevealPrev={onRevealPrev}
-        onRevealNext={onRevealNext}
-        onResetView={resetView}
-        onFitAllNotes={fitAllNotes}
-        onClearFocus={clearCanvasFocus}
-        onClearFilters={clearCanvasFilters}
-        canClearFocus={scene.focusMode.isolate || scene.focusMode.highlight}
-        canClearFilters={scene.lens.kind !== 'universe'}
-        recallCue={recallCue ? { noteTitle: recallCue.noteTitle, suggestedNextStep: recallCue.suggestedNextStep } : null}
-        onAdvanceRecallCue={onAdvanceRecallCue}
-        onClearRecallCue={onClearRecallCue}
-        demoLinks={demoLinks}
-        // DG-2 AN-007/AN-008/AN-009: Re-entry props
         historyStack={historyStack}
         bookmarks={bookmarks}
-        memorySummary={memorySummary.summary}
-        memorySummarySource={memorySummary.source}
         reentryExpanded={reentryExpanded}
         onToggleReentry={() => setReentryExpanded(!reentryExpanded)}
         onRestoreHistory={handleRestoreHistory}
-        onDropPin={handleDropPin}
         onRestoreBookmark={handleRestoreBookmark}
-        browseSurface={browseSurface}
-        onBrowseSurfaceChange={setBrowseSurface}
-        horizonOpen={thinkingRailVisible}
-        onToggleHorizon={() => setExpandedSurface(thinkingRailVisible ? 'none' : 'thinking')}
-        noteOpen={Boolean(activeNote)}
+        focusSuggestions={focusSuggestions}
+        sceneMode={sceneMode}
+        onSetSceneMode={switchSceneMode}
+        onResetToDefault={handleResetToDefault}
       />
 
-      <section className={`workspace-shell ${isMobileViewport ? 'workspace-shell--mobile-capture' : ''} ${mobileNoteMode ? 'workspace-shell--mobile-note-open' : ''}`}>
-        <section className="view-stack" data-lens={scene.lens.kind}>
-          {!activeNote && browseSurface === 'shelf' ? (
-            <ShelfView
-              notes={scene.notes}
-              relationships={scene.relationships}
-              projects={projects}
-              workspaces={workspaces}
-              onOpenNote={onOpenNote}
-              onUpdateNote={(id, updates) => updateNote(id, updates, 'refined')}
-            />
+      <section className={`workspace-shell ${isMobileViewport ? 'workspace-shell--mobile-capture' : ''} ${mobileNoteMode ? 'workspace-shell--mobile-note-open' : ''} ${desktopNoteOpen ? 'workspace-shell--desktop-note-open' : ''} ${desktopNoteOpen && thinkingRailVisible ? 'workspace-shell--horizon-open' : ''}`}>
+        <section className={`view-stack ${mobileNoteMode ? 'view-stack--note-open' : 'view-stack--browse'}`} data-lens={scene.lens.kind}>
+          {!mobileNoteMode ? (
+            <div className={`home-surface-frame ${activeNote ? 'home-surface-frame--note-open' : ''}`}>
+              <HomeSurface
+                notes={scene.notes}
+                workspaces={workspaces}
+                projects={projects}
+                lens={scene.lens}
+                focusSuggestions={focusSuggestions}
+                onOpenNote={onOpenNote}
+                onSetLens={setLens}
+              />
+            </div>
           ) : null}
-          {!activeNote && browseSurface === 'canvas' ? (
-            <HomeSurface
-              notes={scene.notes}
-              deletedNotes={deletedNotes}
-              lastCreatedNoteId={scene.captureComposer.lastCreatedNoteId}
-              onOpenNote={onOpenNote}
-              onRestoreDeletedNote={restoreDeletedNote}
-            />
-          ) : null}
-          <div className={`view-layer view-layer-canvas ${!activeNote && browseSurface === 'shelf' ? 'view-layer-canvas--hidden' : ''} ${activeNote ? 'view-layer-canvas--note-mode' : ''}`}>
+          <div className={`view-layer view-layer-canvas ${!activeNote || desktopNoteOpen ? 'view-layer-canvas--hidden' : ''} ${activeNote ? 'view-layer-canvas--note-mode' : ''}`}>
             <NoteOpenOverlayScene
               notes={scene.notes}
               visibleNotes={visibleNotes}
@@ -324,67 +373,7 @@ export function App() {
                 onHoverEnd,
                 reservedRightInset: 0
               }}
-              expandedNoteProps={{
-                projects,
-                workspaces,
-                relationships: relationshipPanelItems,
-                inspectedRelationship,
-                canUndoRelationshipEdit,
-                activeProjectRevealId: lensPresentation.activeProject?.id ?? null,
-                activeWorkspaceLensId: lensPresentation.activeWorkspace?.id ?? null,
-                thinkingActive: thinkingRailVisible,
-                hasFreshInsights,
-                initialPosition: activeNote ? notePanelPositions[activeNote.id] : undefined,
-                rightInset: thinkingRailReservedInset,
-                bottomInset: captureDockInset,
-                onClose: closeActiveNote,
-                onThinkAboutNote: () => setExpandedSurface('thinking'),
-                onDelete: deleteActiveNote,
-                onChange: (id, updates) => {
-                  const trace = 'title' in updates || 'body' in updates ? 'refined' : 'idle';
-                  updateNote(id, updates, trace);
-                },
-                onArchive: onArchiveNote,
-                onRestoreArchive: restoreArchivedNote,
-                onOpenRelated: traverseToRelated,
-                onInspectRelationship: inspectRelationship,
-                onCloseRelationshipInspector: closeRelationshipInspector,
-                onCreateExplicitLink: createExplicitRelationship,
-                onCreateInlineLinkedNote: createInlineLinkedNote,
-                onConfirmRelationship: confirmRelationship,
-                onPromoteFragmentToTask: promoteNoteFragmentToTask,
-                onSetTaskState: setTaskState,
-                onUpdateRelationship: updateRelationship,
-                onRemoveRelationship: removeRelationship,
-                onUndoRelationshipEdit: undoRelationshipEdit,
-                onToggleFocus: toggleNoteFocus,
-                onSetProjectIds: setNoteProjects,
-                onCreateProject: createProjectForNote,
-                onSetWorkspaceId: setNoteWorkspace,
-                onCreateWorkspace: createWorkspaceForNote,
-                onSetProjectLens: (projectId) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' }),
-                onSetWorkspaceLens: (workspaceId) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' }),
-                onAddAttachments: addAttachmentsToActiveNote,
-                onRemoveAttachment: removeAttachment,
-                onRetryAttachment: retryAttachmentProcessing,
-                onHoverRelatedNote: onHoverStart,
-                onClearRelatedHover: onHoverEnd,
-                focusLensRelatedNotes: focusLensPresentation.relatedNotes,
-                focusLensOverflowCount: focusLensPresentation.overflowCount,
-                hoveredRelatedNoteId: hoveredNoteId,
-                focusLensCanGoBack: focusLensPresentation.canGoBack,
-                focusLensPinned: focusLensPresentation.pinned,
-                onFocusLensBack: goBackFocusLens,
-                onFocusLensPin: pinFocusLens,
-                onFocusLensReset: resetFocusLens,
-                onPositionChange: (noteId, position) => setNotePanelPositions((current) => ({ ...current, [noteId]: position })),
-                studyActionsEnabled,
-                studySupportBlocks,
-    studyGenerationLoading,
-    studyGenerationError,
-                onRunStudyAction: runStudyAction,
-                onRemoveStudyBlock: removeStudyBlock
-              }}
+              expandedNoteProps={expandedNoteProps as NonNullable<typeof expandedNoteProps>}
               components={{
                 SpatialCanvasComponent: SpatialCanvas,
                 RelationshipWebComponent: RelationshipWeb,
@@ -421,32 +410,46 @@ export function App() {
             ) : null}
             {!activeNote && scene.lens.kind === 'workspace' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are anchored in this workspace yet. Keep the scope, then capture or assign notes into it.</div> : null}
             {!activeNote && scene.lens.kind === 'project' && visibleNotes.length === 0 ? <div className="lens-empty-state">No notes are attached to this project yet. Add a project inside a note to give it a calm shared cluster.</div> : null}
+            {!activeNote && scene.lens.kind === 'library' && visibleNotes.length === 0 ? <div className="lens-empty-state">No library material yet. Notes with attachments, external references, and reusable source links will gather here.</div> : null}
           </div>
         </section>
 
-        <AIPanel
-          panel={scene.aiPanel}
-          isOpen={thinkingRailVisible}
-          selectedNote={activeNote}
-          contextLabel={lensPresentation.lensLabel}
-          notes={scene.notes}
-          streamedResponse={streamingResponse}
-          timelineEntries={activeInsightTimeline}
-          streaming={isStreamingResponse}
-          onToggle={() => setExpandedSurface(thinkingRailVisible ? 'none' : 'thinking')}
-          onModeChange={(mode) => setAIPanel({ mode })}
-          onQueryChange={(query) => setAIPanel({ query })}
-          onRun={runInsights}
-          onOpenReference={openAIReference}
-          pendingAction={pendingAction}
-          onPreviewAction={setPendingAction}
-          onConfirmAction={confirmPendingAction}
-          onCancelAction={cancelPendingAction}
-          width={thinkingRailWidth}
-          onWidthChange={setThinkingRailWidth}
-          // DG-2 AN-015/AN-016: AI interaction mode
-          onInteractionModeChange={(mode) => setAIPanel({ interactionMode: mode })}
-        />
+        {desktopNoteOpen && activeNote && expandedNoteProps ? (
+          <aside className="workspace-note-panel" aria-label="Open note">
+            <ExpandedNote
+              {...expandedNoteProps}
+              note={activeNote}
+              notes={scene.notes}
+              noteProjects={activeNoteProjects}
+              noteWorkspace={activeWorkspace}
+            />
+          </aside>
+        ) : null}
+
+        {horizonEnabled ? (
+          <AIPanel
+            panel={scene.aiPanel}
+            isOpen={thinkingRailVisible}
+            selectedNote={activeNote}
+            contextLabel={lensPresentation.lensLabel}
+            notes={scene.notes}
+            streamedResponse={streamingResponse}
+            timelineEntries={activeInsightTimeline}
+            streaming={isStreamingResponse}
+            onToggle={() => setExpandedSurface(thinkingRailVisible ? 'none' : 'thinking')}
+            onModeChange={(mode) => setAIPanel({ mode })}
+            onQueryChange={(query) => setAIPanel({ query })}
+            onRun={runInsights}
+            onOpenReference={openAIReference}
+            pendingAction={pendingAction}
+            onPreviewAction={setPendingAction}
+            onConfirmAction={confirmPendingAction}
+            onCancelAction={cancelPendingAction}
+            width={thinkingRailWidth}
+            onWidthChange={setThinkingRailWidth}
+            onInteractionModeChange={(mode) => setAIPanel({ interactionMode: mode })}
+          />
+        ) : null}
       </section>
 
       {!mobileNoteMode ? (

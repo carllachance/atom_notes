@@ -25,7 +25,7 @@ function makeScene(): SceneState {
 test('sceneActions updates note content with normalized title, trace, project ids, and workspace ids', (t: any) => {
   t.mock.method(Date, 'now', () => 999);
   const next = updateNoteInScene(makeScene(), 'n1', { title: '  ', body: 'updated', projectIds: ['p1', 'p1'], workspaceId: 'ws-1' }, 'refined');
-  assert.deepEqual(next.notes[0], { ...makeScene().notes[0], title: null, body: 'updated', trace: 'refined', updatedAt: 999, projectIds: ['p1'], workspaceId: 'ws-1' });
+  assert.deepEqual(next.notes[0], { ...makeScene().notes[0], title: null, body: 'updated', trace: 'refined', updatedAt: 999, projectIds: ['p1'], workspaceId: 'ws-1', workspaceIds: ['ws-1'] });
 });
 
 test('sceneActions handle open, close, archive, restore, focus, and composer semantics', () => {

@@ -1,7 +1,7 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { demoNotes, demoRelationships, demoWorkspaces } from '../data/demoSeed';
-import { loadScene, saveScene, SCENE_KEY } from '../scene/sceneStorage';
+import { getSceneStoreMode, loadScene, loadSceneForMode, saveScene, saveSceneForMode, SCENE_KEY, setSceneStoreMode } from '../scene/sceneStorage';
 import { STUDY_PERSISTENCE_KEY } from '../learning/studyPersistence';
 import type { SceneState } from '../types';
 
@@ -32,6 +32,45 @@ test('sceneStorage loads the synthetic demo scene when no persisted data exists'
   assert.deepEqual(scene.captureComposer, { draft: '', lastCreatedNoteId: null });
   assert.deepEqual(scene.focusMode, { highlight: true, isolate: false });
   assert.equal(scene.expandedSecondarySurface, 'none');
+});
+
+test('sceneStorage can switch to a blank local workspace', () => {
+  setSceneStoreMode('blank');
+  const scene = loadScene();
+  assert.equal(getSceneStoreMode(), 'blank');
+  assert.equal(scene.notes.length, 0);
+  assert.equal(scene.projects.length, 0);
+  assert.equal(scene.workspaces.length, 0);
+});
+
+test('sceneStorage keeps sample and blank workspaces separate', () => {
+  const sampleScene = loadSceneForMode('sample');
+  const blankScene = loadSceneForMode('blank');
+
+  saveSceneForMode({
+    ...blankScene,
+    notes: [{
+      id: 'blank-note',
+      title: 'My note',
+      body: 'Fresh workspace',
+      anchors: [],
+      trace: 'idle',
+      x: 0,
+      y: 0,
+      z: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      archived: false,
+      deleted: false,
+      deletedAt: null,
+      projectIds: [],
+      workspaceIds: [],
+      workspaceId: null
+    }],
+  }, 'blank');
+
+  assert.equal(loadSceneForMode('sample').notes.length, sampleScene.notes.length);
+  assert.equal(loadSceneForMode('blank').notes[0]?.id, 'blank-note');
 });
 
 test('sceneStorage upgrades the legacy welcome seed to the synthetic demo scene', () => {
