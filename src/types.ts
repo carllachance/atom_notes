@@ -15,6 +15,7 @@ export type ProjectLens = {
 export type WorkspaceLens = {
   kind: 'workspace';
   workspaceId: string | null;
+  workspaceIds?: string[];
   mode: LensScopeMode;
 };
 
@@ -26,6 +27,7 @@ export type RevealLens = {
   kind: 'reveal';
   query: string;
   workspaceId: string | null;
+  workspaceIds?: string[];
   projectId: string | null;
   mode: LensScopeMode;
 };
@@ -288,6 +290,181 @@ export type InsightsResponse = {
   highlightNoteIds?: string[];
 };
 
+export type ButlerItemCategory = 'email' | 'reporting' | 'notes' | 'calendar' | 'research' | 'admin' | 'custom';
+export type ButlerPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type ButlerStatus = 'intake' | 'clarifying' | 'planned' | 'running' | 'awaiting_review' | 'blocked' | 'completed' | 'canceled' | 'stale';
+export type ButlerConfidence = 'low' | 'medium' | 'high';
+export type ButlerReviewRequirement = 'none' | 'recommended' | 'required';
+export type ButlerTrustTier = 'reversible_only' | 'review_before_action' | 'allowed_autocomplete';
+export type ButlerApprovalState = 'not_needed' | 'pending' | 'approved' | 'rejected';
+export type ButlerSourceContextKind = 'notes' | 'thread' | 'project' | 'file' | 'conversation' | 'inbox' | 'calendar' | 'manual_attachments';
+
+export type ButlerSourceContext = {
+  kind: ButlerSourceContextKind;
+  label: string;
+  sourceIds: string[];
+};
+
+export type GmailCleanupSenderCandidate = {
+  sender: string;
+  messageCount: number;
+  latestSubject: string;
+  hasListUnsubscribe: boolean;
+};
+
+export type GmailCleanupAnalysis = {
+  source: 'live' | 'fallback';
+  scannedMessageCount: number;
+  unsubscribeCandidateCount: number;
+  senderCandidates: GmailCleanupSenderCandidate[];
+  summary: string;
+  generatedAt: number;
+  unavailableReason?: string;
+};
+
+export type OutlookUnreadMessage = {
+  id: string;
+  from: string;
+  subject: string;
+  preview: string;
+  receivedAt: string;
+  importance: 'low' | 'normal' | 'high';
+  webLink?: string;
+};
+
+export type OutlookUnreadAnalysis = {
+  source: 'live' | 'fallback';
+  unreadCount: number;
+  urgentCount: number;
+  messages: OutlookUnreadMessage[];
+  summary: string;
+  generatedAt: number;
+  unavailableReason?: string;
+};
+
+export type ButlerClarificationQuestion = {
+  id: string;
+  prompt: string;
+  detail: string;
+  placeholder?: string;
+  options?: string[];
+  answer?: string;
+ };
+
+export type WorkflowStepType =
+  | 'gather_context'
+  | 'search'
+  | 'summarize'
+  | 'extract'
+  | 'draft'
+  | 'format'
+  | 'verify'
+  | 'package'
+  | 'notify'
+  | 'create_artifact'
+  | 'handoff';
+
+export type WorkflowStepStatus = 'pending' | 'running' | 'completed' | 'blocked';
+export type ArtifactType = 'email_draft' | 'note_draft' | 'summary' | 'meeting_brief' | 'report_package' | 'checklist' | 'calendar_draft' | 'tool_spec' | 'workflow_template';
+export type ArtifactStatus = 'draft' | 'revised' | 'ready_for_review' | 'approved' | 'archived' | 'superseded';
+export type ExecutionActorType = 'user' | 'orchestrator' | 'subagent' | 'tool' | 'human_reviewer';
+export type MemoryPreferenceScope = 'global' | 'project' | 'contact_group' | 'workflow_specific';
+export type MemoryPreferenceSource = 'explicit' | 'inferred_confirmed' | 'repeated_behavior';
+
+export type WorkflowStep = {
+  id: string;
+  type: WorkflowStepType;
+  title: string;
+  description: string;
+  inputs: string[];
+  expectedOutputs: string[];
+  status: WorkflowStepStatus;
+  assignedAgentRole?: string;
+  toolBindings: string[];
+  evidence: string[];
+  errors: string[];
+  isReversible: boolean;
+  needsApproval: boolean;
+};
+
+export type WorkflowPlan = {
+  id: string;
+  butlerItemId: string;
+  title: string;
+  goal: string;
+  steps: WorkflowStep[];
+  requiredCapabilities: string[];
+  requiredTools: string[];
+  approvalCheckpoints: string[];
+  fallbackBehavior: string;
+  successCriteria: string[];
+  failureModes: string[];
+  generatedBy: 'rule' | 'pattern' | 'agent' | 'saved_template';
+  templateId?: string | null;
+};
+
+export type Artifact = {
+  id: string;
+  type: ArtifactType;
+  title: string;
+  body: string;
+  linkedSourceIds: string[];
+  generatedAt: number;
+  version: number;
+  status: ArtifactStatus;
+  provenance: string;
+  changeSummary: string;
+  metadata?: Record<string, string | number | boolean | null>;
+};
+
+export type ExecutionLog = {
+  id: string;
+  butlerItemId: string;
+  timestamp: number;
+  actorType: ExecutionActorType;
+  action: string;
+  result: string;
+  evidenceLinks: string[];
+  notes: string;
+};
+
+export type MemoryPreference = {
+  id: string;
+  scope: MemoryPreferenceScope;
+  key: string;
+  value: string;
+  confidence: ButlerConfidence;
+  source: MemoryPreferenceSource;
+  lastUsedAt: number;
+  editable: boolean;
+};
+
+export type ButlerItem = {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+  createdBy: string;
+  rawIntentText: string;
+  interpretedIntent: string;
+  category: ButlerItemCategory;
+  priority: ButlerPriority;
+  status: ButlerStatus;
+  confidence: ButlerConfidence;
+  reviewRequirement: ButlerReviewRequirement;
+  trustTier: ButlerTrustTier;
+  sourceContext: ButlerSourceContext[];
+  workflowPlanId: string | null;
+  artifactIds: string[];
+  executionLogIds: string[];
+  assumptions: string[];
+  uncertainties: string[];
+  clarificationQuestions: ButlerClarificationQuestion[];
+  approvalState: ButlerApprovalState;
+  memoryLinks: string[];
+  reuseSignals: string[];
+  delegationLabel: string;
+};
+
 export type InsightTimelineAction =
   | {
       id: string;
@@ -345,6 +522,11 @@ export type SceneState = {
   libraryItems?: StandaloneReference[];
   researchSourceSets?: ResearchSourceSet[];
   insightTimeline?: InsightTimelineEntry[];
+  butlerItems?: ButlerItem[];
+  workflowPlans?: WorkflowPlan[];
+  artifacts?: Artifact[];
+  executionLogs?: ExecutionLog[];
+  memoryPreferences?: MemoryPreference[];
   isDragging: boolean;
   activeNoteId: string | null;
   expandedSecondarySurface: ExpandedSecondarySurface;

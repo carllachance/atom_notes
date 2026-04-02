@@ -9,7 +9,9 @@ import { getRankedRelationshipsForNote, getRelationshipTargetNoteId, refreshInfe
 import { ActionSuggestion, AIInteractionMode, InsightsResponse, Relationship, RelationshipType, SceneState } from '../types';
 import { getWorkspaceForNote } from '../workspaces/workspaceSelectors';
 import { getSceneStoreMode, loadScene, loadSceneForMode, saveScene, saveSceneForMode, setSceneStoreMode, type SceneStoreMode } from './sceneStorage';
-import { getLensPresentation } from './lens';
+import { getLensPresentation, getLensWorkspaceIds } from './lens';
+import { runButlerRequest } from '../butler/services/butlerOrchestrator';
+import { appendButlerResult } from '../butler/state/butlerActions';
 import { OnboardingProfile, shouldOfferStudyActions, StarterLensId, StudyInteractionType } from '../learning/studyModel';
 import { setActiveStarterLens as applyActiveStarterLens } from '../learning/lensPresets';
 import { removeStudyBlockForNote, selectStudyBlocksForNote, selectStudyInteractionsForNote, upsertStudyBlockForNote, upsertStudyInteractionForNote } from '../learning/studyState';
@@ -23,6 +25,9 @@ import { FocusLensSession, buildFocusLensPresentation, pinFocusLensLayout, resto
 import { getCanvasRecoveryCenter } from './canvasVisibility';
 import { ensureInboxWorkspace } from '../workspaces/workspaceModel';
 import { getSuggestedFocusCandidates } from './focusSuggestions';
+import { fetchGmailCleanupAnalysis, isGmailCleanupIntent } from '../integrations/gmailCleanupRuntime';
+import { fetchOutlookUnreadAnalysis, isOutlookUnreadIntent } from '../integrations/outlookInboxRuntime';
+import { loadMailboxAuthState, saveMailboxAuthState } from '../integrations/mailboxAuthStorage';
 
 const CTRL_DOUBLE_TAP_MS = 320;
 const NOTE_WIDTH = 270;
@@ -442,11 +447,13 @@ export function useSceneController() {
   const onRevealQueryChange = useCallback((query: string) => {
     setScene((prev) => {
       const projectId = prev.lens.kind === 'project' || prev.lens.kind === 'reveal' ? prev.lens.projectId ?? null : null;
-      const workspaceId = prev.lens.kind === 'workspace' || prev.lens.kind === 'reveal' ? prev.lens.workspaceId ?? null : null;
+      const workspaceIds = prev.lens.kind === 'workspace' || prev.lens.kind === 'reveal' ? getLensWorkspaceIds(prev.lens) : [];
       const mode = prev.lens.kind === 'project' || prev.lens.kind === 'workspace' || prev.lens.kind === 'reveal' ? prev.lens.mode : 'context';
       return {
         ...prev,
-        lens: query.trim() ? { kind: 'reveal', query, projectId, workspaceId, mode } : { kind: 'universe' }
+        lens: query.trim()
+          ? { kind: 'reveal', query, projectId, workspaceId: workspaceIds[0] ?? null, workspaceIds, mode }
+          : { kind: 'universe' }
       };
     });
   }, []);
@@ -525,9 +532,9 @@ export function useSceneController() {
     const inheritedProjectIds = scene.lens.kind === 'project' && scene.lens.projectId ? [scene.lens.projectId] : [];
     const ensuredWorkspaces = ensureInboxWorkspace(scene.workspaces);
     const inheritedWorkspaceId = scene.lens.kind === 'workspace'
-      ? scene.lens.workspaceId
+      ? getLensWorkspaceIds(scene.lens)[0] ?? null
       : scene.lens.kind === 'reveal'
-        ? scene.lens.workspaceId
+        ? getLensWorkspaceIds(scene.lens)[0] ?? null
         : ensuredWorkspaces.inboxWorkspace.id;
     const placement = resolveCapturePlacement(scene.notes, viewportCenter, activeNote, highestZ + 1);
     const createdNote = createNote(draft, highestZ + 1, inheritedProjectIds, inheritedWorkspaceId, placement);
@@ -631,9 +638,9 @@ export function useSceneController() {
     const inheritedProjectIds = scene.lens.kind === 'project' && scene.lens.projectId ? [scene.lens.projectId] : [];
     const ensuredWorkspaces = ensureInboxWorkspace(scene.workspaces);
     const inheritedWorkspaceId = scene.lens.kind === 'workspace'
-      ? scene.lens.workspaceId
+      ? getLensWorkspaceIds(scene.lens)[0] ?? null
       : scene.lens.kind === 'reveal'
-        ? scene.lens.workspaceId
+        ? getLensWorkspaceIds(scene.lens)[0] ?? null
         : ensuredWorkspaces.inboxWorkspace.id;
     const placement = resolveCapturePlacement(scene.notes, viewportCenter, activeNote, highestZ + 1);
     const createdNote = createNote(content, highestZ + 1, inheritedProjectIds, inheritedWorkspaceId, placement);
@@ -857,6 +864,112 @@ export function useSceneController() {
     }));
   }, []);
 
+  const createButlerRequest = useCallback(async (rawIntentText: string) => {
+    const mailboxAuth = loadMailboxAuthState();
+    const gmailCleanupAnalysis = isGmailCleanupIntent(rawIntentText)
+      ? await fetchGmailCleanupAnalysis(rawIntentText, mailboxAuth.gmailAccessToken || undefined)
+      : null;
+    const outlookUnreadAnalysis = isOutlookUnreadIntent(rawIntentText)
+      ? await fetchOutlookUnreadAnalysis(rawIntentText, mailboxAuth.outlookAccessToken || undefined)
+      : null;
+    const next = runButlerRequest({
+      rawIntentText,
+      notes: scene.notes,
+      memoryPreferences: scene.memoryPreferences ?? [],
+      gmailCleanupAnalysis,
+      outlookUnreadAnalysis
+    });
+    setScene((prev) => {
+      const appended = appendButlerResult(
+        {
+          items: prev.butlerItems ?? [],
+          workflowPlans: prev.workflowPlans ?? [],
+          artifacts: prev.artifacts ?? [],
+          executionLogs: prev.executionLogs ?? []
+        },
+        next
+      );
+      return {
+        ...prev,
+        butlerItems: appended.items,
+        workflowPlans: appended.workflowPlans,
+        artifacts: appended.artifacts,
+        executionLogs: appended.executionLogs
+      };
+    });
+  }, [scene.memoryPreferences, scene.notes]);
+
+  const submitButlerClarification = useCallback(async (itemId: string, answers: Record<string, string>) => {
+    const existingItem = (scene.butlerItems ?? []).find((item) => item.id === itemId);
+    if (!existingItem) return;
+
+    const gmailAccessToken = (answers['gmail-access-token'] ?? '').trim();
+    const outlookAccessToken = (answers['outlook-access-token'] ?? '').trim();
+    const answeredQuestions = existingItem.clarificationQuestions
+      .map((question) => ({
+        ...question,
+        answer: /access-token/.test(question.id)
+          ? ((answers[question.id] ?? '').trim() ? 'Provided for this run' : '')
+          : (answers[question.id] ?? '').trim()
+      }))
+      .filter((question) => question.answer);
+
+    if (!answeredQuestions.length) return;
+
+    const clarificationAppendix = answeredQuestions
+      .filter((question) => !/access-token/.test(question.id))
+      .map((question) => `${question.prompt}: ${question.answer}`)
+      .join('\n');
+    const clarifiedIntentText = clarificationAppendix
+      ? `${existingItem.rawIntentText}\n\nClarifications:\n${clarificationAppendix}`
+      : existingItem.rawIntentText;
+    if (gmailAccessToken) saveMailboxAuthState({ gmailAccessToken });
+    if (outlookAccessToken) saveMailboxAuthState({ outlookAccessToken });
+    const mailboxAuth = loadMailboxAuthState();
+    const gmailCleanupAnalysis = isGmailCleanupIntent(clarifiedIntentText)
+      ? await fetchGmailCleanupAnalysis(clarifiedIntentText, gmailAccessToken || mailboxAuth.gmailAccessToken || undefined)
+      : null;
+    const outlookUnreadAnalysis = isOutlookUnreadIntent(clarifiedIntentText)
+      ? await fetchOutlookUnreadAnalysis(clarifiedIntentText, outlookAccessToken || mailboxAuth.outlookAccessToken || undefined)
+      : null;
+
+    const next = runButlerRequest({
+      rawIntentText: clarifiedIntentText,
+      sourceContext: existingItem.sourceContext,
+      notes: scene.notes,
+      memoryPreferences: scene.memoryPreferences ?? [],
+      gmailCleanupAnalysis,
+      outlookUnreadAnalysis,
+      itemId: existingItem.id,
+      createdAt: existingItem.createdAt
+    });
+
+    if (next.item.status === 'clarifying') {
+      next.item.clarificationQuestions = next.item.clarificationQuestions.map((question) => {
+        const answered = answeredQuestions.find((candidate) => candidate.id === question.id);
+        return answered ? { ...question, answer: answered.answer } : question;
+      });
+    }
+    setScene((prev) => {
+      const appended = appendButlerResult(
+        {
+          items: prev.butlerItems ?? [],
+          workflowPlans: prev.workflowPlans ?? [],
+          artifacts: prev.artifacts ?? [],
+          executionLogs: prev.executionLogs ?? []
+        },
+        next
+      );
+      return {
+        ...prev,
+        butlerItems: appended.items,
+        workflowPlans: appended.workflowPlans,
+        artifacts: appended.artifacts,
+        executionLogs: appended.executionLogs
+      };
+    });
+  }, [scene.butlerItems, scene.memoryPreferences, scene.notes]);
+
   return {
     scene,
     activeNote,
@@ -935,6 +1048,8 @@ export function useSceneController() {
     setActiveStarterLens,
     runStudyAction,
     removeStudyBlock,
+    createButlerRequest,
+    submitButlerClarification,
     onCanvasScroll: mutations.onCanvasScroll,
     onViewportCenterChange,
     onOpenNote: openFocusLensNote,

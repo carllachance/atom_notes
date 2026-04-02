@@ -3,6 +3,7 @@ import { NoteCardModel, Relationship, RelationshipType, SceneState, Workspace } 
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { demoNotes, demoRelationships, demoWorkspaces, DemoNote, DemoRelationship } from './demoSeed';
 import { createEmptyStudySupportState } from '../learning/studyModel';
+import { createDemoButlerState } from '../butler/demoButler';
 
 const WORKSPACE_LAYOUT_COLUMNS = 3;
 const WORKSPACE_X_GAP = 460;
@@ -156,6 +157,7 @@ export function createDemoScene(nowTs = Date.now()): SceneState {
     .map((relationship) => mapDemoRelationship(relationship, notesById))
     .filter((relationship): relationship is Relationship => Boolean(relationship))
     .map((relationship) => ({ ...relationship, createdAt: nowTs, lastActiveAt: nowTs }));
+  const butlerState = createDemoButlerState(notes);
 
   const studySupportState = createEmptyStudySupportState();
 
@@ -170,6 +172,11 @@ export function createDemoScene(nowTs = Date.now()): SceneState {
     libraryItems: [],
     researchSourceSets: [],
     insightTimeline: [],
+    butlerItems: butlerState.items,
+    workflowPlans: butlerState.workflowPlans,
+    artifacts: butlerState.artifacts,
+    executionLogs: butlerState.logs,
+    memoryPreferences: butlerState.memoryPreferences,
     isDragging: false,
     activeNoteId: null,
     expandedSecondarySurface: 'none',

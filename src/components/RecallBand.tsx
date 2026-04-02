@@ -3,6 +3,7 @@ import { FocusMode, Lens } from '../types';
 import { HistoryStackEntry, StateSnapshot } from '../types/reeentory';
 import { FocusSuggestion } from '../scene/focusSuggestions';
 import type { SceneStoreMode } from '../scene/sceneStorage';
+import { getLensWorkspaceIds } from '../scene/lens';
 
 type RecallBandProps = {
   lens: Lens;
@@ -64,6 +65,7 @@ export function RecallBand({
     if (focusCount > 0) return `${focusCount}`;
     return `${focusSuggestions.length} suggested`;
   }, [focusCount, focusSuggestions.length]);
+  const workspaceScopeCount = useMemo(() => lens.kind === 'workspace' ? getLensWorkspaceIds(lens).length : 0, [lens]);
   const hasScopedState = lens.kind !== 'universe' || revealQuery.trim().length > 0 || focusMode.isolate || !focusMode.highlight;
 
   return (
@@ -158,7 +160,7 @@ export function RecallBand({
       </div>
 
       <div className="ribbon-lens-state">
-        <span>{lens.kind === 'workspace' ? 'Workspace lens' : lens.kind === 'project' ? 'Project lens' : lens.kind === 'library' ? 'Library lens' : focusMode.isolate ? 'Focus only' : 'Universe'}</span>
+        <span>{lens.kind === 'workspace' ? workspaceScopeCount > 1 ? `${workspaceScopeCount} workspace lens` : 'Workspace lens' : lens.kind === 'project' ? 'Project lens' : lens.kind === 'library' ? 'Library lens' : focusMode.isolate ? 'Focus only' : 'Universe'}</span>
       </div>
     </header>
   );

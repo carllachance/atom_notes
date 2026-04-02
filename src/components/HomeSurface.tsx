@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { getCompactDisplayTitle, getRecapPreview, getSummaryPreview, getUnresolvedPreview } from '../noteText';
-import { Lens, NoteCardModel, Project, Workspace } from '../types';
+import { Artifact, ButlerItem, ExecutionLog, Lens, MemoryPreference, NoteCardModel, Project, WorkflowPlan, Workspace } from '../types';
 import { FocusSuggestion } from '../scene/focusSuggestions';
+import { getLensWorkspaceIds } from '../scene/lens';
 import { getWorkspaceIdsForNote } from '../workspaces/workspaceSelectors';
+import { ButlerQueue } from './ButlerQueue';
 
 type HomeSurfaceProps = {
   notes: NoteCardModel[];
@@ -10,8 +12,15 @@ type HomeSurfaceProps = {
   projects: Project[];
   lens: Lens;
   focusSuggestions: FocusSuggestion[];
+  butlerItems: ButlerItem[];
+  workflowPlans: WorkflowPlan[];
+  artifacts: Artifact[];
+  executionLogs: ExecutionLog[];
+  memoryPreferences: MemoryPreference[];
   onOpenNote: (noteId: string) => void;
   onSetLens: (lens: Lens) => void;
+  onCreateButlerRequest?: (rawIntentText: string) => void | Promise<void>;
+  onSubmitButlerClarification?: (itemId: string, answers: Record<string, string>) => void | Promise<void>;
 };
 
 type WorkspaceCluster = {
@@ -96,17 +105,38 @@ function getTooltipSummary(note: NoteCardModel, workspaces: Workspace[], project
     .join('\n');
 }
 
-export function HomeSurface({ notes, workspaces, projects, lens, focusSuggestions, onOpenNote, onSetLens }: HomeSurfaceProps) {
+export function HomeSurface({
+  notes,
+  workspaces,
+  projects,
+  lens,
+  focusSuggestions,
+  butlerItems,
+  workflowPlans,
+  artifacts,
+  executionLogs,
+  memoryPreferences,
+  onOpenNote,
+  onSetLens,
+  onCreateButlerRequest,
+  onSubmitButlerClarification
+}: HomeSurfaceProps) {
   const [hoveredNoteId, setHoveredNoteId] = useState<string | null>(null);
   const activeNotes = useMemo(() => notes.filter((note) => !note.archived && !note.deleted), [notes]);
   const workspaceClusters = useMemo(() => buildWorkspaceClusters(activeNotes, workspaces), [activeNotes, workspaces]);
-  const activeWorkspaceId = lens.kind === 'workspace' ? lens.workspaceId : null;
-  const activeCluster = activeWorkspaceId ? workspaceClusters.find((cluster) => cluster.workspace.id === activeWorkspaceId) ?? null : null;
+  const activeWorkspaceIds = lens.kind === 'workspace' ? getLensWorkspaceIds(lens) : [];
+  const activeCluster = activeWorkspaceIds.length ? workspaceClusters.find((cluster) => cluster.workspace.id === activeWorkspaceIds[0]) ?? null : null;
   const visibleClusters = activeCluster
-    ? [activeCluster, ...workspaceClusters.filter((cluster) => cluster.workspace.id !== activeWorkspaceId)]
+    ? [activeCluster, ...workspaceClusters.filter((cluster) => cluster.workspace.id !== activeWorkspaceIds[0])]
     : workspaceClusters;
+  const activeClusters = activeWorkspaceIds.length
+    ? workspaceClusters.filter((cluster) => activeWorkspaceIds.includes(cluster.workspace.id))
+    : [];
   const focusNotes = rankNotes(activeNotes.filter((note) => Boolean(note.isFocus ?? note.inFocus))).slice(0, 4);
-  const featuredNotes = activeCluster?.notes ?? rankNotes(activeNotes).slice(0, 8);
+  const featuredNotes = activeClusters.length
+    ? rankNotes(activeNotes.filter((note) => getWorkspaceIdsForNote(note).some((workspaceId) => activeWorkspaceIds.includes(workspaceId))))
+        .slice(0, 8)
+    : rankNotes(activeNotes).slice(0, 8);
   const activeCategoryLanes = useMemo(
     () => activeCluster ? buildWorkspaceCategoryLanes(activeCluster.notes) : [],
     [activeCluster]
@@ -121,9 +151,16 @@ export function HomeSurface({ notes, workspaces, projects, lens, focusSuggestion
           <button
             key={cluster.workspace.id}
             type="button"
-            className={`workspace-cluster ${activeWorkspaceId === cluster.workspace.id ? 'workspace-cluster--active' : activeWorkspaceId ? 'workspace-cluster--faded' : ''}`}
+            className={`workspace-cluster ${activeWorkspaceIds.includes(cluster.workspace.id) ? 'workspace-cluster--active' : activeWorkspaceIds.length ? 'workspace-cluster--faded' : ''}`}
             style={{ ['--cluster-color' as string]: cluster.workspace.color, ['--cluster-order' as string]: String(index) }}
-            onClick={() => onSetLens({ kind: 'workspace', workspaceId: cluster.workspace.id, mode: 'context' })}
+            onClick={() => {
+              const nextWorkspaceIds = activeWorkspaceIds.includes(cluster.workspace.id)
+                ? activeWorkspaceIds.filter((workspaceId) => workspaceId !== cluster.workspace.id)
+                : [...activeWorkspaceIds, cluster.workspace.id];
+              onSetLens(nextWorkspaceIds.length
+                ? { kind: 'workspace', workspaceId: nextWorkspaceIds[0] ?? null, workspaceIds: nextWorkspaceIds, mode: 'context' }
+                : { kind: 'universe' });
+            }}
           >
             <div className="workspace-cluster__head">
               <strong>{cluster.workspace.name}</strong>
@@ -144,8 +181,8 @@ export function HomeSurface({ notes, workspaces, projects, lens, focusSuggestion
         <section className="home-bento__lane" aria-label={activeCluster ? `${activeCluster.workspace.name} lens` : 'Inbox workspace lens'}>
           <div className="home-bento__lane-head">
             <div>
-              <strong>{activeCluster ? `${activeCluster.workspace.name} lens` : 'Default workspace lens'}</strong>
-              <p>{activeCluster ? 'Selecting a workspace turns it into a lens. Recent material rises first; categories stay close at hand.' : 'Choose a workspace constellation or stay in the shared field.'}</p>
+              <strong>{activeCluster ? `${activeCluster.workspace.name}${activeWorkspaceIds.length > 1 ? ` +${activeWorkspaceIds.length - 1}` : ''} lens` : 'Default workspace lens'}</strong>
+              <p>{activeCluster ? 'Selecting a workspace turns it into a lens. Selecting more broadens the field; tapping one again lets it fall away.' : 'Choose a workspace constellation or stay in the shared field.'}</p>
             </div>
             {activeCategorySummary.length ? (
               <div className="home-bento__lane-metrics" aria-label="Workspace category counts">
@@ -202,6 +239,17 @@ export function HomeSurface({ notes, workspaces, projects, lens, focusSuggestion
         </section>
 
         <aside className="home-bento__sidebar" aria-label="Pinned and focus">
+          <ButlerQueue
+            items={butlerItems}
+            workflowPlans={workflowPlans}
+            artifacts={artifacts}
+            executionLogs={executionLogs}
+            memoryPreferences={memoryPreferences}
+            onOpenSourceNote={onOpenNote}
+            onCreateRequest={onCreateButlerRequest}
+            onSubmitClarification={onSubmitButlerClarification}
+          />
+
           <section className="home-bento__stack">
             <div className="home-bento__stack-head">
               <strong>Pinned</strong>

@@ -10638,6 +10638,397 @@ body {
   gap: 0.9rem;
 }
 
+.butler-queue {
+  border-radius: 22px;
+  padding: 0.9rem;
+  background:
+    radial-gradient(circle at top right, rgba(214, 187, 139, 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(245, 238, 227, 0.92));
+  box-shadow: inset 0 0 0 1px rgba(54, 44, 33, 0.05);
+  display: grid;
+  gap: 0.8rem;
+}
+
+.butler-queue__header,
+.butler-detail__section-head,
+.butler-artifact__head,
+.butler-log__head,
+.butler-step__title {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.butler-queue__header p,
+.butler-detail__header p,
+.butler-step p,
+.butler-artifact p,
+.butler-log p,
+.butler-bullet-block p,
+.butler-source-row p,
+.butler-queue__empty p {
+  margin: 0;
+}
+
+.butler-queue__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.butler-queue__summary span,
+.butler-detail__badges span,
+.butler-card__meta span,
+.butler-detail__section-head span,
+.butler-step__title span,
+.butler-artifact__head span,
+.butler-log__head span {
+  padding: 0.22rem 0.48rem;
+  border-radius: 999px;
+  background: rgba(255, 250, 242, 0.78);
+  font-size: 0.72rem;
+  color: rgba(69, 57, 43, 0.88);
+}
+
+.butler-intake {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+}
+
+.butler-intake input {
+  width: 100%;
+  border: 1px solid rgba(50, 42, 31, 0.12);
+  border-radius: 14px;
+  padding: 0.72rem 0.86rem;
+  background: rgba(255, 252, 247, 0.92);
+  color: #342a21;
+}
+
+.butler-mailbox-access {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.82rem 0.88rem;
+  border: 1px solid rgba(54, 44, 33, 0.06);
+  border-radius: 16px;
+  background: rgba(255, 250, 242, 0.72);
+}
+
+.butler-mailbox-access__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.butler-mailbox-provider {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  border-radius: 14px;
+  background: rgba(255, 252, 247, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(54, 44, 33, 0.04);
+}
+
+.butler-mailbox-help {
+  display: grid;
+  gap: 0.45rem;
+  color: rgba(58, 47, 36, 0.84);
+}
+
+.butler-mailbox-help p,
+.butler-mailbox-help ol {
+  margin: 0;
+}
+
+.butler-mailbox-help ol {
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.butler-mailbox-help a,
+.butler-mailbox-help code {
+  color: #5a4023;
+}
+
+.butler-mailbox-access__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.butler-mailbox-access__actions button {
+  border: 1px solid rgba(54, 44, 33, 0.08);
+  border-radius: 999px;
+  padding: 0.36rem 0.66rem;
+  background: rgba(255, 252, 247, 0.96);
+  color: #2d241c;
+  font: inherit;
+}
+
+.butler-queue__body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.butler-queue__list-shell {
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+  min-height: 0;
+}
+
+.butler-queue__list-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.butler-queue__list-head p {
+  margin: 0;
+  color: rgba(70, 57, 43, 0.82);
+}
+
+.butler-queue__list {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  max-height: 34rem;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.butler-card {
+  text-align: left;
+  border: 1px solid rgba(54, 44, 33, 0.08);
+  border-radius: 16px;
+  padding: 0.78rem 0.82rem;
+  background: rgba(255, 250, 242, 0.88);
+  color: #2f251d;
+  box-shadow: inset 0 0 0 1px rgba(54, 44, 33, 0.03);
+}
+
+.butler-card--active {
+  border-color: rgba(156, 123, 70, 0.24);
+  background: linear-gradient(180deg, rgba(255, 249, 238, 0.98), rgba(248, 239, 223, 0.96));
+  box-shadow: 0 12px 28px rgba(22, 18, 12, 0.08);
+}
+
+.butler-card strong,
+.butler-detail strong,
+.butler-queue__empty strong {
+  color: #2d241c;
+}
+
+.butler-card p,
+.butler-detail p,
+.butler-queue__empty p,
+.butler-step small,
+.butler-artifact small,
+.butler-log small {
+  color: rgba(58, 47, 36, 0.82);
+}
+
+.butler-card__head,
+.butler-card__meta,
+.butler-detail__badges,
+.butler-source-row__actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.butler-card__meta {
+  margin-top: 0.65rem;
+}
+
+.butler-card > strong {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.butler-card > p {
+  margin-top: 0.45rem;
+}
+
+.butler-card__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.52rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.01em;
+  background: rgba(223, 213, 195, 0.48);
+}
+
+.butler-card__status--awaiting-review {
+  background: rgba(213, 188, 124, 0.34);
+}
+
+.butler-card__status--running {
+  background: rgba(151, 194, 184, 0.34);
+}
+
+.butler-card__status--clarifying,
+.butler-card__status--planned {
+  background: rgba(186, 196, 225, 0.4);
+}
+
+.butler-card__status--blocked {
+  background: rgba(214, 163, 132, 0.34);
+}
+
+.butler-card__status--completed {
+  background: rgba(174, 207, 165, 0.36);
+}
+
+.butler-detail,
+.butler-queue__empty {
+  border: 1px solid rgba(54, 44, 33, 0.07);
+  border-radius: 18px;
+  padding: 0.88rem 0.92rem;
+  background: rgba(255, 251, 246, 0.82);
+  display: grid;
+  gap: 0.8rem;
+}
+
+.butler-detail__header {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.butler-detail__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.7rem;
+}
+
+.butler-detail__section {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.butler-step-list,
+.butler-bullet-block {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.butler-step,
+.butler-artifact,
+.butler-log,
+.butler-source-row {
+  padding: 0.68rem 0.74rem;
+  border-radius: 14px;
+  background: rgba(252, 247, 239, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(54, 44, 33, 0.04);
+}
+
+.butler-artifact__head {
+  align-items: start;
+}
+
+.butler-artifact__title-block {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.butler-artifact__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.butler-artifact__preview {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  line-height: 1.5;
+  color: rgba(52, 42, 31, 0.88);
+  background: rgba(255, 252, 247, 0.82);
+  border-radius: 12px;
+  padding: 0.72rem 0.8rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.butler-step--running {
+  background: linear-gradient(180deg, rgba(243, 248, 245, 0.96), rgba(248, 242, 232, 0.96));
+}
+
+.butler-step--completed {
+  background: linear-gradient(180deg, rgba(245, 249, 243, 0.96), rgba(248, 242, 232, 0.96));
+}
+
+.butler-step--blocked {
+  background: linear-gradient(180deg, rgba(250, 240, 232, 0.98), rgba(248, 242, 232, 0.96));
+}
+
+.butler-detail__placeholder {
+  font-size: 0.84rem;
+  color: rgba(76, 63, 49, 0.76);
+}
+
+.butler-bullet-block strong {
+  font-size: 0.78rem;
+}
+
+.butler-source-row {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.butler-source-row__actions button {
+  border: 1px solid rgba(54, 44, 33, 0.08);
+  border-radius: 999px;
+  padding: 0.3rem 0.62rem;
+  background: rgba(255, 252, 247, 0.94);
+  color: #3b3025;
+}
+
+.butler-clarify-form {
+  gap: 0.7rem;
+}
+
+.butler-clarify-form__question {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.butler-clarify-form__question span {
+  font-size: 0.84rem;
+  color: #2d241c;
+}
+
+.butler-clarify-form__question small {
+  color: rgba(78, 65, 51, 0.78);
+}
+
+.butler-clarify-form__question input,
+.butler-clarify-form__question select {
+  width: 100%;
+  border: 1px solid rgba(54, 44, 33, 0.08);
+  border-radius: 12px;
+  padding: 0.62rem 0.72rem;
+  background: rgba(255, 252, 247, 0.96);
+  color: #2f251d;
+  font: inherit;
+}
+
+.butler-clarify-form button {
+  justify-self: start;
+  border: 1px solid rgba(54, 44, 33, 0.08);
+  border-radius: 999px;
+  padding: 0.42rem 0.76rem;
+  background: rgba(255, 251, 245, 0.98);
+  color: #2d241c;
+  font: inherit;
+}
+
 .home-bento__stack {
   border-radius: 22px;
   padding: 0.9rem;
@@ -10684,6 +11075,10 @@ body {
   }
 
   .home-bento__field {
+    grid-template-columns: 1fr;
+  }
+
+  .butler-mailbox-access__grid {
     grid-template-columns: 1fr;
   }
 
@@ -11107,6 +11502,12 @@ body {
   .bento-atom--large,
   .bento-atom--wide {
     grid-column: span 6;
+  }
+
+  .butler-queue__body,
+  .butler-detail__grid,
+  .butler-intake {
+    grid-template-columns: 1fr;
   }
 }
 
