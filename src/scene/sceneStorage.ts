@@ -8,6 +8,7 @@ import { createDemoScene } from '../data/demoScene';
 import { normalizeWorkspace } from '../workspaces/workspaceModel';
 import { normalizeLens } from './lens';
 import { loadStudyPersistence, saveStudyPersistence } from '../learning/studyPersistence';
+import { normalizeArtifact, normalizeButlerItem, normalizeExecutionLog, normalizeMemoryPreference, normalizeWorkflowPlan } from '../butler/butlerModel';
 
 export const SCENE_KEY = 'atom-notes.scene.v10';
 export const SCENE_MODE_KEY = 'atom-notes.scene-mode.v1';
@@ -29,6 +30,11 @@ function createEmptyScene(): SceneState {
     libraryItems: [],
     researchSourceSets: [],
     insightTimeline: [],
+    butlerItems: [],
+    workflowPlans: [],
+    artifacts: [],
+    executionLogs: [],
+    memoryPreferences: [],
     isDragging: false,
     activeNoteId: null,
     expandedSecondarySurface: 'none',
@@ -405,6 +411,11 @@ export function loadSceneForMode(mode: SceneStoreMode): SceneState {
       libraryItems: Array.isArray(parsed.libraryItems) ? parsed.libraryItems : [],
       researchSourceSets: Array.isArray(parsed.researchSourceSets) ? parsed.researchSourceSets : [],
       insightTimeline: normalizeInsightTimeline(parsed.insightTimeline),
+      butlerItems: Array.isArray(parsed.butlerItems) ? parsed.butlerItems.map((item, index) => normalizeButlerItem(item, index)) : fallback.butlerItems ?? [],
+      workflowPlans: Array.isArray(parsed.workflowPlans) ? parsed.workflowPlans.map((plan, index) => normalizeWorkflowPlan(plan, index)) : fallback.workflowPlans ?? [],
+      artifacts: Array.isArray(parsed.artifacts) ? parsed.artifacts.map((artifact, index) => normalizeArtifact(artifact, index)) : fallback.artifacts ?? [],
+      executionLogs: Array.isArray(parsed.executionLogs) ? parsed.executionLogs.map((log, index) => normalizeExecutionLog(log, index)) : fallback.executionLogs ?? [],
+      memoryPreferences: Array.isArray(parsed.memoryPreferences) ? parsed.memoryPreferences.map((memory, index) => normalizeMemoryPreference(memory, index)) : fallback.memoryPreferences ?? [],
       isDragging: false,
       activeNoteId,
       expandedSecondarySurface: activeNoteId && restoredSecondarySurface === 'capture' ? 'none' : restoredSecondarySurface,

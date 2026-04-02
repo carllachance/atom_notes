@@ -111,6 +111,8 @@ export function App() {
     setActiveStarterLens,
     runStudyAction,
     removeStudyBlock,
+    createButlerRequest,
+    submitButlerClarification,
     onCanvasScroll,
     onViewportCenterChange,
     onOpenNote,
@@ -191,7 +193,7 @@ export function App() {
     } else if (entry.lensKind === 'project') {
       setLens({ kind: 'project', projectId: null, mode: 'context' });
     } else if (entry.lensKind === 'workspace') {
-      setLens({ kind: 'workspace', workspaceId: null, mode: 'context' });
+      setLens({ kind: 'workspace', workspaceId: null, workspaceIds: [], mode: 'context' });
     } else if (entry.lensKind === 'library') {
       setLens({ kind: 'library' });
     }
@@ -263,7 +265,7 @@ export function App() {
     onSetWorkspaceIds: setNoteWorkspaces,
     onCreateWorkspace: createWorkspaceForNote,
     onSetProjectLens: (projectId: string | null) => setLens(projectId ? { kind: 'project', projectId, mode: 'context' } : { kind: 'universe' }),
-    onSetWorkspaceLens: (workspaceId: string | null) => setLens(workspaceId ? { kind: 'workspace', workspaceId, mode: 'context' } : { kind: 'universe' }),
+    onSetWorkspaceLens: (workspaceId: string | null) => setLens(workspaceId ? { kind: 'workspace', workspaceId, workspaceIds: [workspaceId], mode: 'context' } : { kind: 'universe' }),
     onAddAttachments: addAttachmentsToActiveNote,
     onRemoveAttachment: removeAttachment,
     onRetryAttachment: retryAttachmentProcessing,
@@ -319,8 +321,15 @@ export function App() {
                 projects={projects}
                 lens={scene.lens}
                 focusSuggestions={focusSuggestions}
+                butlerItems={scene.butlerItems ?? []}
+                workflowPlans={scene.workflowPlans ?? []}
+                artifacts={scene.artifacts ?? []}
+                executionLogs={scene.executionLogs ?? []}
+                memoryPreferences={scene.memoryPreferences ?? []}
                 onOpenNote={onOpenNote}
                 onSetLens={setLens}
+                onCreateButlerRequest={createButlerRequest}
+                onSubmitButlerClarification={submitButlerClarification}
               />
             </div>
           ) : null}

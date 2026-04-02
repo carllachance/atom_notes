@@ -57,6 +57,15 @@ test('workspace lens acts as scope rather than prison and marks surfaced cross-w
   assert.equal(presentation.noteMetaById.c.workspaceState, 'orphan');
 });
 
+test('workspace lens broadens when multiple workspaces are selected', () => {
+  const scene: SceneState = { ...makeScene(), lens: { kind: 'workspace', workspaceId: 'w1', workspaceIds: ['w1', 'w2'], mode: 'context' } };
+  const presentation = getLensPresentation(scene);
+  assert.deepEqual(presentation.visibleNotes.map((note) => note.id), ['a', 'b', 'c']);
+  assert.equal(presentation.noteMetaById.a.workspaceState, 'member');
+  assert.equal(presentation.noteMetaById.b.workspaceState, 'member');
+  assert.equal(presentation.lensLabel, 'Lab +1 workspace lens · with context');
+});
+
 test('reveal lens surfaces matches plus their relationship context across scopes', () => {
   const scene = { ...makeScene(), lens: { kind: 'reveal', query: 'policy', workspaceId: 'w1', projectId: null, mode: 'context' } as const };
   const presentation = getLensPresentation(scene);

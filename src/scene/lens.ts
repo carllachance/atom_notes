@@ -40,12 +40,40 @@ export function createDefaultLens(): Lens {
   return { kind: 'universe' };
 }
 
+function normalizeWorkspaceScopeIds(value: unknown, fallbackWorkspaceId: string | null = null): string[] {
+  const rawIds = Array.isArray(value)
+    ? value
+    : typeof fallbackWorkspaceId === 'string' && fallbackWorkspaceId.trim()
+      ? [fallbackWorkspaceId]
+      : [];
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const candidate of rawIds) {
+    const workspaceId = typeof candidate === 'string' ? candidate.trim() : '';
+    if (!workspaceId || seen.has(workspaceId)) continue;
+    seen.add(workspaceId);
+    normalized.push(workspaceId);
+  }
+
+  return normalized;
+}
+
+export function getLensWorkspaceIds(lens: Lens): string[] {
+  if (lens.kind !== 'workspace' && lens.kind !== 'reveal') return [];
+  return normalizeWorkspaceScopeIds(lens.workspaceIds, lens.workspaceId ?? null);
+}
+
+function getPrimaryLensWorkspaceId(lens: Lens): string | null {
+  return getLensWorkspaceIds(lens)[0] ?? null;
+}
+
 function normalizeScopeMode(value: unknown): LensScopeMode {
   return value === 'strict' ? 'strict' : 'context';
 }
 
 export function normalizeLens(raw: unknown): Lens {
-  if (raw === 'focus') return { kind: 'workspace', workspaceId: null, mode: 'strict' };
+  if (raw === 'focus') return { kind: 'workspace', workspaceId: null, workspaceIds: [], mode: 'strict' };
   if (raw === 'archive') return { kind: 'archive' };
   if (raw === 'all') return createDefaultLens();
 
@@ -59,19 +87,39 @@ export function normalizeLens(raw: unknown): Lens {
 
   switch (candidate.kind) {
     case 'project':
-      return { kind: 'project', projectId: typeof candidate.projectId === 'string' ? candidate.projectId : null, mode: normalizeScopeMode(candidate.mode) };
-    case 'workspace':
-      return { kind: 'workspace', workspaceId: typeof candidate.workspaceId === 'string' ? candidate.workspaceId : null, mode: normalizeScopeMode(candidate.mode) };
-    case 'library':
-      return { kind: 'library' };
-    case 'reveal':
       return {
-        kind: 'reveal',
-        query: String(candidate.query ?? '').trim(),
-        workspaceId: typeof candidate.workspaceId === 'string' ? candidate.workspaceId : null,
+        kind: 'project',
         projectId: typeof candidate.projectId === 'string' ? candidate.projectId : null,
         mode: normalizeScopeMode(candidate.mode)
       };
+    case 'workspace': {
+      const workspaceIds = normalizeWorkspaceScopeIds(
+        (candidate as Partial<Lens> & { workspaceIds?: unknown }).workspaceIds,
+        typeof candidate.workspaceId === 'string' ? candidate.workspaceId : null
+      );
+      return {
+        kind: 'workspace',
+        workspaceId: workspaceIds[0] ?? null,
+        workspaceIds,
+        mode: normalizeScopeMode(candidate.mode)
+      };
+    }
+    case 'library':
+      return { kind: 'library' };
+    case 'reveal': {
+      const workspaceIds = normalizeWorkspaceScopeIds(
+        (candidate as Partial<Lens> & { workspaceIds?: unknown }).workspaceIds,
+        typeof candidate.workspaceId === 'string' ? candidate.workspaceId : null
+      );
+      return {
+        kind: 'reveal',
+        query: String(candidate.query ?? '').trim(),
+        workspaceId: workspaceIds[0] ?? null,
+        workspaceIds,
+        projectId: typeof candidate.projectId === 'string' ? candidate.projectId : null,
+        mode: normalizeScopeMode(candidate.mode)
+      };
+    }
     case 'archive':
       return { kind: 'archive' };
     case 'universe':
@@ -85,7 +133,7 @@ export function normalizeLens(raw: unknown): Lens {
         };
       }
       if (typeof candidate.revealQuery === 'string' && candidate.revealQuery.trim()) {
-        return { kind: 'reveal', query: candidate.revealQuery.trim(), workspaceId: null, projectId: null, mode: 'context' };
+        return { kind: 'reveal', query: candidate.revealQuery.trim(), workspaceId: null, workspaceIds: [], projectId: null, mode: 'context' };
       }
       if (candidate.currentView === 'archive') return { kind: 'archive' };
       return createDefaultLens();
@@ -101,13 +149,21 @@ export function getLensLabel(lens: Lens, scene: Pick<SceneState, 'projects' | 'w
     return project ? `${project.name} project lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}` : 'Project lens';
   }
   if (lens.kind === 'workspace') {
-    const workspace = scene.workspaces.find((candidate) => candidate.id === lens.workspaceId);
-    return workspace ? `${workspace.name} workspace lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}` : 'Workspace lens';
+    const scopedWorkspaces = getLensWorkspaceIds(lens)
+      .map((workspaceId) => scene.workspaces.find((candidate) => candidate.id === workspaceId))
+      .filter(Boolean);
+    if (scopedWorkspaces.length === 1) {
+      return `${scopedWorkspaces[0]!.name} workspace lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}`;
+    }
+    if (scopedWorkspaces.length > 1) {
+      return `${scopedWorkspaces[0]!.name} +${scopedWorkspaces.length - 1} workspace lens${lens.mode === 'strict' ? ' · strict' : ' · with context'}`;
+    }
+    return 'Workspace lens';
   }
 
   const scopeBits = [
     lens.projectId ? scene.projects.find((candidate) => candidate.id === lens.projectId)?.name : null,
-    lens.workspaceId ? scene.workspaces.find((candidate) => candidate.id === lens.workspaceId)?.name : null
+    ...getLensWorkspaceIds(lens).map((workspaceId) => scene.workspaces.find((candidate) => candidate.id === workspaceId)?.name ?? null)
   ].filter(Boolean);
   return `Reveal lens${scopeBits.length ? ` · ${scopeBits.join(' / ')}` : ''}`;
 }
@@ -145,14 +201,16 @@ function getScopedNotes(notes: NoteCardModel[], lens: Lens) {
   if (lens.kind === 'project' || lens.kind === 'reveal') {
     const projectId = lens.projectId ?? null;
     const projectScoped = projectId ? notes.filter((note) => note.projectIds.includes(projectId)) : notes;
-    if (lens.kind !== 'reveal' || !lens.workspaceId) return projectScoped;
-    const workspaceId = lens.workspaceId;
-    return projectScoped.filter((note) => getWorkspaceIdsForNote(note).includes(workspaceId));
+    const workspaceIds = lens.kind === 'reveal' ? getLensWorkspaceIds(lens) : [];
+    if (lens.kind !== 'reveal' || !workspaceIds.length) return projectScoped;
+    return projectScoped.filter((note) => getWorkspaceIdsForNote(note).some((workspaceId) => workspaceIds.includes(workspaceId)));
   }
 
   if (lens.kind === 'workspace') {
-    const workspaceId = lens.workspaceId;
-    return workspaceId ? notes.filter((note) => getWorkspaceIdsForNote(note).includes(workspaceId)) : notes;
+    const workspaceIds = getLensWorkspaceIds(lens);
+    return workspaceIds.length
+      ? notes.filter((note) => getWorkspaceIdsForNote(note).some((workspaceId) => workspaceIds.includes(workspaceId)))
+      : notes;
   }
 
   if (lens.kind === 'library') {
@@ -240,7 +298,8 @@ export function getLensPresentation(scene: SceneState): LensPresentation {
     ? archivedNotes
     : scene.notes.filter((note) => !note.archived && !note.deleted && (primaryIds.has(note.id) || supportingIds.has(note.id)));
   const activeProject = lens.kind === 'project' || lens.kind === 'reveal' ? getProjectById(scene, lens.projectId ?? null) : null;
-  const activeWorkspace = lens.kind === 'workspace' || lens.kind === 'reveal' ? getWorkspaceById(scene, lens.workspaceId ?? null) : null;
+  const activeWorkspace = lens.kind === 'workspace' || lens.kind === 'reveal' ? getWorkspaceById(scene, getPrimaryLensWorkspaceId(lens)) : null;
+  const scopedWorkspaceIds = getLensWorkspaceIds(lens);
   const noteMetaById: Record<string, LensNotePresentation> = {};
   const workspacesById = new Map(scene.workspaces.map((workspace) => [workspace.id, workspace]));
   const projectsById = new Map(scene.projects.map((project) => [project.id, project]));
@@ -256,8 +315,8 @@ export function getLensPresentation(scene: SceneState): LensPresentation {
           ? 'supporting'
           : 'none'
       : 'none';
-    const workspaceState: LensWorkspaceState = activeWorkspace
-      ? workspaceIds.includes(activeWorkspace.id)
+    const workspaceState: LensWorkspaceState = scopedWorkspaceIds.length
+      ? workspaceIds.some((workspaceId) => scopedWorkspaceIds.includes(workspaceId))
         ? 'member'
         : workspaceIds.length
           ? 'supporting'
